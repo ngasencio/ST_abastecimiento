@@ -1,0 +1,22 @@
+# Archivo: .streamlit/config.toml
+
+[theme]
+
+# 1. Color principal (Botones, Sliders, Checkboxes)
+# Un azul marino profesional
+primaryColor="#004F9F" 
+
+# 2. Color de fondo de la aplicación
+# Blanco puro para un look formal y limpio
+backgroundColor="#ffffffff" 
+
+# 3. Color de fondo secundario (Barra lateral y contenedores)
+# Gris muy claro para un ligero contraste con el fondo principal
+secondaryBackgroundColor="#F0F2F6" 
+
+# 4. Color del texto
+# Negro oscuro o gris muy oscuro
+textColor="#04136aff" 
+
+# 5. Fuente
+font="sans serif"
