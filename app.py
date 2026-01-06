@@ -8,12 +8,9 @@ from datetime import datetime
 
 st.set_page_config(
     page_title="Dashboard DSSO",
-    page_icon=":bar_chart:", 
+    page_icon="logosso.jpg", 
     layout="wide",
     initial_sidebar_state="expanded")
-
-
-
 
 # Importas Datos
 def generar_datos_empresa():

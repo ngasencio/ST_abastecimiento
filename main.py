@@ -16,7 +16,7 @@ considerando los principales indicadores de la organización.**
 # 1. Configuración de la aplicación
 st.set_page_config(
     page_title="Portal de Dashboards DSSO",
-    page_icon=":rocket:",
+    page_icon="logosso.jpg",
     layout="wide"
 )
 
@@ -28,7 +28,7 @@ pg = st.navigation([
     st.Page("app.py", title="Inicio / Dashboard Principal", icon="🏠"),
     st.Page("pages/dash_general.py", title="Reporte General", icon="📊"),
     st.Page("pages/dash_ventas.py", title="Análisis de Ventas", icon="💰"),
-    st.Page("pages/dash_compras.py", title="Gestión de Compras", icon="🛒"),
+    st.Page("pages/dash_pac.py", title="Plan de Compras", icon="🛒"),
 ])
 
 pg.run()

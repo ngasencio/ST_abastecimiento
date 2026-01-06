@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 
 # Título y encabezado
-st.title("🛒 Gestión de Compras")
+st.title("🛒 Plan de Compras")
 st.header("Análisis de Costos y Proveedores")
 
 st.markdown("""
