@@ -4,7 +4,12 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
+import sys
+import os
 
+# 1. Importar el módulo completo
+from data.data_loader import load_fsc_data
+df_fsc = load_fsc_data()
 
 st.set_page_config(
     page_title="Dashboard DSSO",
@@ -55,9 +60,9 @@ with col3:
 st.markdown("## 📈 KPIs Principales")
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    ingresos_totales = df["ingresos_diarios"].sum()
-    st.metric("💰 Ingresos Totales", 
-            f"${ingresos_totales:,.0f}",
+    montos_estimados = df_fsc["monto estimado"].sum()
+    st.metric("💰 Montos Estimados", 
+            f"${montos_estimados:,.0f}",
             f"{np.random.uniform(5, 15):.1f}%")
     
 with col2:

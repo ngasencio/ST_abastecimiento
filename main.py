@@ -1,6 +1,9 @@
 # main.py
 
 import streamlit as st
+import sys
+import os
+
 
 # 1️⃣ LOGO SSO ARRIBA Y CENTRADO
 #st.sidebar.markdown('<div class="center-img">', unsafe_allow_html=True)
@@ -29,6 +32,10 @@ pg = st.navigation([
     st.Page("pages/dash_general.py", title="Reporte General", icon="📊"),
     st.Page("pages/dash_ventas.py", title="Análisis de Ventas", icon="💰"),
     st.Page("pages/dash_pac.py", title="Plan de Compras", icon="🛒"),
+    st.Page("pages/dash_compradores.py", title="Compradores", icon="👥"),
+
+      
+ 
 ])
 
 pg.run()
