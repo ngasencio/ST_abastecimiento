@@ -87,7 +87,7 @@ with col4:
 st.subheader("Datos de Muestra")
 st.dataframe(df_general, use_container_width=True)
 
-st.markdown("## 📊 Análisis Detallado")
+st.markdown("## 📊 Análisis Detallado ")
 
 
 col1, col2 = st.columns(2)
