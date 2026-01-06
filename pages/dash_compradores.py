@@ -87,6 +87,72 @@ with col4:
 st.subheader("Datos de Muestra")
 st.dataframe(df_general, use_container_width=True)
 
+st.markdown("## 📊 Análisis Detallado")
+
+
+col1, col2 = st.columns(2)
+
+with col1:
+
+    # --- 1) Convertir fecha desde formato DD-MM-YYYY ---
+    df_filtrado["fecha derivado"] = pd.to_datetime(
+        df_filtrado["fecha derivado"],
+        format="%d-%m-%Y",
+        errors="coerce"
+    )
+
+    # --- 2) Crear columna de MES (año + mes) ---
+    df_filtrado["mes"] = df_filtrado["fecha derivado"].dt.to_period("M").dt.to_timestamp()
+
+    # --- 3) Agrupar por mes y contar formularios ---
+    serie = (
+        df_filtrado
+        .groupby("mes")["newiD"]
+        .count()
+        .reset_index(name="cantidad")
+        .sort_values("mes")
+    )
+
+    # --- 4) Gráfico de líneas mensual ---
+    fig = px.line(
+        serie,
+        x="mes",
+        y="cantidad",
+        markers=True,
+        title="Evolución Mensual de Formularios Derivados",
+        labels={
+            "mes": "Mes",
+            "cantidad": "Cantidad de Formularios"
+        }
+    )
+
+    fig.update_layout(
+        template="plotly_white",
+        xaxis_title="Mes",
+        yaxis_title="Cantidad",
+    )
+
+    # --- 5) (Opcional) Mostrar etiquetas sobre cada punto ---
+    fig.update_traces(text=serie["cantidad"], textposition="top center")
+
+    st.plotly_chart(fig, use_container_width=True)
+with col2:
+    etapas = ['Visitantes', 'Leads', 'Oportunidades', 'Clientes']
+    valores = [10000, 2500, 625, 156]
+    funenel = go.Figure(go.Funnel(y=etapas, x=valores, textinfo="value+percent initial"))
+    funenel.update_layout(title="🎯 Embudo de Conversión", height=400, template="plotly_white")
+    st.plotly_chart(funenel, use_container_width=True)    
+
+
+
+
+
+
+
+
+
+
+
 
 # --- 1. Conteo ---
 conteo = (
