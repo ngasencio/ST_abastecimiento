@@ -33,8 +33,6 @@ pg = st.navigation([
     st.Page("pages/dash_ventas.py", title="Análisis de Ventas", icon="💰"),
     st.Page("pages/dash_pac.py", title="Plan de Compras", icon="🛒"),
     st.Page("pages/dash_compradores.py", title="Compradores", icon="👥"),
-
-      
  
 ])
 

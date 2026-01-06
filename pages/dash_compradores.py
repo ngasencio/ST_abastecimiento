@@ -10,7 +10,7 @@ df_fsc = load_fsc_data()
 
 
 # Título y encabezado
-st.title(" 👥 Dashboard Comrpadores")
+st.title("📋 Dashboard Comrpadores")
 st.header("Vista Ejecutiva de la Organización")
 
 st.markdown("""
@@ -24,10 +24,7 @@ data_general = {
     'Valor Actual': [5500000, 15000, '2.8%'],
     'Variación vs Mes Anterior': ['+12%', '-3%', '+0.5%']
 }
-
 df_general = pd.DataFrame(data_general)
-
-
 
 # Opciones desde la base
 opciones_comprador = (
@@ -40,7 +37,6 @@ opciones_comprador = (
 # (Opcional) agrega opción "Todos"
 opciones_comprador = ["Todos"] + sorted(opciones_comprador)
 
-
 #filtros
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -51,7 +47,6 @@ with col1:
     else:
         df_filtrado = df_fsc[df_fsc['comprador'] == comprador]
 
-
 with col2:
     categoria = st.selectbox("📊 Categoría",
                     ["General", "Ventas", "Marketing", "Producto"])
@@ -59,12 +54,8 @@ with col3:
     comparacion = st.selectbox("📈 Comparar con:",
                     ["Periodo anterior", "Año pasado", "Promedio"])
 
-
-
-
 # Mostrar métricas en columnas (como un pequeño cuadro de mando)
 st.subheader("Indicadores Clave (KPIs)")
-
 ##### KPIS ####
 st.markdown("## 📈 KPIs Principales")
 col1, col2, col3, col4 = st.columns(4)

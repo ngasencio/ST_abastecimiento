@@ -1,69 +1,70 @@
-# pages/dash_general.py
+# main.py
 
 import streamlit as st
-import pandas as pd
-import numpy as np
+import sys
+import os
+# Asegura la accesibilidad de data_loader.py
+sys.path.append(os.path.abspath(os.path.dirname(__file__))) 
 
-# 1. Importar el módulo completo
-from data.data_loader import load_fsc_data
-df_fsc = load_fsc_data()
+# 1️⃣ LOGO SSO ARRIBA Y CENTRADO
+#st.sidebar.markdown('<div class="center-img">', unsafe_allow_html=True)
+#st.sidebar.image("logosso.jpg", width=220)
+#st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
-
-# Título y encabezado
-st.title(" 👥 Dashboard Comrpadores")
-st.header("Vista Ejecutiva de la Organización")
-
-st.markdown("""
-Este es un resumen de las métricas clave, incluyendo rendimiento general
-y tendencias a nivel macro.
+# 2️⃣ TEXTO INTRODUCTORIO
+st.sidebar.markdown("""
+**Este informe presenta una visión ejecutiva del desempeño operacional y financiero,
+considerando los principales indicadores de la organización.**
 """)
 
-# Simulación de datos clave
-data_general = {
-    'Métrica': ['Ingresos', 'Usuarios Activos', 'Tasa de Conversión'],
-    'Valor Actual': [5500000, 15000, '2.8%'],
-    'Variación vs Mes Anterior': ['+12%', '-3%', '+0.5%']
-}
-
-df_general = pd.DataFrame(data_general)
-
-
-
-# Opciones desde la base
-opciones_comprador = (
-    df_fsc['comprador']
-    .dropna()
-    .astype(str)
-    .unique()
-    .tolist()
+# 1. Configuración de la aplicación
+st.set_page_config(
+    page_title="Portal de Dashboards DSSO",
+    page_icon="logosso.jpg",
+    layout="wide"
 )
-# (Opcional) agrega opción "Todos"
-opciones_comprador = ["Todos"] + sorted(opciones_comprador)
 
+# Separador
+st.sidebar.markdown("---")
 
-#filtros
-col1, col2, col3 = st.columns(3)
-with col1:
-    comprador = st.selectbox("👥 Compradores", opciones_comprador)
-    # ---- Filtro ----
-    if comprador == "Todos":
-        df_filtrado = df_fsc.copy()
-    else:
-        df_filtrado = df_fsc[df_fsc['comprador'] == comprador]
+# 3️⃣ MENU DE PÁGINAS
 
+# 3.1️⃣ GRUPO 1: REPORTES OPERATIVOS Y GENERALES
+menu_operativo = [
+    st.Page("app.py", title="Inicio / Dashboard Principal", icon="🏠"),
+    st.Page("pages/dash_general.py", title="Reporte General", icon="📊"),
+    st.Page("pages/dash_ventas.py", title="Análisis de Ventas", icon="💰"),
+    st.Page("pages/dash_pac.py", title="Plan de Compras", icon="🛒"),
+]
 
-with col2:
-    categoria = st.selectbox("📊 Categoría",
-                    ["General", "Ventas", "Marketing", "Producto"])
-with col3:
-    comparacion = st.selectbox("📈 Comparar con:",
-                    ["Periodo anterior", "Año pasado", "Promedio"])
+# 3.2️⃣ SEPARADOR Y TÍTULO DE SECCIÓN: COMPRADORES
+st.sidebar.markdown("---") # Separador visual extra
+st.sidebar.markdown("### 👥 Reportes por Comprador") # El encabezado que querías
 
+# 3.3️⃣ GRUPO 2: REPORTES DE COMPRADORES
+menu_compradores = [
+    # Esta es tu página actual de compradores:
+    st.Page("pages/dash_compradores.py", title="Desempeño General", icon="👥"), 
+    
+    # Aquí puedes añadir tus futuras páginas:
+    st.Page("pages/dash_compradores_general.py", title="Desglose por OC", icon="👤"),
+    # st.Page("pages/dash_compradores_individual.py", title="Análisis por Tiempos", icon="⏱️"),
+]
 
+# 3.4️⃣ COMBINACIÓN DE PAGINAS Y EJECUCIÓN
+# Concatenamos las listas para que st.navigation las ejecute todas
+pg = st.navigation(menu_operativo + menu_compradores)
 
+pg.run()
 
-# Mostrar métricas en columnas (como un pequeño cuadro de mando)
-st.subheader("Indicadores Clave (KPIs)")
+# 4️⃣ LOGO ABASTECIMIENTO PEGADO ABAJO
+st.sidebar.markdown('<div class="footer-img">', unsafe_allow_html=True)
+st.sidebar.image(
+    "logoaba.png",
+    caption="Departamento de Abastecimiento y Operaciones",
+    width=200
+)
+st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
 ##### KPIS ####
 st.markdown("## 📈 KPIs Principales")
