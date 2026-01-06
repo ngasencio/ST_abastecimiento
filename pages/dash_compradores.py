@@ -3,6 +3,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
 
 # 1. Importar el módulo completo
 from data.data_loader import load_fsc_data
@@ -84,3 +86,51 @@ with col4:
             f"-{np.random.uniform(1, 5):.1f}%")
 st.subheader("Datos de Muestra")
 st.dataframe(df_general, use_container_width=True)
+
+
+# --- 1. Conteo ---
+conteo = (
+    df_filtrado
+    .groupby(["comprador","ProcesoCompra"])["newiD"]
+    .count()
+    .reset_index(name="formularios")
+)
+
+# --- 2. Orden por total de formularios ---
+orden = (
+    conteo
+    .groupby("comprador")["formularios"]
+    .sum()
+    .sort_values(ascending=False)   # 👈 mayor → menor
+    .index
+)
+
+# --- 3. Convertir a categoría ordenada ---
+conteo["comprador"] = pd.Categorical(
+    conteo["comprador"],
+    categories=orden,
+    ordered=True
+)
+
+# --- 4. ORDENAR explícitamente el dataframe ---
+conteo = conteo.sort_values("comprador")   # 👈 clave
+
+# --- 5. Gráfico ---
+fig = px.bar(
+    conteo,
+    x="comprador",
+    y="formularios",
+    color="ProcesoCompra",
+    text="formularios",
+    title="Cantidad de Formularios por Comprador",
+)
+
+fig.update_layout(
+    barmode="stack",
+    xaxis_tickangle=-30,
+    template="plotly_white"
+)
+
+fig.update_traces(textposition="inside")
+
+st.plotly_chart(fig, use_container_width=True)
