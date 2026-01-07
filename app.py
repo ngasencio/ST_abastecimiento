@@ -36,7 +36,7 @@ def generar_datos_empresa():
 df = generar_datos_empresa()
 
 #Titulo
-st.markdown("<h1 class='main-header'>📊 Dashboard DSSO</h1>", unsafe_allow_html=True)
+st.markdown("<h1 class='main-header'>📊 NICOLAS DSSO</h1>", unsafe_allow_html=True)
 
 st.write("""
 Este informe presenta una visión ejecutiva del desempeño operacional y financiero,
