@@ -12,7 +12,7 @@ df_fsc = load_fsc_data()
 
 
 # Título y encabezado
-st.title("📋 Dashboard Comrpadores")
+st.title("📋 Dashboard Compradores")
 st.header("Vista Ejecutiva de la Organización")
 
 st.markdown("""
