@@ -1,10 +1,13 @@
 # pages/dash_general.py
 
+
+
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+
 
 # 1. Importar el módulo completo
 from data.data_loader import load_fsc_data
@@ -17,17 +20,6 @@ st.markdown("""Este módulo entrega una visión ejecutiva del desempeño de los 
 permitiendo analizar su gestión en términos de eficiencia, cumplimiento y volumen de adquisiciones.  
 """)
 st.markdown("---")
-
-
-
-# Simulación de datos clave
-data_general = {
-    'Métrica': ['Ingresos', 'Usuarios Activos', 'Tasa de Conversión'],
-    'Valor Actual': [5500000, 15000, '2.8%'],
-    'Variación vs Mes Anterior': ['+12%', '-3%', '+0.5%']
-}
-df_general = pd.DataFrame(data_general)
-
 
 # =============================== FILTRO ================================================================
 # --- Normalizar fecha ---
@@ -45,9 +37,13 @@ opciones_proceso = sorted(df_fsc["ProcesoCompra"].dropna().astype(str).unique())
 opciones_estado = sorted(df_fsc["EstadoProcesoCompra"].dropna().astype(str).unique())
 opciones_anio = sorted(df_fsc["Año"].dropna().unique())
 
+opciones_estado_simple = [
+    "Pendientes",
+    "Proceso Finalizado"
+]
 
 # ========= SELECT MULTI =========
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
     compradores_sel = st.multiselect("👥 Comprador", opciones_comprador, placeholder="Seleccione")
@@ -61,7 +57,12 @@ with col3:
 with col4:
     anio_sel = st.multiselect("📆 Año", opciones_anio, placeholder="Seleccione")
 
-
+with col5:
+    estado_simple_sel = st.multiselect(
+        "🚦 Estado FSC",
+        opciones_estado_simple,
+        placeholder="Seleccione"
+    )
 # ========= APLICAR FILTROS =========
 df_filtrado = df_fsc.copy()
 
@@ -76,6 +77,19 @@ if estados_sel:
 
 if anio_sel:
     df_filtrado = df_filtrado[df_filtrado["Año"].isin(anio_sel)]
+
+if estado_simple_sel:
+    if "Pendientes" in estado_simple_sel and "Proceso Finalizado" not in estado_simple_sel:
+        df_filtrado = df_filtrado[
+            df_filtrado["EstadoProcesoCompra"].astype(str).str.strip()
+            != "Proceso Finalizado"
+        ]
+
+    elif "Proceso Finalizado" in estado_simple_sel and "Pendientes" not in estado_simple_sel:
+        df_filtrado = df_filtrado[
+            df_filtrado["EstadoProcesoCompra"].astype(str).str.strip()
+            == "Proceso Finalizado"
+        ]
 # =============================================================================0
     
 st.markdown("---")    
@@ -83,58 +97,62 @@ st.markdown("---")
 st.markdown("## 📈 KPIs Principales")
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-<<<<<<< HEAD
-    Total_FSC = df_filtrado["newiD"].count()
-    st.metric("📋 Total FSC", 
-            f"{Total_FSC:,.0f}",
-            f"{np.random.uniform(2, 8):.1f}%")
+    total_fsc_general = df_fsc["newiD"].count()
+    total_fsc_filtrado = df_filtrado["newiD"].count()
+
+    porcentaje_fsc = (
+        (total_fsc_filtrado / total_fsc_general) * 100
+        if total_fsc_general > 0 else 0
+    )
+
+    st.metric(
+        "📋 Total FSC",
+        f"{total_fsc_filtrado:,}",
+        f"{porcentaje_fsc:.1f}% del total"
+    )   
     
 with col2:
-=======
->>>>>>> 89f02c251ae8736bf70785a58051a242a2c0eb8d
-    montos_estimados = df_filtrado["monto estimado"].sum()
-    st.metric("💰 Montos Estimados", 
-            f"${montos_estimados:,.0f}",
-            f"{np.random.uniform(5, 15):.1f}%")
-<<<<<<< HEAD
-=======
-    
-with col2:
-    Total_FSC = df_filtrado["newiD"].count()
-    st.metric("📋 Total FSC", 
-            f"{Total_FSC:,.0f}",
-            f"{np.random.uniform(2, 8):.1f}%")
->>>>>>> 89f02c251ae8736bf70785a58051a242a2c0eb8d
+    monto_total_general = df_fsc["monto estimado"].sum()
+    monto_filtrado = df_filtrado["monto estimado"].sum()
+
+    porcentaje_monto = (
+        (monto_filtrado / monto_total_general) * 100
+        if monto_total_general > 0 else 0
+    )
+
+    st.metric(
+        "💰 Montos FSC",
+        f"${monto_filtrado:,.0f}",
+        f"{porcentaje_monto:.1f}% del monto total"
+    )
 
 with col3:
-    conversion_prom = df_filtrado["monto estimado"].mean()
-    st.metric("🎯 Tasa de Conversión", 
-            f"{conversion_prom:.2f}%",
-            f"{np.random.uniform(0.5, 2):.1f}%")
-    
+    total_fsc = df_filtrado.shape[0]
+
+    fsc_pendientes = df_filtrado[
+        df_filtrado["EstadoProcesoCompra"]
+        .astype(str)
+        .str.strip() != "Proceso Finalizado"
+    ].shape[0]
+
+    porcentaje_pendientes = (
+        (fsc_pendientes / total_fsc) * 100
+        if total_fsc > 0 else 0
+    )
+
+    st.metric(
+        "⚠️ FSC Pendientes",
+        f"{fsc_pendientes:,}",
+        f"{porcentaje_pendientes:.1f}% del total"
+    )
 with col4:
-    cac_prom = df_fsc["monto estimado"].mean()
-    st.metric("💸Costo de Adquisición", 
-            f"${cac_prom:.2f}",
-            f"-{np.random.uniform(1, 5):.1f}%")
-<<<<<<< HEAD
-#st.subheader("Datos de Muestra")
-#st.dataframe(df_general, use_container_width=True)
+  st.empty()
+
 
 st.markdown("---")
 
 st.markdown("## 📊 Análisis Gráfico ")
 col1, col2 = st.columns(2)
-=======
-st.subheader("Datos de Muestra")
-st.dataframe(df_general, use_container_width=True)
-
-st.markdown("## 📊 Análisis Detallado ")
-
-
-col1, col2 = st.columns(2)
-
->>>>>>> 89f02c251ae8736bf70785a58051a242a2c0eb8d
 with col1:
 
     # --- 1) Convertir fecha desde formato DD-MM-YYYY ---
@@ -262,55 +280,103 @@ st.plotly_chart(fig, use_container_width=True)
 
 
 #======================================== TABLA DE DATOS ==================================================
+# --- 1) Asegurar tipo fecha (SOLO UNA VEZ) ---
+if "fecha derivado" in df_filtrado.columns:
+    df_filtrado["fecha derivado"] = pd.to_datetime(
+        df_filtrado["fecha derivado"],
+        errors="coerce"
+    )
 
-st.markdown("## 📅 Tabla de Datos")
+
+st.markdown("## 📅 Tabla de Detalle FSC")
 
 columnas = [
     "UnionMP",
     "unidad requirente",
     "usuario requirente",
     "requerimiento",
+    "fecha derivado",
     "monto estimado",
     "ID plan",
     "comprador",
     "ProcesoCompra",
-    "EstadoProcesoCompra"
+    "EstadoProcesoCompra",
 ]
 
-# Usar solo columnas que existan para evitar errores
+
+
+# Usar solo columnas existentes
 columnas_validas = [c for c in columnas if c in df_filtrado.columns]
 
-tabla = df_filtrado[columnas_validas].copy()
+tabla_base = df_filtrado[columnas_validas].copy()
 
+# Normalizar texto para evitar errores por espacios
+tabla_base["EstadoProcesoCompra"] = (
+    tabla_base["EstadoProcesoCompra"]
+    .astype(str)
+    .str.strip()
+)
 
-# ====== ESTILO DEL EXPANDER ======
-st.markdown("""
-    <style>
-    /* Cambiar color SOLO del primer expander */
-    div.streamlit-expanderHeader {
-        background-color: #2ecc71;  /* Verde */
-        color: white;               /* Texto blanco */
-        font-weight: bold;
-        border-radius: 8px;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# ===============================
+# 🟡 FSC PENDIENTES
+# ===============================
+tabla_pendientes = tabla_base[
+    tabla_base["EstadoProcesoCompra"] != "Proceso Finalizado"
+]
 
+with st.expander("⚠️ Ver FSC Pendientes", expanded=False):
 
-
-with st.expander("📅 Ver Datos Completos", expanded=False):
-
-    # Formato de columnas
-    formato = {}
-
-    if "monto estimado" in tabla.columns:
-        formato["monto estimado"] = "${:,.0f}".format
-
-    st.dataframe(
-        tabla.style.format(formato),
+ st.dataframe(
+        tabla_pendientes,
         use_container_width=True,
-        height=450
+        height=450,
+        hide_index=True,
+        column_config={
+            "UnionMP": st.column_config.TextColumn(
+                "UnionMP",
+                pinned=True
+            ),
+            "fecha derivado": st.column_config.DateColumn(
+                "Fecha derivado",
+                format="DD-MM-YYYY"
+            ),
+          "monto estimado": st.column_config.NumberColumn(
+    "Monto estimado (CLP)",
+    format="$ %,.0f"
+)
+        }
     )
 
-st.caption(f"Mostrando {len(tabla):,} registros filtrados.")
+st.caption(f"Mostrando {len(tabla_pendientes):,} registros pendientes.")
 
+# ================================
+# 🟢 FSC FINALIZADOS
+# ================================
+tabla_finalizados = tabla_base[
+    tabla_base["EstadoProcesoCompra"] == "Proceso Finalizado"
+]
+
+with st.expander("✅ Ver FSC Finalizados", expanded=False):
+
+   st.dataframe(
+        tabla_finalizados,
+        use_container_width=True,
+        height=450,
+        hide_index=True,
+        column_config={
+            "UnionMP": st.column_config.TextColumn(
+                "UnionMP",
+                pinned=True
+            ),
+            "fecha derivado": st.column_config.DateColumn(
+                "Fecha derivado",
+                format="DD-MM-YYYY"
+            ),
+           "monto estimado": st.column_config.NumberColumn(
+    "Monto estimado (CLP)",
+    format="$ %,.0f"
+)
+        }
+    )
+
+st.caption(f"Mostrando {len(tabla_finalizados):,} registros finalizados.")
