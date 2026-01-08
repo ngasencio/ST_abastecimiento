@@ -19,7 +19,7 @@ st.header("Visión Ejecutiva de los Compradores")
 st.markdown("""Este módulo entrega una visión ejecutiva del desempeño de los compradores de la organización, 
 permitiendo analizar su gestión en términos de eficiencia, cumplimiento y volumen de adquisiciones.  
 """)
-st.markdown("---")
+
 
 # =============================== FILTRO ================================================================
 # --- Normalizar fecha ---
@@ -36,11 +36,7 @@ opciones_comprador = sorted(df_fsc["comprador"].dropna().astype(str).unique())
 opciones_proceso = sorted(df_fsc["ProcesoCompra"].dropna().astype(str).unique())
 opciones_estado = sorted(df_fsc["EstadoProcesoCompra"].dropna().astype(str).unique())
 opciones_anio = sorted(df_fsc["Año"].dropna().unique())
-
-opciones_estado_simple = [
-    "Pendientes",
-    "Proceso Finalizado"
-]
+opciones_estado_simple = ["Pendientes","Proceso Finalizado"]
 
 # ========= SELECT MULTI =========
 col1, col2, col3, col4, col5 = st.columns(5)
@@ -92,7 +88,7 @@ if estado_simple_sel:
         ]
 # =============================================================================0
     
-st.markdown("---")    
+   
 ##### KPIS ####
 st.markdown("## 📈 KPIs Principales")
 col1, col2, col3, col4 = st.columns(4)
@@ -147,9 +143,6 @@ with col3:
     )
 with col4:
   st.empty()
-
-
-st.markdown("---")
 
 st.markdown("## 📊 Análisis Gráfico ")
 col1, col2 = st.columns(2)
