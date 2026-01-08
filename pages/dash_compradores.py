@@ -14,11 +14,33 @@ from data.data_loader import load_fsc_data
 df_fsc = load_fsc_data()
 
 
-st.title("👥 Dashboard de Compradores")
-st.header("Visión Ejecutiva de los Compradores")
-st.markdown("""Este módulo entrega una visión ejecutiva del desempeño de los compradores de la organización, 
-permitiendo analizar su gestión en términos de eficiencia, cumplimiento y volumen de adquisiciones.  
-""")
+st.markdown(
+    """
+    <div style="
+        padding: 1.2rem 1.5rem;
+        margin-bottom: 1.5rem;
+        background: linear-gradient(90deg, #1748EB, #3f6ef2);
+        color: white;
+        border-radius: 14px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    ">
+        <div style="font-size: 28px; font-weight: 800;">
+            📊 Dashboard de Compradores
+        </div>
+        <div style="font-size: 15px; opacity: 0.9; margin-top: 4px;">
+            Este módulo entrega una visión ejecutiva del desempeño de los compradores de la organización, 
+permitiendo analizar su gestión en términos de eficiencia, cumplimiento y volumen de adquisiciones.
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+#st.title("👥 Dashboard de Compradores")
+#st.header("Visión Ejecutiva de los Compradores")
+#st.markdown("""Este módulo entrega una visión ejecutiva del desempeño de los compradores de la organización, 
+#permitiendo analizar su gestión en términos de eficiencia, cumplimiento y volumen de adquisiciones.  
+#""")
 
 
 # =============================== FILTRO ================================================================
@@ -313,6 +335,24 @@ tabla_base["EstadoProcesoCompra"] = (
 # ===============================
 # 🟡 FSC PENDIENTES
 # ===============================
+
+st.markdown(
+    """
+    <div style="
+        padding: 0.75rem 1rem;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+        background-color: #f9a825;
+        color: black;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 16px;
+    ">
+        🟡 FSC PENDIENTES
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 tabla_pendientes = tabla_base[
     tabla_base["EstadoProcesoCompra"] != "Proceso Finalizado"
 ]
@@ -345,13 +385,34 @@ st.caption(f"Mostrando {len(tabla_pendientes):,} registros pendientes.")
 # ================================
 # 🟢 FSC FINALIZADOS
 # ================================
+
+
+st.markdown(
+    """
+    <div style="
+        padding: 0.75rem 1rem;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+        background-color: #2e7d32;
+        color: white;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 16px;
+    ">
+        🟢 FSC FINALIZADOS
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+
 tabla_finalizados = tabla_base[
     tabla_base["EstadoProcesoCompra"] == "Proceso Finalizado"
 ]
 
-with st.expander("✅ Ver FSC Finalizados", expanded=False):
+with st.expander("✅ Ver detalle FSC Finalizados", expanded=False):
 
-   st.dataframe(
+    st.dataframe(
         tabla_finalizados,
         use_container_width=True,
         height=450,
@@ -365,10 +426,10 @@ with st.expander("✅ Ver FSC Finalizados", expanded=False):
                 "Fecha derivado",
                 format="DD-MM-YYYY"
             ),
-           "monto estimado": st.column_config.NumberColumn(
-    "Monto estimado (CLP)",
-    format="$ %,.0f"
-)
+            "monto estimado": st.column_config.NumberColumn(
+                "Monto estimado (CLP)",
+                format="$ %,.0f"
+            )
         }
     )
 
