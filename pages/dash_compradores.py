@@ -112,7 +112,7 @@ if estado_simple_sel:
     
    
 ##### KPIS ####
-st.markdown("## 📈 KPIs Principales")
+st.markdown("## 📈 Datos Principales")
 col1, col2, col3, col4 = st.columns(4)
 with col1:
     total_fsc_general = df_fsc["newiD"].count()
@@ -167,7 +167,7 @@ with col4:
   st.empty()
 
 st.markdown("## 📊 Análisis Gráfico ")
-col1, col2 = st.columns(2)
+col1, col2, col3= st.columns(3)
 with col1:
 
     # --- 1) Convertir fecha desde formato DD-MM-YYYY ---
@@ -246,8 +246,9 @@ with col2:
     fig_pc.update_traces(textposition="outside")
     st.plotly_chart(fig_pc, use_container_width=True)
 
+with col3:
 # --- 1. Conteo ---
-conteo = (
+    conteo = (
     df_filtrado
     .groupby(["comprador","ProcesoCompra"])["newiD"]
     .count()
@@ -255,7 +256,7 @@ conteo = (
 )
 
 # --- 2. Orden por total de formularios ---
-orden = (
+    orden = (
     conteo
     .groupby("comprador")["formularios"]
     .sum()
@@ -264,34 +265,34 @@ orden = (
 )
 
 # --- 3. Convertir a categoría ordenada ---
-conteo["comprador"] = pd.Categorical(
+    conteo["comprador"] = pd.Categorical(
     conteo["comprador"],
     categories=orden,
     ordered=True
 )
 
-# --- 4. ORDENAR explícitamente el dataframe ---
-conteo = conteo.sort_values("comprador")   # 👈 clave
+    # --- 4. ORDENAR explícitamente el dataframe ---
+    conteo = conteo.sort_values("comprador")   # 👈 clave
 
-# --- 5. Gráfico ---
-fig = px.bar(
-    conteo,
-    x="comprador",
-    y="formularios",
-    color="ProcesoCompra",
-    text="formularios",
-    title="Cantidad de Formularios por Comprador",
-)
+    # --- 5. Gráfico ---
+    fig = px.bar(
+        conteo,
+        x="comprador",
+        y="formularios",
+        color="ProcesoCompra",
+        text="formularios",
+        title="Cantidad de Formularios por Comprador",
+        )
 
-fig.update_layout(
-    barmode="stack",
-    xaxis_tickangle=-30,
-    template="plotly_white"
-)
+    fig.update_layout(
+        barmode="stack",
+        xaxis_tickangle=-30,
+        template="plotly_white"
+    )
 
-fig.update_traces(textposition="inside")
+    fig.update_traces(textposition="inside")
 
-st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True)
 
 
 #======================================== TABLA DE DATOS ==================================================
