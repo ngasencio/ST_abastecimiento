@@ -22,8 +22,6 @@ st.set_page_config(
     layout="wide"
 )
 
-
-
 # 3️⃣ MENU DE PÁGINAS
 pg = st.navigation([
     st.Page("app.py", title="Inicio / Dashboard Principal", icon="🏠"),

@@ -12,7 +12,7 @@ df_fsc = load_fsc_data()
 
 
 st.title("👥 Dashboard de Compradores")
-st.header("Visión Ejecutiva del Desempeño de los Compradores")
+st.header("Visión Ejecutiva de los Compradores")
 st.markdown("""Este módulo entrega una visión ejecutiva del desempeño de los compradores de la organización, 
 permitiendo analizar su gestión en términos de eficiencia, cumplimiento y volumen de adquisiciones.  
 """)
