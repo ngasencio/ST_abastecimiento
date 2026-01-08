@@ -4,16 +4,18 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
+import sys
+import os
 
+# 1. Importar el módulo completo
+from data.data_loader import load_fsc_data
+df_fsc = load_fsc_data()
 
 st.set_page_config(
     page_title="Dashboard DSSO",
-    page_icon=":bar_chart:", 
+    page_icon="logosso.jpg", 
     layout="wide",
     initial_sidebar_state="expanded")
-
-
-
 
 # Importas Datos
 def generar_datos_empresa():
@@ -34,7 +36,7 @@ def generar_datos_empresa():
 df = generar_datos_empresa()
 
 #Titulo
-st.markdown("<h1 class='main-header'>📊 Dashboard DSSO</h1>", unsafe_allow_html=True)
+st.markdown("<h1 class='main-header'>📊 DASHBOARD DSSO</h1>", unsafe_allow_html=True)
 
 st.write("""
 Este informe presenta una visión ejecutiva del desempeño operacional y financiero,
@@ -58,9 +60,9 @@ with col3:
 st.markdown("## 📈 KPIs Principales")
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    ingresos_totales = df["ingresos_diarios"].sum()
-    st.metric("💰 Ingresos Totales", 
-            f"${ingresos_totales:,.0f}",
+    montos_estimados = df_fsc["monto estimado"].sum()
+    st.metric("💰 Montos Estimados", 
+            f"${montos_estimados:,.0f}",
             f"{np.random.uniform(5, 15):.1f}%")
     
 with col2:

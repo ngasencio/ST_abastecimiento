@@ -3,6 +3,14 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+import sys
+import os
+
+# 1. Importar el módulo completo
+from data.data_loader import load_fsc_data
+df_fsc = load_fsc_data()
 
 # Título y encabezado
 st.title("💰 Análisis de Ventas")

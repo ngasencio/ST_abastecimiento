@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 
 # Título y encabezado
-st.title("🛒 Gestión de Compras")
+st.title("🛒 Plan de Compras")
 st.header("Análisis de Costos y Proveedores")
 
 st.markdown("""
@@ -28,5 +28,3 @@ col1, col2 = st.columns(2)
 col1.metric("💸 Ahorro Logrado", "$15,000", "5%")
 col2.metric("⏱️ Tiempo Prom. Entrega", "4 días", "-1 día")
 
-st.subheader("Detalle de Compras Recientes")
-st.dataframe(df_compras, use_container_width=True)
