@@ -83,16 +83,28 @@ st.markdown("---")
 st.markdown("## 📈 KPIs Principales")
 col1, col2, col3, col4 = st.columns(4)
 with col1:
+<<<<<<< HEAD
     Total_FSC = df_filtrado["newiD"].count()
     st.metric("📋 Total FSC", 
             f"{Total_FSC:,.0f}",
             f"{np.random.uniform(2, 8):.1f}%")
     
 with col2:
+=======
+>>>>>>> 89f02c251ae8736bf70785a58051a242a2c0eb8d
     montos_estimados = df_filtrado["monto estimado"].sum()
     st.metric("💰 Montos Estimados", 
             f"${montos_estimados:,.0f}",
             f"{np.random.uniform(5, 15):.1f}%")
+<<<<<<< HEAD
+=======
+    
+with col2:
+    Total_FSC = df_filtrado["newiD"].count()
+    st.metric("📋 Total FSC", 
+            f"{Total_FSC:,.0f}",
+            f"{np.random.uniform(2, 8):.1f}%")
+>>>>>>> 89f02c251ae8736bf70785a58051a242a2c0eb8d
 
 with col3:
     conversion_prom = df_filtrado["monto estimado"].mean()
@@ -105,6 +117,7 @@ with col4:
     st.metric("💸Costo de Adquisición", 
             f"${cac_prom:.2f}",
             f"-{np.random.uniform(1, 5):.1f}%")
+<<<<<<< HEAD
 #st.subheader("Datos de Muestra")
 #st.dataframe(df_general, use_container_width=True)
 
@@ -112,6 +125,16 @@ st.markdown("---")
 
 st.markdown("## 📊 Análisis Gráfico ")
 col1, col2 = st.columns(2)
+=======
+st.subheader("Datos de Muestra")
+st.dataframe(df_general, use_container_width=True)
+
+st.markdown("## 📊 Análisis Detallado ")
+
+
+col1, col2 = st.columns(2)
+
+>>>>>>> 89f02c251ae8736bf70785a58051a242a2c0eb8d
 with col1:
 
     # --- 1) Convertir fecha desde formato DD-MM-YYYY ---
@@ -154,6 +177,7 @@ with col1:
     fig.update_traces(text=serie["cantidad"], textposition="top center")
 
     st.plotly_chart(fig, use_container_width=True)
+    
 with col2:
     # --- Conteo por ProcesoCompra ---
     conteo_pc = (
