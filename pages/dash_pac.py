@@ -4,9 +4,27 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-# Título y encabezado
-st.title("🛒 Plan de Compras")
-st.header("Análisis de Costos y Proveedores")
+#Titulo
+st.markdown(
+    """
+    <div style="
+        padding: 1.2rem 1.5rem;
+        margin-bottom: 1.5rem;
+        background: linear-gradient(90deg, #1748EB, #3f6ef2);
+        color: white;
+        border-radius: 14px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    ">
+        <div style="font-size: 28px; font-weight: 800;">
+            📊 Plan Anual de Compras 2026
+        </div>
+        <div style="font-size: 15px; opacity: 0.9; margin-top: 4px;">
+            Este módulo entrega la planificación del PAC 2026 buscando su cumplimiento de adquisiciones.
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 #st.markdown("""Sub""")
 

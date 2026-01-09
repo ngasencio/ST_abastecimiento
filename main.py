@@ -17,7 +17,7 @@ import os
 
 # 1. Configuración de la aplicación
 st.set_page_config(
-    page_title="Portal de Dashboards DSSO",
+    page_title="Portal DSSO",
     page_icon="logosso.jpg",
     layout="wide"
 )

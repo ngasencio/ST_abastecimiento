@@ -36,40 +36,125 @@ def generar_datos_empresa():
 df = generar_datos_empresa()
 
 #Titulo
-st.markdown("<h1 class='main-header'>📊 DASHBOARD DSSO</h1>", unsafe_allow_html=True)
-
+st.markdown(
+    """
+    <div style="
+        padding: 1.2rem 1.5rem;
+        margin-bottom: 1.5rem;
+        background: linear-gradient(90deg, #1748EB, #3f6ef2);
+        color: white;
+        border-radius: 14px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    ">
+        <div style="font-size: 28px; font-weight: 800;">
+            📊 Panel General
+        </div>
+        <div style="font-size: 15px; opacity: 0.9; margin-top: 4px;">
+            Este módulo entrega una visión ejecutiva del desempeño de los compradores de la organización, 
+permitiendo analizar su gestión en términos de eficiencia, cumplimiento y volumen de adquisiciones.
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 st.write("""
 Este informe presenta una visión ejecutiva del desempeño operacional y financiero,
 considerando los principales indicadores de la organización.
 """)
+# =============================== FILTRO ================================================================
 
-#filtros
-col1, col2, col3 = st.columns(3)
+# --- Normalizar texto (recomendado) ---
+df_fsc["SUBDIRECCION"] = df_fsc["SUBDIRECCION"].astype(str).str.strip()
+df_fsc["DEPTO"] = df_fsc["DEPTO"].astype(str).str.strip()
+
+# ========= OPCIONES =========
+opciones_subdireccion = sorted(
+    df_fsc["SUBDIRECCION"].dropna().unique()
+)
+
+opciones_depto = sorted(
+    df_fsc["DEPTO"].dropna().unique()
+)
+
+# ========= SELECT MULTI =========
+col1, col2 = st.columns(2)
+
+# ---- Subdirección (nivel 1) ----
 with col1:
-    periodo = st.selectbox("📅 Período",
-                    ["Últimos 30 días", "Último trimestre", "Último año"])
+    subdireccion_sel = st.multiselect(
+        "🏢 Subdirección",
+        opciones_subdireccion,
+        placeholder="Seleccione"
+    )
+
+# DataFrame base para cascada
+df_cascada = df_fsc.copy()
+
+if subdireccion_sel:
+    df_cascada = df_cascada[
+        df_cascada["SUBDIRECCION"].isin(subdireccion_sel)
+    ]
+
+# ---- Departamento (nivel 2) ----
+opciones_depto = sorted(
+    df_cascada["DEPTO"].dropna().unique()
+)
+
 with col2:
-    categoria = st.selectbox("📊 Categoría",
-                    ["General", "Ventas", "Marketing", "Producto"])
-with col3:
-    comparacion = st.selectbox("📈 Comparar con:",
-                    ["Periodo anterior", "Año pasado", "Promedio"])
+    depto_sel = st.multiselect(
+        "📊 Departamento",
+        opciones_depto,
+        placeholder="Seleccione"
+    )
+
+# ========= APLICAR FILTROS =========
+df_filtrado = df_fsc.copy()
+
+if subdireccion_sel:
+    df_filtrado = df_filtrado[
+        df_filtrado["SUBDIRECCION"].isin(subdireccion_sel)
+    ]
+
+if depto_sel:
+    df_filtrado = df_filtrado[
+        df_filtrado["DEPTO"].isin(depto_sel)
+    ]
+
+# =========================================================================
 
 
 ##### KPIS ####
-st.markdown("## 📈 KPIs Principales")
+st.markdown("## 📈 Datos Generales")
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    montos_estimados = df_fsc["monto estimado"].sum()
-    st.metric("💰 Montos Estimados", 
-            f"${montos_estimados:,.0f}",
-            f"{np.random.uniform(5, 15):.1f}%")
+    total_fsc_general = df_fsc["newiD"].count()
+    total_fsc_filtrado = df_filtrado["newiD"].count()
+
+    porcentaje_fsc = (
+        (total_fsc_filtrado / total_fsc_general) * 100
+        if total_fsc_general > 0 else 0
+    )
+
+    st.metric(
+        "📋 Total FSC",
+        f"{total_fsc_filtrado:,}",
+        f"{porcentaje_fsc:.1f}% del total"
+    )   
     
 with col2:
-    usuarios_prom = df["usuarios_activos"].mean()
-    st.metric("👥  Usuarios Activos", 
-            f"{usuarios_prom:,.0f}",
-            f"{np.random.uniform(2, 8):.1f}%")
+    monto_total_general = df_fsc["monto estimado"].sum()
+    monto_filtrado = df_filtrado["monto estimado"].sum()
+
+    porcentaje_monto = (
+        (monto_filtrado / monto_total_general) * 100
+        if monto_total_general > 0 else 0
+    )
+
+    st.metric(
+        "💰 Montos FSC",
+        f"${monto_filtrado:,.0f}",
+        f"{porcentaje_monto:.1f}% del monto total"
+    )
 
 with col3:
     conversion_prom = df["conversion_rate"].mean()
@@ -86,25 +171,95 @@ with col4:
 
 
 ##### GRAFICOS ####
-st.markdown("## 📊 Análisis Detallado")
+st.markdown("## 📊 Análisis Grafico")
+
+# Asegurar fecha en datetime
+df_filtrado["fecha derivado"] = pd.to_datetime(
+    df_filtrado["fecha derivado"],
+    errors="coerce"
+)
+
+# Crear columna mensual
+df_filtrado["Mes"] = df_filtrado["fecha derivado"].dt.to_period("M").dt.to_timestamp()
 
 col1, col2 = st.columns(2)
+
+# ======================================
+# 📊 FSC por Mes (Cantidad)
+# ======================================
 with col1:
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df["Fecha"], y=df["ingresos_diarios"],mode="lines+markers", name="Ingresos Reales", line=dict(color='blue')))
-    z = np.polyfit(np.arange(len(df)), df["ingresos_diarios"], 1)
-    p = np.poly1d(z)
-    fig.add_trace(go.Scatter(x=df["Fecha"], y=p(np.arange(len(df))), mode="lines", name="Tendencia", line=dict(color='orange', dash='dash')))
-    fig.update_layout(title="💰 Ingresos Diarios con Tendencia", height=400, template="plotly_white")
-    st.plotly_chart(fig, use_container_width=True)
-    
+    conteo_mes = (
+        df_filtrado
+        .groupby(["Mes", "DENTRO/FUERA"])["newiD"]
+        .count()
+        .reset_index(name="Cantidad FSC")
+    )
+
+    fig_q = px.bar(
+        conteo_mes,
+        x="Mes",
+        y="Cantidad FSC",
+        color="DENTRO/FUERA",
+        title="📊 Cantidad de FSC por Mes (Dentro / Fuera PAC)",
+        labels={
+            "Mes": "Mes",
+            "Cantidad FSC": "Cantidad de FSC",
+            "DENTRO/FUERA": "Estado PAC"
+        },
+        color_discrete_map={
+            "Dentro PAC": "#36e93f",   # verde
+            "Fuera PAC": "#ec4545"     # rojo
+        }
+    )
+
+    fig_q.update_layout(
+        barmode="stack",
+        height=400,
+        template="plotly_white"
+    )
+
+    st.plotly_chart(fig_q, use_container_width=True)
+
+# ======================================
+# 💰 FSC por Mes (Monto)
+# ======================================
 with col2:
-    etapas = ['Visitantes', 'Leads', 'Oportunidades', 'Clientes']
-    valores = [10000, 2500, 625, 156]
-    funenel = go.Figure(go.Funnel(y=etapas, x=valores, textinfo="value+percent initial"))
-    funenel.update_layout(title="🎯 Embudo de Conversión", height=400, template="plotly_white")
-    st.plotly_chart(funenel, use_container_width=True)    
-    
+    monto_mes = (
+        df_filtrado
+        .groupby(["Mes", "DENTRO/FUERA"])["monto estimado"]
+        .sum()
+        .reset_index(name="Monto Estimado")
+    )
+
+    fig_m = px.bar(
+        monto_mes,
+        x="Mes",
+        y="Monto Estimado",
+        color="DENTRO/FUERA",
+        title="💰 Monto Estimado FSC por Mes (Dentro / Fuera PAC)",
+        labels={
+            "Mes": "Mes",
+            "Monto Estimado": "Monto Estimado (CLP)",
+            "DENTRO/FUERA": "Estado PAC"
+        },
+        color_discrete_map={
+            "Dentro PAC": "#36e93f",   # verde
+            "Fuera PAC": "#ec4545"     # rojo
+        }
+    )
+
+    fig_m.update_layout(
+        barmode="stack",
+        height=400,
+        template="plotly_white",
+        yaxis_tickprefix="$",
+        yaxis_tickformat=",.0f"
+    )
+
+    st.plotly_chart(fig_m, use_container_width=True)
+
+
+
 
 st.markdown("## 🌎 Mapa de Calor Geografico")
 paises = ["Mexico", "Colombia", "Argentina", "Chile", "Peru", "Brasil"]

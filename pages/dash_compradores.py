@@ -61,20 +61,50 @@ opciones_anio = sorted(df_fsc["Año"].dropna().unique())
 opciones_estado_simple = ["Pendientes","Proceso Finalizado"]
 
 # ========= SELECT MULTI =========
+# ========= SELECT MULTI =========
 col1, col2, col3, col4, col5 = st.columns(5)
+
+# ---- Año (nivel 1) ----
+with col4:
+    anio_sel = st.multiselect("📆 Año", opciones_anio, placeholder="Seleccione")
+
+# DataFrame base para cascada
+df_cascada = df_fsc.copy()
+
+if anio_sel:
+    df_cascada = df_cascada[df_cascada["Año"].isin(anio_sel)]
+
+# ---- Comprador (nivel 2) ----
+opciones_comprador = sorted(
+    df_cascada["comprador"].dropna().astype(str).unique()
+)
 
 with col1:
     compradores_sel = st.multiselect("👥 Comprador", opciones_comprador, placeholder="Seleccione")
 
+if compradores_sel:
+    df_cascada = df_cascada[df_cascada["comprador"].isin(compradores_sel)]
+
+# ---- Proceso de Compra (nivel 3) ----
+opciones_proceso = sorted(
+    df_cascada["ProcesoCompra"].dropna().astype(str).unique()
+)
+
 with col2:
     procesos_sel = st.multiselect("🛒 Proceso de Compra", opciones_proceso, placeholder="Seleccione")
+
+if procesos_sel:
+    df_cascada = df_cascada[df_cascada["ProcesoCompra"].isin(procesos_sel)]
+
+# ---- Estado Proceso (nivel 4) ----
+opciones_estado = sorted(
+    df_cascada["EstadoProcesoCompra"].dropna().astype(str).unique()
+)
 
 with col3:
     estados_sel = st.multiselect("📌 Estado Proceso", opciones_estado, placeholder="Seleccione")
 
-with col4:
-    anio_sel = st.multiselect("📆 Año", opciones_anio, placeholder="Seleccione")
-
+# ---- Estado FSC (lógico, no cascada) ----
 with col5:
     estado_simple_sel = st.multiselect(
         "🚦 Estado FSC",
@@ -84,6 +114,9 @@ with col5:
 # ========= APLICAR FILTROS =========
 df_filtrado = df_fsc.copy()
 
+if anio_sel:
+    df_filtrado = df_filtrado[df_filtrado["Año"].isin(anio_sel)]
+
 if compradores_sel:
     df_filtrado = df_filtrado[df_filtrado["comprador"].isin(compradores_sel)]
 
@@ -92,9 +125,6 @@ if procesos_sel:
 
 if estados_sel:
     df_filtrado = df_filtrado[df_filtrado["EstadoProcesoCompra"].isin(estados_sel)]
-
-if anio_sel:
-    df_filtrado = df_filtrado[df_filtrado["Año"].isin(anio_sel)]
 
 if estado_simple_sel:
     if "Pendientes" in estado_simple_sel and "Proceso Finalizado" not in estado_simple_sel:
