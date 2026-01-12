@@ -8,7 +8,7 @@ from datetime import datetime
 
 
 #linea tiempo
-from streamlit_timeline import st_timeline
+#from streamlit_timeline import st_timeline
 
 from data.data_loader import load_fsc_data, load_pac26_data
 df_pac = load_pac26_data()
