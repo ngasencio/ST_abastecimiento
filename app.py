@@ -163,11 +163,7 @@ with col3:
             f"{np.random.uniform(0.5, 2):.1f}%")
     
 with col4:
-    cac_prom = df["costo_adquisicion"].mean()
-    st.metric("💸Costo de Adquisición", 
-            f"${cac_prom:.2f}",
-            f"-{np.random.uniform(1, 5):.1f}%")
-    
+        pass
 
 
 ##### GRAFICOS ####
@@ -259,7 +255,7 @@ with col2:
     st.plotly_chart(fig_m, use_container_width=True)
 
 
-st.markdown("## 🚦 Centro de Alertas Inteligentes")
+st.markdown("## 🚦 Centro de Alertas Inteligentes ")
 alertas = []
 
 if df["ingresos_diarios"].tail(7).mean() < df["ingresos_diarios"].head(-7).mean():
