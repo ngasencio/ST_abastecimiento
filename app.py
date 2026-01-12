@@ -259,8 +259,6 @@ with col2:
     st.plotly_chart(fig_m, use_container_width=True)
 
 
-
-
 st.markdown("## 🌎 Mapa de Calor Geografico")
 paises = ["Mexico", "Colombia", "Argentina", "Chile", "Peru", "Brasil"]
 ventas_pais = np.random.randint(1000, 10000, size=len(paises))

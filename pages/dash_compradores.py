@@ -140,7 +140,6 @@ if estado_simple_sel:
         ]
 # =============================================================================0
     
-   
 ##### KPIS ####
 st.markdown("## 📈 Datos Principales")
 col1, col2, col3, col4 = st.columns(4)
