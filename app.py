@@ -259,14 +259,6 @@ with col2:
     st.plotly_chart(fig_m, use_container_width=True)
 
 
-st.markdown("## 🌎 Mapa de Calor Geografico")
-paises = ["Mexico", "Colombia", "Argentina", "Chile", "Peru", "Brasil"]
-ventas_pais = np.random.randint(1000, 10000, size=len(paises))
-mapa = px.bar(x=paises, y=ventas_pais, color=ventas_pais, color_continuous_scale="viridis", labels={"x":"País", "y":"Ventas"}, title="💵 Ventas por País")
-mapa.update_layout(height=400, template="plotly_white", showlegend=True)
-st.plotly_chart(mapa, use_container_width=True)
-
-
 st.markdown("## 🚦 Centro de Alertas Inteligentes")
 alertas = []
 

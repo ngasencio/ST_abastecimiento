@@ -312,29 +312,72 @@ df_pendientes = df_no_ejecutados[
         (df_no_ejecutados["Fecha de Inicio Compra"].dt.month == mes_actual)
     )
 ]
-
+st.markdown("""
+<div style="
+    background-color:#d32f2f;
+    color:white;
+    padding:12px 16px;
+    border-radius:8px;
+    font-weight:bold;
+    font-size:18px;
+    margin-bottom:6px;
+">
+🚨 Proyectos por ejecutar este mes
+</div>
+""", unsafe_allow_html=True)
 with st.expander("🚨 Proyectos por ejecutar este mes", expanded=True):
     st.write(f"Total proyectos: {df_por_ejecutar_mes['ID Proyecto'].nunique():,}")
     st.dataframe(
         df_por_ejecutar_mes.sort_values("Fecha de Inicio Compra"),
-        use_container_width=True
-    )
+        use_container_width=True,
+        column_config={
+            "Suma de Monto Total Ítem Año 2026": st.column_config.NumberColumn(
+                "Monto Estimado",
+                format="$%,.2f"
+        )
+    }
+)
+# ---------- HEADER AMARILLO ----------
+st.markdown("""
+<div style="
+    background-color:#fbc02d;
+    color:black;
+    padding:12px 16px;
+    border-radius:8px;
+    font-weight:bold;
+    font-size:18px;
+    margin-bottom:6px;
+">
+⏳ Proyectos pendientes (otros meses)
+</div>
+""", unsafe_allow_html=True)
 
-with st.expander("⏳ Proyectos pendientes (otros meses)"):
+# ---------- EXPANDER ----------
+with st.expander("Ver detalle"):
     st.write(f"Total proyectos: {df_pendientes['ID Proyecto'].nunique():,}")
     st.dataframe(
         df_pendientes.sort_values("Fecha de Inicio Compra"),
         use_container_width=True
     )
+# ---------- HEADER AZUL ----------
+st.markdown("""
+<div style="
+    background-color:#1976d2;
+    color:white;
+    padding:12px 16px;
+    border-radius:8px;
+    font-weight:bold;
+    font-size:18px;
+    margin-bottom:6px;
+">
+📋 Todos los proyectos no ejecutados
+</div>
+""", unsafe_allow_html=True)
 
-with st.expander("📋 Todos los proyectos no ejecutados"):
+# ---------- EXPANDER ----------
+with st.expander("Ver detalle"):
     st.write(f"Total proyectos: {df_no_ejecutados['ID Proyecto'].nunique():,}")
     st.dataframe(
         df_no_ejecutados.sort_values("Fecha de Inicio Compra"),
         use_container_width=True
     )
-
-
-
-st.write(f"Registros filtrados: {len(df_filtrado):,}")
-st.dataframe(df_filtrado)
