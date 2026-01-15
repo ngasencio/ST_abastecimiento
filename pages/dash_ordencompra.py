@@ -4,6 +4,11 @@ import numpy as np
 import plotly.express as px
 from datetime import datetime
 
+# --- EN TU ARCHIVO DE STREAMLIT ---
+from api.Consolidar_OC import ejecutar_consolidacion_oc
+# Cargar las bases
+bases_oc = ejecutar_consolidacion_oc()
+df_oc_res = bases_oc["RESUMEN"]
 
 st.markdown(
     """
@@ -25,3 +30,20 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+
+st.markdown("## 🛒 Órdenes de Compra Consolidadas")
+
+with st.expander("📅 Ver Tabla Maestra de OCs"):
+    st.dataframe(df_oc_res.style.format({
+        # Formatos de Dinero
+        "TotalNeto": "${:,.0f}".format,
+        "Total": "${:,.0f}".format,
+        "Impuestos": "${:,.0f}".format,
+        # Formatos de Texto/ID
+        "Codigo": str,
+        "CodigoLicitacion": str,
+        "Estado": str,
+        # Formato de Porcentajes
+        "PorcentajeIva": "{:.1f}%".format,
+    }), height=400, use_container_width=True)
