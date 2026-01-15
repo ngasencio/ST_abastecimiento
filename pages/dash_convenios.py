@@ -4,7 +4,6 @@ import numpy as np
 import plotly.express as px
 from datetime import datetime
 
-
 st.markdown(
     """
     <div style="
@@ -16,7 +15,7 @@ st.markdown(
         box-shadow: 0 4px 10px rgba(0,0,0,0.15);
     ">
         <div style="font-size: 28px; font-weight: 800;">
-            📊 Licitaciones DSSO
+            📊 Convenios DSSO
         </div>
         <div style="font-size: 15px; opacity: 0.9; margin-top: 4px;">
             Este módulo entrega la planificación del PAC 2026 buscando su cumplimiento de adquisiciones.

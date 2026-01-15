@@ -16,7 +16,7 @@ st.markdown(
         box-shadow: 0 4px 10px rgba(0,0,0,0.15);
     ">
         <div style="font-size: 28px; font-weight: 800;">
-            📊 Licitaciones DSSO
+            📊 Ordenes de Compra DSSO
         </div>
         <div style="font-size: 15px; opacity: 0.9; margin-top: 4px;">
             Este módulo entrega la planificación del PAC 2026 buscando su cumplimiento de adquisiciones.

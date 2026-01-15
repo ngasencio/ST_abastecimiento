@@ -24,10 +24,11 @@ st.set_page_config(
 
 # 3️⃣ MENU DE PÁGINAS
 pg = st.navigation([
-    st.Page("app.py", title="Inicio / Dashboard Principal", icon="🏠"),
-    #st.Page("pages/dash_general.py", title="Reporte General", icon="📊"),
-    #st.Page("pages/dash_ventas.py", title="Análisis de Ventas", icon="💰"),
+    st.Page("app.py", title="Inicio", icon="🏠"),
     st.Page("pages/dash_pac.py", title="Plan de Compras", icon="🛒"),
+    st.Page("pages/dash_convenios.py", title="Convenios", icon="🤝"),
+    st.Page("pages/dash_licitaciones.py", title="Licitaciones", icon="📄"),
+    st.Page("pages/dash_ordencompra.py", title="Ordenes de Compra", icon="🧾"),
     st.Page("pages/dash_compradores.py", title="Compradores", icon="👥"),
 ])
 
