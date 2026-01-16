@@ -13,6 +13,7 @@ from datetime import datetime
 from data.data_loader import load_fsc_data, load_pac26_data
 df_pac = load_pac26_data()
 
+
 st.markdown(
     """
     <div style="
@@ -204,6 +205,52 @@ col1, col2 = st.columns(2)
 
 # ===================== KPI 1: Cantidad de Proyectos =====================
 with col1:
+ # --- 1. Definición de Estilos CSS ---
+    st.markdown("""
+    <style>
+    :root {
+        --primary: #1748EB;
+        --surface: #ffffff;
+        --text-muted: #888888;
+        --shadow-card: 0 4px 6px rgba(0,0,0,0.05);
+        --radius: 12px;
+        --accent: #d4af37;
+        --success: #28a745;
+    }
+
+    .kpi-grid { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+        gap: 20px; 
+        margin-bottom: 30px; 
+    }
+    
+    .kpi-card { 
+        background: var(--surface); 
+        border-radius: var(--radius); 
+        padding: 20px; 
+        box-shadow: var(--shadow-card); 
+        border-left: 5px solid transparent; 
+        position: relative; 
+        height: 120px; 
+        display: flex; 
+        flex-direction: column; 
+        justify-content: space-between; 
+        border: 1px solid #f0f0f0;
+    }
+    
+    .kpi-card.blue { border-left-color: var(--primary); }
+    .kpi-card.gold { border-left-color: var(--accent); }
+    .kpi-card.green { border-left-color: var(--success); }
+    
+    .kpi-icon { position: absolute; right: 15px; top: 15px; font-size: 25px; opacity: 0.2; }
+    .kpi-label { font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; }
+    .kpi-value { font-size: 24px; font-weight: 800; color: #333; font-family: 'Arial', sans-serif; }
+    .kpi-sub { font-size: 11px; color: #95a5a6; font-weight: 600; }
+    </style>
+        """, unsafe_allow_html=True)
+
+    # --- 2. Lógica de Cálculo (Tus variables) ---
     total_proyectos_general = df_pac["ID Proyecto"].nunique()
     total_proyectos_filtrado = df_filtrado["ID Proyecto"].nunique()
 
@@ -212,11 +259,19 @@ with col1:
         if total_proyectos_general > 0 else 0
     )
 
-    st.metric(
-        "🗂️ Cantidad de Proyectos",
-        f"{total_proyectos_filtrado:,}",
-        f"{porcentaje_proyectos:.1f}% del total"
-    )
+    # --- 3. Renderizado de la KPI Card personalizada ---
+    st.markdown(f"""
+        <div class="kpi-grid">
+            <div class="kpi-card blue">
+                <div class="kpi-icon">🗂️</div>
+                <div class="kpi-label">Cantidad de Proyectos</div>
+                <div class="kpi-value">{total_proyectos_filtrado:,}</div>
+                <div class="kpi-sub">
+                    <span style="color: #1748EB;">↑</span> {porcentaje_proyectos:.1f}% del total
+                </div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
 # ===================== KPI 2: Monto Estimado =====================
 with col2:

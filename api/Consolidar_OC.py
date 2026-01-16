@@ -6,7 +6,7 @@ import datetime as dt
 # CONFIGURACIÓN DE RUTAS (Proporcionadas por el usuario)
 # ==========================================
 ESCRITORIO = pathlib.Path.home() / "Desktop"
-CARPETA_ORDENCOMPRA = ESCRITORIO / "ST_abastecimiento" / "ST_abastecimiento" / "api" / "OC_DSSO"
+CARPETA_ORDENCOMPRA = ESCRITORIO / "ST_abastecimiento" / "ST_abastecimiento" / "api" / "OC_DSSO" / "DIARIO"
 CARPETA_CONSOLIDADO = CARPETA_ORDENCOMPRA / "CONSOLIDADO"
 
 def limpiar_y_estandarizar_oc(df):
