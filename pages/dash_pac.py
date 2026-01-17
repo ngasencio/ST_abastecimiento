@@ -132,7 +132,7 @@ if proyecto_sel:
         df_cascada["ID Proyecto"].isin(proyecto_sel)
     ]
 
-# =============================== FILTRO 5: Año y Mes =============================
+# =============================== FILTRO 5: Año y Mes ===============================
 op_anio = sorted(
     df_cascada["Año"].dropna().unique()
 )
