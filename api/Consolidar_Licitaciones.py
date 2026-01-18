@@ -7,8 +7,16 @@ import os
 # CONFIGURACIÓN DE RUTAS CORREGIDA
 # ==========================================
 # Si tu proyecto está en el escritorio: Escritorio > ST_abastecimiento > api
-BASE_PATH = pathlib.Path.home() / "Desktop" 
-CARPETA_LICITACIONES = BASE_PATH / "ST_abastecimiento" / "ST_abastecimiento" / "api" / "LI_DSSO" / "DIARIO"
+#BASE_PATH = pathlib.Path.home() / "Desktop" 
+#CARPETA_LICITACIONES = BASE_PATH / "ST_abastecimiento" / "ST_abastecimiento" / "api" / "LI_DSSO" / "DIARIO"
+#CARPETA_CONSOLIDADO = CARPETA_LICITACIONES / "CONSOLIDADO"
+
+# 1. Detectamos dónde está el script actual (debería estar en la carpeta 'api')
+RUTA_API = pathlib.Path(__file__).parent.absolute()
+
+# 2. Definimos las rutas basándonos en la estructura de carpetas interna
+# Esto busca la carpeta LI_DSSO que está dentro de 'api'
+CARPETA_LICITACIONES = RUTA_API / "LI_DSSO" / "DIARIO"
 CARPETA_CONSOLIDADO = CARPETA_LICITACIONES / "CONSOLIDADO"
 
 def limpiar_y_estandarizar(df):

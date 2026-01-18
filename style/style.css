@@ -1,0 +1,54 @@
+/* ===== FONDO GENERAL ===== */
+.stApp {
+    background-color: #e8edf7;
+}
+
+/* ===== TARJETAS BLANCAS ===== */
+[data-testid="stMetric"],
+[data-testid="stContainer"],
+div.element-container {
+    background-color: #ffffff;
+    color: #000000;
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 10px;
+
+    /* SOMBRA PROFESIONAL */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+
+    /* Borde sutil opcional */
+    border: 1px solid #e5e7eb;
+
+    /* Transición suave al pasar mouse */
+    transition: all 0.2s ease;
+}
+
+/* Efecto hover */
+[data-testid="stMetric"]:hover,
+[data-testid="stContainer"]:hover,
+div.element-container:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+/* ===== METRICAS ===== */
+/* [data-testid="stMetricLabel"] {
+    color: #555555;
+}
+
+[data-testid="stMetricValue"] {
+    color: #d7d5d5;
+    font-weight: 700;
+}
+
+/* ===== SIDEBAR ===== */
+/*[data-testid="stSidebar"] {
+    background-color: #3b73ed;
+    color: white;
+}
+
+/* ===== TABLAS ===== */
+[data-testid="stDataFrame"] {
+    background-color: #bbb6b6;
+    color: #000000;
+    border-radius: 10px;
+}

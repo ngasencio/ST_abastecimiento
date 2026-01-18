@@ -1,8 +1,7 @@
-# main.py
-
 import streamlit as st
 import sys
 import os
+
 
 
 # 1️⃣ LOGO SSO ARRIBA Y CENTRADO
@@ -35,10 +34,9 @@ pg = st.navigation([
 pg.run()
 
 # 4️⃣ LOGO ABASTECIMIENTO PEGADO ABAJO
-st.sidebar.markdown('<div class="footer-img">', unsafe_allow_html=True)
+
 st.sidebar.image(
     "logoaba.png",
     caption="Departamento de Abastecimiento y Operaciones",
     width=200
 )
-st.sidebar.markdown('</div>', unsafe_allow_html=True)

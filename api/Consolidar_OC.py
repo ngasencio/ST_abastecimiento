@@ -2,15 +2,25 @@ import pandas as pd
 import pathlib
 import datetime as dt
 
+
 # ==========================================
 # CONFIGURACIÓN DE RUTAS (Proporcionadas por el usuario)
 # ==========================================
-ESCRITORIO = pathlib.Path.home() / "Desktop"
-CARPETA_ORDENCOMPRA = ESCRITORIO / "ST_abastecimiento" / "ST_abastecimiento" / "api" / "OC_DSSO" / "DIARIO"
+
+# Obtiene la ubicación del archivo actual (Consolidar_OC.py)
+# .parent nos saca de la carpeta 'api' y nos deja en 'ST_abastecimiento'
+RUTA_ACTUAL = pathlib.Path(__file__).parent.absolute()
+
+# Definimos las rutas relativas al archivo
+CARPETA_ORDENCOMPRA = RUTA_ACTUAL / "OC_DSSO" / "DIARIO"
 CARPETA_CONSOLIDADO = CARPETA_ORDENCOMPRA / "CONSOLIDADO"
 
+#ESCRITORIO = pathlib.Path.home() / "Desktop"
+#CARPETA_ORDENCOMPRA = ESCRITORIO / "ST_abastecimiento" / "ST_abastecimiento" / "api" / "OC_DSSO" / "DIARIO"
+#CARPETA_CONSOLIDADO = CARPETA_ORDENCOMPRA / "CONSOLIDADO"
+
 def limpiar_y_estandarizar_oc(df):
-    """Realiza la limpieza profunda de los datos de Órdenes de Compra."""
+    """Realiza la limpie za profunda de los datos de Órdenes de Compra."""
     if df.empty:
         return df
     

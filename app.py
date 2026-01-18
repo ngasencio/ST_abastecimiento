@@ -7,9 +7,19 @@ from datetime import datetime
 import sys
 import os
 
+
+# ===== CARGAR CSS =====
+def cargar_css():
+    with open("style/style.css") as f:
+      st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+cargar_css()
+
+
 # 1. Importar el módulo completo
 from data.data_loader import load_fsc_data
 df_fsc = load_fsc_data()
+
 
 st.set_page_config(
     page_title="Dashboard DSSO",
@@ -57,12 +67,12 @@ permitiendo analizar su gestión en términos de eficiencia, cumplimiento y volu
     """,
     unsafe_allow_html=True
 )
-st.write("""
-Este informe presenta una visión ejecutiva del desempeño operacional y financiero,
-considerando los principales indicadores de la organización.
-""")
-# =============================== FILTRO ================================================================
 
+# =============================== EXPORTAR ================================
+
+
+
+# =============================== FILTRO ================================================================
 # --- Normalizar texto (recomendado) ---
 df_fsc["SUBDIRECCION"] = df_fsc["SUBDIRECCION"].astype(str).str.strip()
 df_fsc["DEPTO"] = df_fsc["DEPTO"].astype(str).str.strip()

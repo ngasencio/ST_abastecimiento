@@ -13,9 +13,18 @@ import time
 CODIGO_ORGANISMO = "7296"
 TICKET = "2798F2D3-0AC5-4323-9BB9-5E90618194BA"
 
-ESCRITORIO = pathlib.Path.home() / "Desktop"
-CARPETA_BASE = ESCRITORIO / "ST_abastecimiento" / "ST_abastecimiento" / "api" / "OC_DSSO"
-CARPETA_SALIDA = CARPETA_BASE / "DIARIO"
+
+# 1. Obtenemos la ruta donde está este archivo (api/)
+RUTA_API = pathlib.Path(__file__).parent.absolute()
+
+# 2. Definimos las carpetas de trabajo basándonos en esa posición
+CARPETA_ORDENCOMPRA = RUTA_API / "OC_DSSO" / "DIARIO"
+CARPETA_SALIDA = CARPETA_ORDENCOMPRA / "CONSOLIDADO"
+
+
+#ESCRITORIO = pathlib.Path.home() / "Desktop"
+#CARPETA_BASE = ESCRITORIO / "ST_abastecimiento" / "ST_abastecimiento" / "api" / "OC_DSSO"
+#CARPETA_SALIDA = CARPETA_BASE / "DIARIO"
 
 MAX_REINTENTOS = 5
 ESPERA_ENTRE_INTENTOS = 4.0
