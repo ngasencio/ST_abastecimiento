@@ -68,6 +68,7 @@ permitiendo analizar su gestión en términos de eficiencia, cumplimiento y volu
     unsafe_allow_html=True
 )
 
+
 # =============================== EXPORTAR ================================
 
 
@@ -292,4 +293,4 @@ with st.expander(" 📅Ver Datos Completos"):
         "conversion_rate": "{:.2f}%".format,
         "costo_adquisicion": "${:.2f}".format,
         "ltv_cliente": "${:.2f}".format,
-    }), height=400)
+    }), height=400, )

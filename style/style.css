@@ -30,25 +30,51 @@ div.element-container:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
 }
 
-/* ===== METRICAS ===== */
-/* [data-testid="stMetricLabel"] {
-    color: #555555;
+
+
+
+/* ===== SIDEBAR PROFESIONAL DSSO ===== */
+[data-testid="stSidebar"] {
+    background-color: #1A4564 !important;
 }
 
-[data-testid="stMetricValue"] {
-    color: #d7d5d5;
+/* Texto general */
+[data-testid="stSidebar"] * {
+    color: #ffffff !important;
+}
+
+/* Títulos dentro del sidebar */
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {
+    color: #ffffff !important;
     font-weight: 700;
 }
 
-/* ===== SIDEBAR ===== */
-/*[data-testid="stSidebar"] {
-    background-color: #3b73ed;
-    color: white;
+/* Selectbox y inputs */
+[data-testid="stSidebar"] .stSelectbox,
+[data-testid="stSidebar"] .stTextInput,
+[data-testid="stSidebar"] .stDateInput {
+    background-color: #ffffff15;
+    border-radius: 8px;
 }
 
-/* ===== TABLAS ===== */
-[data-testid="stDataFrame"] {
-    background-color: #bbb6b6;
-    color: #000000;
-    border-radius: 10px;
+/* Hover de opciones */
+[data-testid="stSidebar"] div[role="option"]:hover {
+    background-color: #ffffff25;
 }
+
+/* Separadores */
+[data-testid="stSidebar"] hr {
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Botones dentro del sidebar */
+[data-testid="stSidebar"] button {
+    background-color: #ffffff20;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+[data-testid="stSidebar"] button:hover {
+    background-color: #ffffff35;

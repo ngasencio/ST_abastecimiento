@@ -2,41 +2,32 @@ import streamlit as st
 import sys
 import os
 
-
-
-# 1️⃣ LOGO SSO ARRIBA Y CENTRADO
-#st.sidebar.markdown('<div class="center-img">', unsafe_allow_html=True)
-#st.sidebar.image("logosso.jpg", width=220)
-#st.sidebar.markdown('</div>', unsafe_allow_html=True)
-
-# 2️⃣ TEXTO INTRODUCTORIO
-#st.sidebar.markdown("""
-# **Este informe presenta una visión ejecutiva del desempeño operacional y financiero,
-#considerando los principales indicadores de la organización.**""")
-
-# 1. Configuración de la aplicación
 st.set_page_config(
     page_title="Portal DSSO",
     page_icon="logosso.jpg",
     layout="wide"
 )
 
-# 3️⃣ MENU DE PÁGINAS
-pg = st.navigation([
-    st.Page("app.py", title="Inicio", icon="🏠"),
-    st.Page("pages/dash_pac.py", title="Plan de Compras", icon="🛒"),
-    st.Page("pages/dash_convenios.py", title="Convenios", icon="🤝"),
-    st.Page("pages/dash_licitaciones.py", title="Licitaciones", icon="📄"),
-    st.Page("pages/dash_ordencompra.py", title="Ordenes de Compra", icon="🧾"),
-    st.Page("pages/dash_compradores.py", title="Compradores", icon="👥"),
-])
+# ===== SIDEBAR COMPLETO =====
+with st.sidebar:
 
+    # 1️⃣ IMAGEN PRIMERO
+    st.image("logoaba2.png", width=200)
+
+    # 2️⃣ TITULO
+    #st.markdown("## 📌 Menú Dashboard")
+
+    #st.markdown("---")
+
+    # 3️⃣ NAVEGACIÓN DENTRO DEL SIDEBAR
+    pg = st.navigation([
+        st.Page("app.py", title="Inicio", icon="🏠"),
+        st.Page("pages/dash_pac.py", title="Plan de Compras", icon="🛒"),
+        st.Page("pages/dash_convenios.py", title="Convenios", icon="🤝"),
+        st.Page("pages/dash_licitaciones.py", title="Licitaciones", icon="📄"),
+        st.Page("pages/dash_ordencompra.py", title="Ordenes de Compra", icon="🧾"),
+        st.Page("pages/dash_compradores.py", title="Compradores", icon="👥"),
+    ])
+
+# EJECUCIÓN DE PÁGINA
 pg.run()
-
-# 4️⃣ LOGO ABASTECIMIENTO PEGADO ABAJO
-
-st.sidebar.image(
-    "logoaba.png",
-    caption="Departamento de Abastecimiento y Operaciones",
-    width=200
-)

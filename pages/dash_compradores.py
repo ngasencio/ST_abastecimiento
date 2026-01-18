@@ -40,7 +40,7 @@ st.markdown(
         box-shadow: 0 4px 10px rgba(0,0,0,0.15);
     ">
         <div style="font-size: 28px; font-weight: 800;">
-            📊 Dashboard de Compradores
+            👥 Dashboard de Compradores
         </div>
         <div style="font-size: 15px; opacity: 0.9; margin-top: 4px;">
             Este módulo entrega una visión ejecutiva del desempeño de los compradores de la organización, 
