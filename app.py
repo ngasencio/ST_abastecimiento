@@ -194,6 +194,19 @@ col1, col2 = st.columns(2)
 # ======================================
 # 📊 FSC por Mes (Cantidad)
 # ======================================
+
+conteo_mes = (
+    df_filtrado
+    .groupby(["Mes", "DENTRO/FUERA"], as_index=False)
+    .agg({"newiD": "count"})
+    .rename(columns={"newiD": "Cantidad FSC"})
+)
+
+print("COLUMNAS:", conteo_mes.columns.tolist())
+print(conteo_mes.head(10))
+print("DUPLICADOS:", conteo_mes.duplicated(["Mes","DENTRO/FUERA"]).sum())
+
+
 with col1:
     conteo_mes = (
         df_filtrado
@@ -227,6 +240,9 @@ with col1:
 
     st.plotly_chart(fig_q, use_container_width=True)
 
+print(
+conteo_mes.duplicated(["Mes","DENTRO/FUERA"]).sum()
+)
 # ======================================
 # 💰 FSC por Mes (Monto)
 # ======================================

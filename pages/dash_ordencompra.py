@@ -180,8 +180,18 @@ col1, col2 = st.columns(2)
 with col1:
     conteo_mes_oc = (
         df_filtrado
-        .groupby(["Mes", "EstadoOC"]).size()
+        .copy()
+    )
+
+    # Asegurar que Mes es datetime
+    conteo_mes_oc["Mes"] = pd.to_datetime(conteo_mes_oc["Mes"])
+
+    conteo_mes_oc = (
+        conteo_mes_oc
+        .groupby(["Mes", "EstadoOC"])
+        .size()
         .reset_index(name="Cantidad OC")
+        .sort_values("Mes")
     )
 
     fig_q_oc = px.bar(
@@ -190,7 +200,11 @@ with col1:
         y="Cantidad OC",
         color="EstadoOC",
         title="📝 Cantidad de OC por Mes y Estado",
-        labels={"Mes": "Mes", "Cantidad OC": "N° de Órdenes", "EstadoOC": "Estado"},
+        labels={
+            "Mes": "Mes",
+            "Cantidad OC": "N° de Órdenes",
+            "EstadoOC": "Estado"
+        },
         color_discrete_sequence=px.colors.qualitative.Pastel
     )
 
@@ -198,25 +212,30 @@ with col1:
         barmode="stack",
         height=400,
         template="plotly_white",
-        # Forzamos los nombres de los meses en español en el eje X
         xaxis=dict(
-            tickformat="%m", # Primero sacamos el número del mes
             tickvals=conteo_mes_oc["Mes"].unique(),
-            ticktext=[meses_es[m.month-1] + f" {m.year}" for m in pd.to_datetime(conteo_mes_oc["Mes"].unique())]
+            ticktext=[
+                meses_es[m.month-1] + f" {m.year}"
+                for m in conteo_mes_oc["Mes"].unique()
+            ]
         )
     )
 
     st.plotly_chart(fig_q_oc, use_container_width=True)
-
 # ======================================
 # 💰 B) Monto Total Bruto por Mes
 # ======================================
 with col2:
+    monto_mes_oc = df_filtrado.copy()
+
+    monto_mes_oc["Mes"] = pd.to_datetime(monto_mes_oc["Mes"])
+
     monto_mes_oc = (
-        df_filtrado
+        monto_mes_oc
         .groupby(["Mes", "EstadoOC"])["TotalBruto"]
         .sum()
         .reset_index(name="Monto Total Bruto")
+        .sort_values("Mes")
     )
 
     fig_m_oc = px.bar(
@@ -225,7 +244,11 @@ with col2:
         y="Monto Total Bruto",
         color="EstadoOC",
         title="💰 Monto Total Bruto por Mes y Estado",
-        labels={"Mes": "Mes", "Monto Total Bruto": "Monto Bruto (CLP)", "EstadoOC": "Estado"},
+        labels={
+            "Mes": "Mes",
+            "Monto Total Bruto": "Monto Bruto (CLP)",
+            "EstadoOC": "Estado"
+        },
         color_discrete_sequence=px.colors.qualitative.Pastel
     )
 
@@ -235,10 +258,13 @@ with col2:
         template="plotly_white",
         yaxis_tickprefix="$",
         yaxis_tickformat=",.0f",
-        # Aplicamos la misma lógica de traducción al segundo gráfico
+
         xaxis=dict(
             tickvals=monto_mes_oc["Mes"].unique(),
-            ticktext=[meses_es[m.month-1] + f" {m.year}" for m in pd.to_datetime(monto_mes_oc["Mes"].unique())]
+            ticktext=[
+                meses_es[m.month-1] + f" {m.year}"
+                for m in monto_mes_oc["Mes"].unique()
+            ]
         )
     )
 
