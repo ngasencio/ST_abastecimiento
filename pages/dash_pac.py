@@ -219,7 +219,7 @@ col1, col2 = st.columns(2)
 
 # ===================== KPI 1: Cantidad de Proyectos =====================
 with col1:
- # --- 1. Definición de Estilos CSS ---
+
     # --- 2. Lógica de Cálculo (Tus variables) ---
     total_proyectos_general = df_pac["ID Proyecto"].nunique()
     total_proyectos_filtrado = df_filtrado["ID Proyecto"].nunique()

@@ -3,6 +3,23 @@
     background-color: #e8edf7;
 }
 
+/* ===== TITULOS H2 PERSONALIZADOS ===== */
+h2 {
+    background-color: #ffffff !important;
+    color: #1A4564 !important;
+
+    font-size: 26px !important;
+    font-weight: 800 !important;
+
+    border-radius: 10px;
+    padding: 10px 14px;
+
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    border-left: 6px solid #1A4564;
+
+    margin-top: 12px;
+    margin-bottom: 12px;
+}
 
 /* ===== SIDEBAR PROFESIONAL DSSO ===== */
 [data-testid="stSidebar"] {
@@ -49,3 +66,51 @@
 
 [data-testid="stSidebar"] button:hover {
     background-color: #ffffff35;
+}
+
+
+/* ===== METRIC CARDS PROFESIONALES ===== */
+
+/* Contenedor completo de la métrica */
+[data-testid="stMetric"] {
+    background-color: #ffffff !important;
+    border-radius: 12px !important;
+    padding: 14px 16px !important;
+
+    /* sombra */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+    border: 1px solid #e5e7eb !important;
+
+    transition: all 0.2s ease;
+}
+
+/* Efecto hover */
+[data-testid="stMetric"]:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* Título de la métrica */
+[data-testid="stMetricLabel"] {
+    color: #1A4564 !important;
+    font-weight: 600 !important;
+}
+
+/* Valor principal */
+[data-testid="stMetricValue"] {
+    color: #000000 !important;
+    font-size: 26px !important;
+    font-weight: 800 !important;
+}
+
+/* Delta (porcentaje) */
+[data-testid="stMetricDelta"] {
+    font-weight: 600 !important;
+}
+
+[data-testid="stMetric"] {
+    background: #ffffff !important;
+    border-left: 6px solid #1A4564 !important;
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
