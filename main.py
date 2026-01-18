@@ -4,7 +4,7 @@ import os
 
 st.set_page_config(
     page_title="Portal DSSO",
-    page_icon="logosso.jpg",
+    page_icon="resources/logosso.jpg",
     layout="wide"
 )
 
@@ -12,7 +12,7 @@ st.set_page_config(
 with st.sidebar:
 
     # 1️⃣ IMAGEN PRIMERO
-    st.image("logoaba2.png", width=200)
+    st.image("resources/logoaba2.png", width=200)
 
     # 2️⃣ TITULO
     #st.markdown("## 📌 Menú Dashboard")
