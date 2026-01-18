@@ -300,3 +300,25 @@ th {
 td {
     padding: 6px 8px !important;
 }
+
+/* ===== BOTONES DE NAVEGACIÓN ===== */
+
+.nav-container {
+    margin: 10px 0 20px 0;
+}
+
+div.stButton>button {
+    width: 100% !important;
+    background: #1A4564 !important;
+    color: white !important;
+    border-radius: 12px !important;
+    height: 46px !important;
+    font-weight: 700 !important;
+    border: none !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12) !important;
+}
+
+div.stButton>button:hover {
+    background: #1748EB !important;
+    transform: translateY(-1px);
+}
