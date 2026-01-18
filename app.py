@@ -10,7 +10,7 @@ import os
 
 # ===== CARGAR CSS =====
 def cargar_css():
-    with open("style/style.css") as f:
+    with open("style/style.css", encoding="utf-8") as f:
       st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 cargar_css()
@@ -235,7 +235,8 @@ with col1:
     fig_q.update_layout(
         barmode="stack",
         height=400,
-        template="plotly_white"
+        template="plotly_white",
+        font=dict(family="Segoe UI")
     )
 
     st.plotly_chart(fig_q, use_container_width=True)
@@ -276,7 +277,8 @@ with col2:
         height=400,
         template="plotly_white",
         yaxis_tickprefix="$",
-        yaxis_tickformat=",.0f"
+        yaxis_tickformat=",.0f",
+font=dict(family="Segoe UI")
     )
 
     st.plotly_chart(fig_m, use_container_width=True)
@@ -298,7 +300,7 @@ for alerta in alertas:
     st.markdown(f"""<div style="padding: 1rem; margin:0.5rem 0; background-color: {alerta['color']}; color: white; border-radius: 10px; font-weight: bold;">{alerta['tipo']}:{alerta['tipo']}</div>""", unsafe_allow_html=True)
     
     
-st.markdown("## 📅 Tabla de Datos")
+st.markdown("##  📅 Tabla de Datos")
 with st.expander(" 📅Ver Datos Completos"):
     st.dataframe(df.style.format({
         # --- CAMBIO AQUÍ: Eliminar .dt ---

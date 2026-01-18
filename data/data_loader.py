@@ -19,7 +19,7 @@ RUTA_FSC = os.path.join(CARPETA_DATOS, NOMBRE_ARCHIVO_FSC)
 def load_fsc_data():
     """Carga datos del archivo FSC 2025.xlsx"""
     if not os.path.exists(RUTA_FSC):
-        st.error(f"No se encontró el archivo: {RUTA_FSC}")
+        st.error(f"No se encontró el archivo: {RUTA_FSC}",encoding="utf-8")
         return None
 
     try:

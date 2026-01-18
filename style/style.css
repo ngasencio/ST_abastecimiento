@@ -1,7 +1,8 @@
 /* ===== FONDO GENERAL ===== */
 .stApp {
-    background-color: #e8edf7;
+    background-color: #EBF3FA;
 }
+
 
 /* ===== TITULOS H2 PERSONALIZADOS ===== */
 h2 {
@@ -74,8 +75,8 @@ h2 {
 /* Contenedor completo de la métrica */
 /* ===== TITULOS H2 PERSONALIZADOS ===== */
 h2 {
-    background-color: #ffffff !important;
-    color: #1A4564 !important;
+    background-color: #3387CC !important;
+    color: #ffffff !important;
     font-size: 26px !important;
     font-weight: 800 !important;
     border-radius: 10px;
@@ -130,4 +131,172 @@ h2 {
     border-radius: 10px;
     padding: 12px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+
+
+/* =========================================================
+   FILTROS MULTISELECT - ESTILO DSSO PROFESIONAL
+   ========================================================= */
+
+/* Contenedor principal del multiselect */
+.stMultiSelect>div {
+    background-color: #ffffff !important;
+    border-radius: 12px !important;
+    border: 1px solid #e5e7eb !important;
+
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+    padding: 6px 8px !important;
+
+    transition: all 0.2s ease;
+}
+
+/* Hover del contenedor */
+.stMultiSelect>div:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18) !important;
+    border: 1px solid #1A4564 !important;
+}
+
+/* Etiqueta del filtro (Subdirección / Departamento) */
+.stMultiSelect label {
+    color: #1A4564 !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
+}
+
+/* Chips seleccionados */
+.stMultiSelect span[data-baseweb="tag"] {
+    background-color: #1A4564 !important;
+    color: #ffffff !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+}
+
+/* Botón de eliminar chip */
+.stMultiSelect span[data-baseweb="tag"] span[aria-hidden="true"] {
+    color: #36e93f !important;
+}
+
+/* Texto interno del input */
+.stMultiSelect input {
+    color: #000000 !important;
+}
+
+/* Menú desplegable */
+div[role="listbox"] {
+    background-color: #ffffff !important;
+    border-radius: 12px !important;
+    border: 1px solid #e5e7eb !important;
+
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Opción al pasar el mouse */
+div[role="option"]:hover {
+    background-color: #e8edf7 !important;
+}
+
+/* Opción seleccionada */
+div[aria-selected="true"] {
+    background-color: #1A4564 !important;
+    color: #ffffff !important;
+}
+
+/* ===============================================
+
+
+/* ===== Tarjetas de graficos ===== */
+div[data-testid="stPlotlyChart"] {
+    background: white;
+    border-radius: 12px;
+    padding: 10px;
+    border: 1px solid #e0e6ef;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+/* Hover suave */
+div[data-testid="stPlotlyChart"]:hover {
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+}
+
+/* Titulos de seccion */
+h2 {
+    color: #1A4564;
+    font-weight: bold;
+}
+
+/* Grid interno mas suave */
+.js-plotly-plot .xgrid,
+.js-plotly-plot .ygrid {
+    stroke: #e6ecf5;
+}
+
+/* Fondo blanco seguro */
+.js-plotly-plot .plotly .bg {
+    fill: white;
+}
+
+
+/* ===== EXPANDER ===== */
+div[data-testid="stExpander"] {
+    background-color: #ffffff !important;
+    border-radius: 14px !important;
+    border: 1px solid #e0e6f2 !important;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08) !important;
+    margin-bottom: 12px !important;
+}
+
+/* Título del expander */
+div[data-testid="stExpander"] summary {
+    font-weight: 700 !important;
+    color: #1A4564 !important;
+    padding: 8px 10px !important;
+}
+
+/* Hover del expander */
+div[data-testid="stExpander"]:hover {
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12) !important;
+}
+
+
+/* ===== DATAFRAME ===== */
+div[data-testid="stDataFrame"] {
+    background-color: #ffffff !important;
+    border-radius: 14px !important;
+    border: 1px solid #e0e6f2 !important;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08) !important;
+    padding: 6px !important;
+}
+
+/* Cabecera de la tabla */
+div[data-testid="stDataFrame"] thead th {
+    background-color: #1A4564 !important;
+    color: white !important;
+    font-weight: 700 !important;
+}
+
+/* Filas alternadas */
+div[data-testid="stDataFrame"] tbody tr:nth-child(even) {
+    background-color: #f5f8ff !important;
+}
+
+/* Hover fila */
+div[data-testid="stDataFrame"] tbody tr:hover {
+    background-color: #e8edf7 !important;
+}
+
+/* ===== STYLER (df.style) ===== */
+table {
+    border-radius: 12px !important;
+    overflow: hidden !important;
+}
+
+th {
+    background: #1A4564 !important;
+    color: white !important;
+    padding: 8px !important;
+}
+
+td {
+    padding: 6px 8px !important;
 }
