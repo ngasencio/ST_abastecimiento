@@ -30,9 +30,6 @@ div.element-container:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
 }
 
-
-
-
 /* ===== SIDEBAR PROFESIONAL DSSO ===== */
 [data-testid="stSidebar"] {
     background-color: #1A4564 !important;
