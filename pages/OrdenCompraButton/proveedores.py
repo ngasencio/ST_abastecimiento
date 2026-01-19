@@ -2,12 +2,11 @@ import streamlit as st
 import plotly.express as px
 
 def vista_proveedores(df_filtrado):
-
     st.markdown("## 📦 Análisis de Proveedores")
 
     top = (
         df_filtrado
-        .groupby("Proveedor")["TotalBruto"]
+        .groupby("P_Nombre")["TotalBruto"]
         .sum()
         .reset_index()
         .sort_values("TotalBruto", ascending=False)
@@ -17,7 +16,7 @@ def vista_proveedores(df_filtrado):
     fig = px.bar(
         top,
         x="TotalBruto",
-        y="Proveedor",
+        y="P_Nombre",
         orientation="h",
         title="Top 10 Proveedores por Monto"
     )

@@ -7,14 +7,14 @@ def vista_temporal(df_filtrado):
 
     serie = (
         df_filtrado
-        .groupby("Mes")["TotalBruto"]
+        .groupby("FechaCreacion")["TotalBruto"]
         .sum()
         .reset_index()
     )
 
     fig = px.line(
         serie,
-        x="Mes",
+        x="FechaCreacion",
         y="TotalBruto",
         markers=True
     )
