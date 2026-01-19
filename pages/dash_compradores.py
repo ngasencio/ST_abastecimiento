@@ -2,32 +2,33 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-from datetime import datetime
 import plotly.graph_objects as go
+from datetime import datetime
 
+# ==========================================================
+# 1. CARGA DE DATOS
+# ==========================================================
 
-# 1. Importar el módulo completo
 from data.data_loader import load_fsc_data
 df_fsc = load_fsc_data()
 
-# ===== CARGAR CSS =====
+# ==========================================================
+# 2. CARGAR CSS
+# ==========================================================
+
 def cargar_css():
     try:
         with open("style/style.css") as f:
-            # Usamos una sola línea y eliminamos espacios innecesarios con .strip()
             css_content = f.read().replace("\n", "").strip()
-            st.markdown(
-                f"<style>{css_content}</style>", 
-                unsafe_allow_html=True
-            )
+            st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
     except FileNotFoundError:
         st.error("⚠️ No se encontró el archivo style.css")
 
-# Llama a la función al principio de todo, justo después de st.set_page_config
 cargar_css()
-#linea tiempo
-#from streamlit_timeline import st_timeline
 
+# ==========================================================
+# 3. HEADER
+# ==========================================================
 
 st.markdown(
     """
@@ -43,29 +44,31 @@ st.markdown(
             👥 Dashboard de Compradores
         </div>
         <div style="font-size: 15px; opacity: 0.9; margin-top: 4px;">
-            Este módulo entrega una visión ejecutiva del desempeño de los compradores de la organización, 
-permitiendo analizar su gestión en términos de eficiencia, cumplimiento y volumen de adquisiciones.
+            Visión ejecutiva del desempeño de los compradores en eficiencia,
+            cumplimiento y volumen de adquisiciones.
         </div>
     </div>
     """,
     unsafe_allow_html=True
 )
 
-#st.title("👥 Dashboard de Compradores")
-#st.header("Visión Ejecutiva de los Compradores")
-#st.markdown("""Este módulo entrega una visión ejecutiva del desempeño de los compradores de la organización, 
-#permitiendo analizar su gestión en términos de eficiencia, cumplimiento y volumen de adquisiciones.  
-#""")
+
+# ==========================================================
+# 4. PREPARACIÓN DE DATOS
+# ==========================================================
 
 
-# =============================== FILTRO ================================================================
-# --- Normalizar fecha ---
 df_fsc["fecha derivado"] = pd.to_datetime(
     df_fsc["fecha derivado"],
     format="%d-%m-%Y",
     errors="coerce"
 )
+
 df_fsc["Año"] = df_fsc["fecha derivado"].dt.year
+
+# ==========================================================
+# 5. FILTROS EN CASCADA
+# ==========================================================
 
 
 # ========= OPCIONES =========
@@ -335,9 +338,7 @@ with col3:
     )
 
     fig.update_traces(textposition="inside")
-
     st.plotly_chart(fig, use_container_width=True)
-
 
 #======================================== TABLA DE DATOS ==================================================
 # --- 1) Asegurar tipo fecha (SOLO UNA VEZ) ---
@@ -346,7 +347,6 @@ if "fecha derivado" in df_filtrado.columns:
         df_filtrado["fecha derivado"],
         errors="coerce"
     )
-
 
 st.markdown("## 📅 Tabla de Detalle FSC")
 
@@ -362,8 +362,6 @@ columnas = [
     "ProcesoCompra",
     "EstadoProcesoCompra",
 ]
-
-
 
 # Usar solo columnas existentes
 columnas_validas = [c for c in columnas if c in df_filtrado.columns]
@@ -408,12 +406,9 @@ with st.expander(f"⚠️ Ver FSC Pendientes -   {len(tabla_pendientes):,} regis
         }
     )
 
-
 # ================================
 # 🟢 FSC FINALIZADOS
 # ================================
-
-
 
 tabla_finalizados = tabla_base[
     tabla_base["EstadoProcesoCompra"] == "Proceso Finalizado"
