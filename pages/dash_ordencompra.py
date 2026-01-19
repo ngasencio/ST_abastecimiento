@@ -131,234 +131,234 @@ if contacto_sel:
 # 5. BOTONES DE NAVEGACIÓN
 # ==========================================================
 
-st.markdown("<div class='nav-container'>", unsafe_allow_html=True)
+#st.markdown("<div class='nav-container'>", unsafe_allow_html=True)
 
-col1, col2, col3, col4, col5 = st.columns(5)
+#col1, col2, col3, col4, col5 = st.columns(5)
 
-with col1:
-    if st.button("🏠 Principal"):
-        st.session_state.vista = "principal"
+#with col1:
+#    if st.button("🏠 Principal"):
+#        st.session_state.vista = "principal"
 
-with col2:
-    if st.button("📦 Proveedores"):
-        st.session_state.vista = "proveedores"
+#with col2:
+#    if st.button("📦 Proveedores"):
+#        st.session_state.vista = "proveedores"
 
-with col3:
-    if st.button("🧾 Últimas OC"):
-        st.session_state.vista = "ultimas"
+#with col3:
+#    if st.button("🧾 Últimas OC"):
+#        st.session_state.vista = "ultimas"
 
-with col4:
-    if st.button("⏱ Temporal"):
-        st.session_state.vista = "temporal"
+#with col4:
+#    if st.button("⏱ Temporal"):
+#        st.session_state.vista = "temporal"
 
-with col5:
-    if st.button("📥 Recepciones"):
-        st.session_state.vista = "recepciones"
+#with col5:
+#    if st.button("📥 Recepciones"):
+#        st.session_state.vista = "recepciones"
 
-st.markdown("</div>", unsafe_allow_html=True)
+#st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ==========================================================
 # 6. DASHBOARD PRINCIPAL EN FUNCIÓN
 # ==========================================================
 
-def mostrar_dashboard_principal():
+#def mostrar_dashboard_principal():
     
     # ================================== KPIS ===============================================
 
-    st.markdown("## 📊 Indicadores de Gestión OC")
-    c_kpi1, c_kpi2, c_kpi3, c_kpi4 = st.columns(4)
+st.markdown("## 📊 Indicadores de Gestión OC")
+c_kpi1, c_kpi2, c_kpi3, c_kpi4 = st.columns(4)
 
-    with c_kpi1:
-        # --- TOTAL ÓRDENES DE COMPRA ---
-        # Usamos el conteo de filas de la base resumen de OC
-        total_oc_gral = len(df_oc_res)
-        total_oc_filt = len(df_filtrado)
+with c_kpi1:
+    # --- TOTAL ÓRDENES DE COMPRA ---
+    # Usamos el conteo de filas de la base resumen de OC
+    total_oc_gral = len(df_oc_res)
+    total_oc_filt = len(df_filtrado)
 
-        porcentaje_oc = (
-            (total_oc_filt / total_oc_gral) * 100
-            if total_oc_gral > 0 else 0
-        )
-
-        st.metric(
-            "📝 Cantidad de OC",
-            f"{total_oc_filt:,}",
-            f"{porcentaje_oc:.1f}% del total"
-        )
-
-    with c_kpi2:
-        # --- TOTAL MONTO BRUTO ---
-        monto_col_oc = "TotalBruto"
-        
-        monto_oc_gral = df_oc_res[monto_col_oc].sum()
-        monto_oc_filt = df_filtrado[monto_col_oc].sum()
-
-        porcentaje_monto_oc = (
-            (monto_oc_filt / monto_oc_gral) * 100
-            if monto_oc_gral > 0 else 0
-        )
-
-        st.metric(
-            "💰 Monto Total (Bruto)",
-            f"${monto_oc_filt:,.0f}",
-            f"{porcentaje_monto_oc:.1f}% del monto total"
-        )
-
-    with c_kpi3:
-        # Espacio para futura métrica (ej. Cantidad de proveedores)
-        pass
-
-    with c_kpi4:
-        # Espacio para futura métrica (ej. Ticket promedio)
-        pass
-
-    # ================================== GRAFICOS ===============================================
-    # ##### GRAFICOS OC CON MESES EN ESPAÑOL ####
-    st.markdown("## 📊 Análisis Gráfico de Órdenes de Compra")
-
-    # 1. Asegurar que FechaCreacion sea datetime
-    df_filtrado["FechaCreacion"] = pd.to_datetime(
-        df_filtrado["FechaCreacion"],
-        errors="coerce",
-        dayfirst=True
+    porcentaje_oc = (
+        (total_oc_filt / total_oc_gral) * 100
+        if total_oc_gral > 0 else 0
     )
 
-    # 2. Crear columna mensual
-    df_filtrado["Mes"] = df_filtrado["FechaCreacion"].dt.to_period("M").dt.to_timestamp()
+    st.metric(
+        "📝 Cantidad de OC",
+        f"{total_oc_filt:,}",
+        f"{porcentaje_oc:.1f}% del total"
+    )
 
-    # Diccionario para traducir (Opcional, pero para el eje X usaremos tickformat y ticklabel)
-    meses_es = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+with c_kpi2:
+    # --- TOTAL MONTO BRUTO ---
+    monto_col_oc = "TotalBruto"
+    
+    monto_oc_gral = df_oc_res[monto_col_oc].sum()
+    monto_oc_filt = df_filtrado[monto_col_oc].sum()
 
-    col1, col2 = st.columns(2)
+    porcentaje_monto_oc = (
+        (monto_oc_filt / monto_oc_gral) * 100
+        if monto_oc_gral > 0 else 0
+    )
 
-    # ======================================
-    # 📊 A) Cantidad de OC por Mes
-    # ======================================
-    with col1:
-        conteo_mes_oc = (
-            df_filtrado
-            .copy()
+    st.metric(
+        "💰 Monto Total (Bruto)",
+        f"${monto_oc_filt:,.0f}",
+        f"{porcentaje_monto_oc:.1f}% del monto total"
+    )
+
+with c_kpi3:
+    # Espacio para futura métrica (ej. Cantidad de proveedores)
+    pass
+
+with c_kpi4:
+    # Espacio para futura métrica (ej. Ticket promedio)
+    pass
+
+# ================================== GRAFICOS ===============================================
+# ##### GRAFICOS OC CON MESES EN ESPAÑOL ####
+st.markdown("## 📊 Análisis Gráfico de Órdenes de Compra")
+
+# 1. Asegurar que FechaCreacion sea datetime
+df_filtrado["FechaCreacion"] = pd.to_datetime(
+    df_filtrado["FechaCreacion"],
+    errors="coerce",
+    dayfirst=True
+)
+
+# 2. Crear columna mensual
+df_filtrado["Mes"] = df_filtrado["FechaCreacion"].dt.to_period("M").dt.to_timestamp()
+
+# Diccionario para traducir (Opcional, pero para el eje X usaremos tickformat y ticklabel)
+meses_es = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+
+col1, col2 = st.columns(2)
+
+# ======================================
+# 📊 A) Cantidad de OC por Mes
+# ======================================
+with col1:
+    conteo_mes_oc = (
+        df_filtrado
+        .copy()
+    )
+
+    # Asegurar que Mes es datetime
+    conteo_mes_oc["Mes"] = pd.to_datetime(conteo_mes_oc["Mes"])
+
+    conteo_mes_oc = (
+        conteo_mes_oc
+        .groupby(["Mes", "EstadoOC"])
+        .size()
+        .reset_index(name="Cantidad OC")
+        .sort_values("Mes")
+    )
+
+    fig_q_oc = px.bar(
+        conteo_mes_oc,
+        x="Mes",
+        y="Cantidad OC",
+        color="EstadoOC",
+        title="📝 Cantidad de OC por Mes y Estado",
+        labels={
+            "Mes": "Mes",
+            "Cantidad OC": "N° de Órdenes",
+            "EstadoOC": "Estado"
+        },
+        color_discrete_sequence=px.colors.qualitative.Pastel
+    )
+
+    fig_q_oc.update_layout(
+        barmode="stack",
+        height=400,
+        template="plotly_white",
+        xaxis=dict(
+            tickvals=conteo_mes_oc["Mes"].unique(),
+            ticktext=[
+                meses_es[m.month-1] + f" {m.year}"
+                for m in conteo_mes_oc["Mes"].unique()
+            ]
         )
+    )
 
-        # Asegurar que Mes es datetime
-        conteo_mes_oc["Mes"] = pd.to_datetime(conteo_mes_oc["Mes"])
+    st.plotly_chart(fig_q_oc, use_container_width=True)
+# ======================================
+# 💰 B) Monto Total Bruto por Mes
+# ======================================
+with col2:
+    monto_mes_oc = df_filtrado.copy()
 
-        conteo_mes_oc = (
-            conteo_mes_oc
-            .groupby(["Mes", "EstadoOC"])
-            .size()
-            .reset_index(name="Cantidad OC")
-            .sort_values("Mes")
+    monto_mes_oc["Mes"] = pd.to_datetime(monto_mes_oc["Mes"])
+
+    monto_mes_oc = (
+        monto_mes_oc
+        .groupby(["Mes", "EstadoOC"])["TotalBruto"]
+        .sum()
+        .reset_index(name="Monto Total Bruto")
+        .sort_values("Mes")
+    )
+
+    fig_m_oc = px.bar(
+        monto_mes_oc,
+        x="Mes",
+        y="Monto Total Bruto",
+        color="EstadoOC",
+        title="💰 Monto Total Bruto por Mes y Estado",
+        labels={
+            "Mes": "Mes",
+            "Monto Total Bruto": "Monto Bruto (CLP)",
+            "EstadoOC": "Estado"
+        },
+        color_discrete_sequence=px.colors.qualitative.Pastel
+    )
+
+    fig_m_oc.update_layout(
+        barmode="stack",
+        height=400,
+        template="plotly_white",
+        yaxis_tickprefix="$",
+        yaxis_tickformat=",.0f",
+
+        xaxis=dict(
+            tickvals=monto_mes_oc["Mes"].unique(),
+            ticktext=[
+                meses_es[m.month-1] + f" {m.year}"
+                for m in monto_mes_oc["Mes"].unique()
+            ]
         )
+    )
 
-        fig_q_oc = px.bar(
-            conteo_mes_oc,
-            x="Mes",
-            y="Cantidad OC",
-            color="EstadoOC",
-            title="📝 Cantidad de OC por Mes y Estado",
-            labels={
-                "Mes": "Mes",
-                "Cantidad OC": "N° de Órdenes",
-                "EstadoOC": "Estado"
-            },
-            color_discrete_sequence=px.colors.qualitative.Pastel
-        )
+    st.plotly_chart(fig_m_oc, use_container_width=True)
 
-        fig_q_oc.update_layout(
-            barmode="stack",
-            height=400,
-            template="plotly_white",
-            xaxis=dict(
-                tickvals=conteo_mes_oc["Mes"].unique(),
-                ticktext=[
-                    meses_es[m.month-1] + f" {m.year}"
-                    for m in conteo_mes_oc["Mes"].unique()
-                ]
-            )
-        )
+st.markdown("## 🛒 Órdenes de Compra Consolidadas")
 
-        st.plotly_chart(fig_q_oc, use_container_width=True)
-    # ======================================
-    # 💰 B) Monto Total Bruto por Mes
-    # ======================================
-    with col2:
-        monto_mes_oc = df_filtrado.copy()
-
-        monto_mes_oc["Mes"] = pd.to_datetime(monto_mes_oc["Mes"])
-
-        monto_mes_oc = (
-            monto_mes_oc
-            .groupby(["Mes", "EstadoOC"])["TotalBruto"]
-            .sum()
-            .reset_index(name="Monto Total Bruto")
-            .sort_values("Mes")
-        )
-
-        fig_m_oc = px.bar(
-            monto_mes_oc,
-            x="Mes",
-            y="Monto Total Bruto",
-            color="EstadoOC",
-            title="💰 Monto Total Bruto por Mes y Estado",
-            labels={
-                "Mes": "Mes",
-                "Monto Total Bruto": "Monto Bruto (CLP)",
-                "EstadoOC": "Estado"
-            },
-            color_discrete_sequence=px.colors.qualitative.Pastel
-        )
-
-        fig_m_oc.update_layout(
-            barmode="stack",
-            height=400,
-            template="plotly_white",
-            yaxis_tickprefix="$",
-            yaxis_tickformat=",.0f",
-
-            xaxis=dict(
-                tickvals=monto_mes_oc["Mes"].unique(),
-                ticktext=[
-                    meses_es[m.month-1] + f" {m.year}"
-                    for m in monto_mes_oc["Mes"].unique()
-                ]
-            )
-        )
-
-        st.plotly_chart(fig_m_oc, use_container_width=True)
-
-    st.markdown("## 🛒 Órdenes de Compra Consolidadas")
-
-    with st.expander("📅 Ver Tabla Maestra de OCs"):
-        st.dataframe(df_oc_res.style.format({
-            # Formatos de Dinero
-            "TotalNeto": "${:,.0f}".format,
-            "Total": "${:,.0f}".format,
-            "Impuestos": "${:,.0f}".format,
-            # Formatos de Texto/ID
-            "Codigo": str,
-            "CodigoLicitacion": str,
-            "Estado": str,
-            # Formato de Porcentajes
-            "PorcentajeIva": "{:.1f}%".format,
-        }), height=400, use_container_width=True)
+with st.expander("📅 Ver Tabla Maestra de OCs"):
+    st.dataframe(df_oc_res.style.format({
+        # Formatos de Dinero
+        "TotalNeto": "${:,.0f}".format,
+        "Total": "${:,.0f}".format,
+        "Impuestos": "${:,.0f}".format,
+        # Formatos de Texto/ID
+        "Codigo": str,
+        "CodigoLicitacion": str,
+        "Estado": str,
+        # Formato de Porcentajes
+        "PorcentajeIva": "{:.1f}%".format,
+    }), height=400, use_container_width=True)
 
 
 # ==========================================================
 # 7. ROUTER DE VISTAS
 # ==========================================================
 
-if st.session_state.vista == "principal":
-    mostrar_dashboard_principal()
+# if st.session_state.vista == "principal":
+#     mostrar_dashboard_principal()
 
-elif st.session_state.vista == "proveedores":
-    vista_proveedores(df_filtrado)
+# elif st.session_state.vista == "proveedores":
+#     vista_proveedores(df_filtrado)
 
-elif st.session_state.vista == "ultimas":
-    vista_ultimas(df_filtrado)
+# elif st.session_state.vista == "ultimas":
+#     vista_ultimas(df_filtrado)
 
-elif st.session_state.vista == "temporal":
-    vista_temporal(df_filtrado)
+# elif st.session_state.vista == "temporal":
+#     vista_temporal(df_filtrado)
 
-elif st.session_state.vista == "recepciones":
-    vista_recepciones(df_filtrado)
+# elif st.session_state.vista == "recepciones":
+#     vista_recepciones(df_filtrado)
