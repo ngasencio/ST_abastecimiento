@@ -133,7 +133,6 @@ if depto_sel:
 
 # =========================================================================
 
-
 ##### KPIS ####
 st.markdown("## 📈 Datos Generales")
 col1, col2, col3, col4 = st.columns(4)

@@ -3,9 +3,9 @@ import pathlib
 import datetime as dt
 
 
-# ==========================================
+# ======================================================
 # CONFIGURACIÓN DE RUTAS (Proporcionadas por el usuario)
-# ==========================================
+# ======================================================
 
 # Obtiene la ubicación del archivo actual (Consolidar_OC.py)
 # .parent nos saca de la carpeta 'api' y nos deja en 'ST_abastecimiento'
