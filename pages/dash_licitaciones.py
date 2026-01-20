@@ -8,15 +8,28 @@ import plotly.graph_objects as go
 from datetime import datetime
 
 # 1. Importación Correcta (basada en tu estructura de carpetas)###
-from api.Consolidar_Licitaciones import ejecutar_consolidacion_LI
+import LI_data_loader as loader
 
-# 2. Llamada segura
-# Esto ejecuta la lógica de unión y limpieza
-bases = ejecutar_consolidacion_LI()
+# Carga de datos (Usando caché de Streamlit para no recargar a cada clic)
+@st.cache_data
+def obtener_datos():
+    df_res, df_det = loader.cargar_maestros()
+    return df_res, df_det
 
-# 3. Asignación defensiva (evita el KeyError)
-df_res = bases.get("RESUMEN", pd.DataFrame())
-df_det = bases.get("DETALLES", pd.DataFrame())
+# Ejecución
+try:
+    df_MaestroLI_Resumen, df_MaestroLI_Detalle = obtener_datos()
+
+    if df_MaestroLI_Resumen.empty:
+        st.error("No se encontraron datos. Ejecuta el actualizador primero.")
+    else:
+        st.success(f"Datos cargados: {len(df_MaestroLI_Resumen)} licitaciones disponibles.")
+        
+        # Aquí empieza tu lógica de filtros
+        # df_filtrado = ...
+
+except Exception as e:
+    st.error(f"Ocurrió un error en la carga: {e}")
 
 # ===== CARGAR CSS =====
 def cargar_css():

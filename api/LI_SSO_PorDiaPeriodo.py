@@ -14,11 +14,6 @@ import os
 CODIGO_ORGANISMO = "7296"
 TICKET = "2798F2D3-0AC5-4323-9BB9-5E90618194BA"
 
-# Rutas de guardado
-#ESCRITORIO = pathlib.Path.home() / "Desktop"
-#CARPETA_BASE = ESCRITORIO / "ST_abastecimiento" / "ST_abastecimiento" / "api" / "LI_DSSO"
-#CARPETA_SALIDA = CARPETA_BASE / "DIARIO"
-
 # 1. Detectamos la ubicación del archivo actual (que debe estar en la carpeta 'api')
 RUTA_API = pathlib.Path(__file__).parent.absolute()
 
