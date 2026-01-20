@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 from datetime import datetime
 
 # 1. Importación Correcta (basada en tu estructura de carpetas)###
-import LI_data_loader as loader
+import api.LI_data_loader as loader
 
 # Carga de datos (Usando caché de Streamlit para no recargar a cada clic)
 @st.cache_data
@@ -31,7 +31,11 @@ try:
 except Exception as e:
     st.error(f"Ocurrió un error en la carga: {e}")
 
-# ===== CARGAR CSS =====
+# ============== Definir DF ===================
+df_res = df_MaestroLI_Resumen
+df_det = df_MaestroLI_Detalle
+
+# ============== CARGAR CSS ===================
 def cargar_css():
     try:
         with open("style/style.css") as f:
@@ -49,7 +53,7 @@ cargar_css()
 #linea tiempo
 #from streamlit_timeline import st_timeline
 
-# --- INYECCIÓN DE CSS (Tus estilos) ---
+# ============== INYECCIÓN DE CSS ===================
 
 st.markdown(
     """
