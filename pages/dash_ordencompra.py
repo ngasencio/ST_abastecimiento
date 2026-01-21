@@ -10,15 +10,46 @@ from pages.OrdenCompraButton.oc_ultimas import vista_ultimas
 from pages.OrdenCompraButton.oc_temporal import vista_temporal
 from pages.OrdenCompraButton.recepciones import vista_recepciones
 
-from api.Consolidar_OC import ejecutar_consolidacion_oc
+import api.OC_data_loader as loader_oc
+# ==========================================
+# CARGA DE DATOS OPTIMIZADA (CACHÉ)
+# ==========================================
+@st.cache_data(ttl=3600, show_spinner="Cargando Base de Datos de Compras...") 
+def obtener_datos_oc():
+    """
+    Llama al loader externo y guarda el resultado en memoria caché.
+    ttl=3600 significa que refrescará los datos cada 1 hora automáticamente.
+    """
+    # Usamos la función única del loader
+    df_OCres, df_OCdet = loader_oc.cargar_maestros_oc()
+    return df_OCres, df_OCdet
+
+# ==========================================
+# EJECUCIÓN EN EL DASHBOARD
+# ==========================================
+try:
+    # 1. Llamada a la función con caché
+    df_MaestroOC_Resumen, df_MaestroOC_Detalle = obtener_datos_oc()
+
+    # 2. Validación básica
+    if df_MaestroOC_Resumen.empty:
+        st.warning("⚠️ No se encontraron datos de Órdenes de Compra. Verifica haber ejecutado el 'Unificar Base Datos'.")
+    else:
+        st.success(f"✅ Datos cargados: {len(df_MaestroOC_Resumen)} Órdenes de Compra disponibles.")
+        
+        # Aquí continúa tu lógica de filtros y gráficos...
+        # Ejemplo: df_filtrado = df_MaestroOC_Resumen[df_MaestroOC_Resumen['TotalBruto'] > 0]
+
+except Exception as e:
+    st.error(f"❌ Ocurrió un error al cargar los datos: {e}")
 
 # ==========================================================
 # 1. CONFIGURACIÓN INICIAL
 # ==========================================================
 
 # ----- Session State -----
-if "vista" not in st.session_state:
-    st.session_state.vista = "principal"
+#if "vista" not in st.session_state:
+ #   st.session_state.vista = "principal"
 
 
 # ----- Cargar CSS -----
@@ -32,17 +63,14 @@ def cargar_css():
             )
     except FileNotFoundError:
         st.error("⚠️ No se encontró el archivo style.css")
-
-
 cargar_css()
-
 
 # ==========================================================
 # 2. CARGA DE DATOS
 # ==========================================================
 
-bases_oc = ejecutar_consolidacion_oc()
-df_oc_res = bases_oc["RESUMEN"]
+df_oc_res = df_MaestroOC_Resumen
+df_oc_det = df_MaestroOC_Detalle
 
 # ==========================================================
 # 3. HEADER PRINCIPAL

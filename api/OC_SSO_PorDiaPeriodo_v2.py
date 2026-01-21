@@ -7,7 +7,7 @@ import csv
 import ssl
 import time
 import os
-import pandas as pd  # Importante para la gestión de bases de datos
+import pandas as pd  # Necesario para la unificación y refresco
 
 # =========================
 # CONFIGURACIÓN FIJA SSO
@@ -15,12 +15,15 @@ import pandas as pd  # Importante para la gestión de bases de datos
 CODIGO_ORGANISMO = "7296"
 TICKET = "2798F2D3-0AC5-4323-9BB9-5E90618194BA"
 
-# Rutas de carpetas
+# 1. Obtenemos la ruta donde está este archivo
 RUTA_API = pathlib.Path(__file__).parent.absolute()
-CARPETA_DIARIO = RUTA_API / "OC_DSSO" / "DIARIO"
-CARPETA_MAESTROS = RUTA_API / "OC_DSSO" / "MAESTROS" # Carpeta para los consolidados
 
-# Asegurar existencia de directorios
+# 2. Definimos las carpetas de trabajo
+CARPETA_BASE = RUTA_API / "OC_DSSO"
+CARPETA_DIARIO = CARPETA_BASE / "DIARIO"
+CARPETA_MAESTROS = CARPETA_BASE / "MAESTROS"  # Nueva carpeta para consolidados
+
+# Asegurar que existan los directorios
 CARPETA_DIARIO.mkdir(parents=True, exist_ok=True)
 CARPETA_MAESTROS.mkdir(parents=True, exist_ok=True)
 
@@ -53,17 +56,22 @@ def limpiar(texto):
     return str(texto).replace("\n", " ").replace(";", ",").replace("\r", " ").strip()
 
 # =========================
-# PROCESAMIENTO DIARIO
+# PROCESAMIENTO DIARIO (EXTRACCIÓN)
 # =========================
 
 def procesar_dia(fecha_dt, modo_actualizar=False):
-    """Descarga OCs de un día y las guarda en DIARIO"""
+    """
+    Descarga las OCs de un día específico y las guarda en la carpeta DIARIO.
+    Retorna True si descargó datos, False si no encontró nada.
+    """
     fecha_consulta = fecha_dt.strftime("%d/%m/%Y")
     f_str = fecha_dt.strftime("%Y%m%d")
     
+    # Definimos las rutas
     ruta_resumen = CARPETA_DIARIO / f"SSO_{f_str}_RESUMEN.csv"
     ruta_detalles = CARPETA_DIARIO / f"SSO_{f_str}_DETALLES.csv"
 
+    # Lógica de Actualización: Borrar previo a la descarga si existe
     if modo_actualizar:
         if ruta_resumen.exists(): ruta_resumen.unlink()
         if ruta_detalles.exists(): ruta_detalles.unlink()
@@ -84,7 +92,7 @@ def procesar_dia(fecha_dt, modo_actualizar=False):
 
     for i, item_b in enumerate(ocs_basicas, 1):
         codigo = item_b.get("Codigo")
-        print(f"    [{i}/{len(ocs_basicas)}] Procesando OC: {codigo}", end="\r")
+        print(f"    [{i}/{len(ocs_basicas)}] Procesando: {codigo}", end="\r")
         
         oc = obtener_detalle_oc(codigo)
         if not oc: continue
@@ -93,6 +101,7 @@ def procesar_dia(fecha_dt, modo_actualizar=False):
         prov = oc.get("Proveedor") or {}
         fech = oc.get("Fechas") or {}
 
+        # 1. TABLA RESUMEN (Estructura completa solicitada)
         db_resumen.append({
             "CodigoOC": codigo,
             "NombreOC": limpiar(oc.get("Nombre")),
@@ -144,9 +153,7 @@ def procesar_dia(fecha_dt, modo_actualizar=False):
             "DescripcionOC": limpiar(oc.get("Descripcion"))
         })
 
-        items_list = oc.get("Items", {}).get("Listado", []) if oc.get("Items") else []
-        for it in items_list:
-            # 2. TABLA DETALLES
+        # 2. TABLA DETALLES
         items_list = oc.get("Items", {}).get("Listado", []) if oc.get("Items") else []
         for it in items_list:
             db_detalles.append({
@@ -164,81 +171,138 @@ def procesar_dia(fecha_dt, modo_actualizar=False):
                 "TotalImpuestos": it.get("TotalImpuestos"),
                 "TotalLinea": it.get("Total")
             })
-        time.sleep(0.1)
+        time.sleep(0.1) # Breve pausa para no saturar
 
+    # GUARDADO EN CSV
     if db_resumen:
-        for f_path, data in {ruta_resumen: db_resumen, ruta_detalles: db_detalles}.items():
-            with open(f_path, "w", newline="", encoding="utf-8-sig") as csvfile:
-                w = csv.DictWriter(csvfile, fieldnames=data[0].keys(), delimiter=";")
-                w.writeheader()
-                w.writerows(data)
+        for nombre_archivo, data_list in [(ruta_resumen, db_resumen), (ruta_detalles, db_detalles)]:
+            with open(nombre_archivo, "w", newline="", encoding="utf-8-sig") as csvfile:
+                if data_list:
+                    w = csv.DictWriter(csvfile, fieldnames=data_list[0].keys(), delimiter=";")
+                    w.writeheader()
+                    w.writerows(data_list)
+        
         print(f"\n✅ Guardado en DIARIO: {f_str}")
         return True
-    return False
+    else:
+        return False
 
 # =======================================================
-# NUEVAS FUNCIONES: UNIFICACIÓN Y REFRESH (MAESTROS)
+# NUEVAS FUNCIONES: UNIFICACIÓN Y REFRESH (PANDAS)
 # =======================================================
 
 def unificar_base_datos():
-    """Lee carpeta DIARIO y crea Maestros desde cero"""
-    print("\n🔄 UNIFICANDO MAESTROS DE ORDENES DE COMPRA...")
+    """
+    5) Lee todos los CSVs de la carpeta DIARIO y crea/sobreescribe 
+    los archivos Maestros en la carpeta MAESTROS.
+    """
+    print("\n🔄 INICIANDO UNIFICACIÓN DE BASE DE DATOS...")
     
-    for tipo in ["RESUMEN", "DETALLES"]:
-        archivos = list(CARPETA_DIARIO.glob(f"*_{tipo}.csv"))
-        if not archivos: continue
+    # --- PROCESAR RESUMEN ---
+    print("   -> Buscando archivos de Resumen en DIARIO...")
+    archivos_res = list(CARPETA_DIARIO.glob("*_RESUMEN.csv"))
+    
+    if archivos_res:
+        # Leemos todos los archivos y los concatenamos. dtype=str protege los códigos con ceros.
+        df_res = pd.concat([pd.read_csv(f, sep=";", encoding="utf-8-sig", dtype=str) for f in archivos_res], ignore_index=True)
         
-        print(f"   Procesando {len(archivos)} archivos de {tipo}...")
-        df_total = pd.concat([pd.read_csv(f, sep=";", encoding="utf-8-sig", dtype=str) for f in archivos])
+        # Deduplicamos por CodigoOC, quedándonos con el último encontrado (asumiendo que fechas posteriores sobreescriben)
+        df_res.drop_duplicates(subset=["CodigoOC"], keep="last", inplace=True)
         
-        # Deduplicar
-        id_col = ["CodigoOC"] if tipo == "RESUMEN" else ["CodigoOC", "Correlativo"]
-        df_total.drop_duplicates(subset=id_col, keep="last", inplace=True)
+        ruta_m_res = CARPETA_MAESTROS / "OC_Maestro_Resumen.csv"
+        df_res.to_csv(ruta_m_res, sep=";", index=False, encoding="utf-8-sig")
+        print(f"   ✅ Maestro Resumen creado: {len(df_res)} registros.")
+    else:
+        print("   ⚠️ No se encontraron archivos de Resumen en DIARIO.")
+
+    # --- PROCESAR DETALLES ---
+    print("   -> Buscando archivos de Detalles en DIARIO...")
+    archivos_det = list(CARPETA_DIARIO.glob("*_DETALLES.csv"))
+    
+    if archivos_det:
+        df_det = pd.concat([pd.read_csv(f, sep=";", encoding="utf-8-sig", dtype=str) for f in archivos_det], ignore_index=True)
         
-        nombre_maestro = f"OC_Maestro_{tipo.capitalize()}.csv"
-        df_total.to_csv(CARPETA_MAESTROS / nombre_maestro, sep=";", index=False, encoding="utf-8-sig")
-        print(f"   ✅ {nombre_maestro} creado con {len(df_total)} registros.")
+        # Deduplicamos por OC + Correlativo
+        df_det.drop_duplicates(subset=["CodigoOC", "Correlativo"], keep="last", inplace=True)
+        
+        ruta_m_det = CARPETA_MAESTROS / "OC_Maestro_Detalles.csv"
+        df_det.to_csv(ruta_m_det, sep=";", index=False, encoding="utf-8-sig")
+        print(f"   ✅ Maestro Detalles creado: {len(df_det)} registros.")
+    else:
+        print("   ⚠️ No se encontraron archivos de Detalles en DIARIO.")
 
 def refresh_base_datos(f_ini, f_fin):
-    """Descarga rango y actualiza Maestros (Upsert)"""
-    print(f"\n🚀 REFRESH OC: {f_ini} al {f_fin}")
+    """
+    6) Descarga rango, lee Maestros, actualiza (Upsert) y guarda.
+    """
+    print(f"\n🚀 INICIANDO REFRESH DE BASE DE DATOS ({f_ini} al {f_fin})")
     
-    # 1. Descarga
-    d_act = f_ini
-    descargados = []
-    while d_act <= f_fin:
-        if procesar_dia(d_act, modo_actualizar=True):
-            descargados.append(d_act.strftime("%Y%m%d"))
-        d_act += dt.timedelta(days=1)
+    # 1. DESCARGA MASIVA A DIARIO
+    d_actual = f_ini
+    dias_descargados = []
     
-    if not descargados:
-        print("⚠ No hay datos nuevos para integrar.")
+    while d_actual <= f_fin:
+        # procesar_dia guarda en DIARIO y devuelve True si hubo datos
+        hubo_datos = procesar_dia(d_actual, modo_actualizar=True)
+        if hubo_datos:
+            dias_descargados.append(d_actual)
+        d_actual += dt.timedelta(days=1)
+    
+    if not dias_descargados:
+        print("\n⚠️ No se encontraron nuevos datos en el rango seleccionado. Los Maestros no se tocarán.")
         return
 
-    # 2. Actualizar Maestro Resumen
+    print("\n🔄 INTEGRANDO NUEVOS DATOS A LOS MAESTROS (UPSERT)...")
+
+    # Rutas Maestros
     ruta_m_res = CARPETA_MAESTROS / "OC_Maestro_Resumen.csv"
-    df_m_res = pd.read_csv(ruta_m_res, sep=";", encoding="utf-8-sig", dtype=str) if ruta_m_res.exists() else pd.DataFrame()
-    
-    nuevos_res = pd.concat([pd.read_csv(CARPETA_DIARIO / f"SSO_{d}_RESUMEN.csv", sep=";", dtype=str) for d in descargados])
-    
-    df_final_res = pd.concat([df_m_res, nuevos_res]).drop_duplicates(subset=["CodigoOC"], keep="last")
-    df_final_res.to_csv(ruta_m_res, sep=";", index=False, encoding="utf-8-sig")
-    
-    # 3. Actualizar Maestro Detalle (Borrado de items antiguos de OCs modificadas)
     ruta_m_det = CARPETA_MAESTROS / "OC_Maestro_Detalles.csv"
-    df_m_det = pd.read_csv(ruta_m_det, sep=";", encoding="utf-8-sig", dtype=str) if ruta_m_det.exists() else pd.DataFrame()
-    
-    nuevos_det = pd.concat([pd.read_csv(CARPETA_DIARIO / f"SSO_{d}_DETALLES.csv", sep=";", dtype=str) for d in descargados])
-    
-    # Limpiamos el maestro de las OCs que estamos actualizando para evitar duplicados de items
-    ocs_actualizadas = nuevos_det["CodigoOC"].unique()
-    df_m_det = df_m_det[~df_m_det["CodigoOC"].isin(ocs_actualizadas)]
-    
-    df_final_det = pd.concat([df_m_det, nuevos_det])
-    df_final_det.to_csv(ruta_m_det, sep=";", index=False, encoding="utf-8-sig")
-    
-    print(f"\n✅ PROCESO COMPLETADO.")
-    print(f"   Total OCs en Maestro: {len(df_final_res)}")
+
+    # --- ACTUALIZAR RESUMEN ---
+    # Cargar Maestro existente o crear vacío
+    if ruta_m_res.exists():
+        df_master_res = pd.read_csv(ruta_m_res, sep=";", encoding="utf-8-sig", dtype=str)
+    else:
+        df_master_res = pd.DataFrame()
+
+    # Cargar Nuevos Archivos Diarios
+    archivos_nuevos_res = [CARPETA_DIARIO / f"SSO_{d.strftime('%Y%m%d')}_RESUMEN.csv" for d in dias_descargados]
+    df_nuevos_res = pd.concat([pd.read_csv(f, sep=";", encoding="utf-8-sig", dtype=str) for f in archivos_nuevos_res if f.exists()])
+
+    if not df_nuevos_res.empty:
+        # Concatenar y deduplicar (Keep Last asegura que la versión nueva de la OC reemplace a la vieja)
+        df_final_res = pd.concat([df_master_res, df_nuevos_res])
+        df_final_res.drop_duplicates(subset=["CodigoOC"], keep="last", inplace=True)
+        
+        df_final_res.to_csv(ruta_m_res, sep=";", index=False, encoding="utf-8-sig")
+        print(f"   ✅ Maestro Resumen actualizado. Total registros: {len(df_final_res)}")
+
+    # --- ACTUALIZAR DETALLES ---
+    if ruta_m_det.exists():
+        df_master_det = pd.read_csv(ruta_m_det, sep=";", encoding="utf-8-sig", dtype=str)
+    else:
+        df_master_det = pd.DataFrame()
+
+    archivos_nuevos_det = [CARPETA_DIARIO / f"SSO_{d.strftime('%Y%m%d')}_DETALLES.csv" for d in dias_descargados]
+    df_nuevos_det = pd.concat([pd.read_csv(f, sep=";", encoding="utf-8-sig", dtype=str) for f in archivos_nuevos_det if f.exists()])
+
+    if not df_nuevos_det.empty:
+        # ESTRATEGIA SEGURA: 
+        # Si una OC se modificó, sus items pueden haber cambiado (cantidad, borrado, agregado).
+        # Identificamos las OCs que vinieron en la nueva carga.
+        ocs_actualizadas = df_nuevos_det["CodigoOC"].unique()
+        
+        # Borramos del Maestro antiguo TODOS los items de esas OCs
+        if not df_master_det.empty:
+            df_master_det = df_master_det[~df_master_det["CodigoOC"].isin(ocs_actualizadas)]
+        
+        # Agregamos los items nuevos (que son la versión "foto" actual completa de esa OC)
+        df_final_det = pd.concat([df_master_det, df_nuevos_det])
+        
+        df_final_det.to_csv(ruta_m_det, sep=";", index=False, encoding="utf-8-sig")
+        print(f"   ✅ Maestro Detalles actualizado. Total registros: {len(df_final_det)}")
+
+    print("\n✨ PROCESO DE REFRESH COMPLETADO EXITOSAMENTE.")
 
 # =========================
 # MENÚ PRINCIPAL
@@ -247,37 +311,47 @@ def refresh_base_datos(f_ini, f_fin):
 if __name__ == "__main__":
     while True:
         print("\n=========================================")
-        print("   GESTOR ORDENES DE COMPRA SSO (7296)")
+        print("   EXTRACTOR SSO ULTRA - GESTIÓN TOTAL")
         print("=========================================")
-        print("1) Descargar HOY (Solo DIARIO)")
-        print("2) Manual (Un día - Solo DIARIO)")
-        print("3) Rango de fechas (Solo nuevas)")
-        print("4) ACTUALIZAR Rango (BORRA y descarga)")
-        print("-" * 30)
-        print("5) UNIFICAR BASE DATOS (Maestros desde DIARIO)")
-        print("6) REFRESH BASE DATOS (Descarga + Upsert Maestro)")
+        print("1) Hoy (Descarga a DIARIO)")
+        print("2) Manual (Un día a DIARIO)")
+        print("3) Rango de fechas (Solo descarga lo nuevo a DIARIO)")
+        print("-" * 40)
+        print("5) UNIFICAR BASE DATOS (Crea Maestros desde DIARIO)")
+        print("6) REFRESH BASE DATOS (Descarga Rango + Actualiza Maestros)")
         print("0) Salir")
         
         op = input("\nSeleccione opción: ")
         
         try:
-            if op == "0": break
-            elif op == "1": procesar_dia(dt.date.today())
+            if op == "0": 
+                break
+            
+            elif op == "1": 
+                procesar_dia(dt.date.today())
+            
             elif op == "2":
-                f = input("Fecha (dd-mm-aaaa): ")
-                procesar_dia(dt.datetime.strptime(f, "%d-%m-%Y").date())
-            elif op in ["3", "4"]:
-                ini = dt.datetime.strptime(input("Desde: "), "%d-%m-%Y").date()
-                fin = dt.datetime.strptime(input("Hasta: "), "%d-%m-%Y").date()
-                d = ini
-                while d <= fin:
-                    procesar_dia(d, modo_actualizar=(op=="4"))
-                    d += dt.timedelta(days=1)
+                f_in = input("Fecha (dd-mm-aaaa): ")
+                procesar_dia(dt.datetime.strptime(f_in, "%d-%m-%Y").date())
+            
+            elif op == "3":
+                ini = input("Desde (dd-mm-aaaa): ")
+                fin = input("Hasta (dd-mm-aaaa): ")
+                d1 = dt.datetime.strptime(ini, "%d-%m-%Y").date()
+                d2 = dt.datetime.strptime(fin, "%d-%m-%Y").date()
+                while d1 <= d2:
+                    procesar_dia(d1, modo_actualizar=False)
+                    d1 += dt.timedelta(days=1)
+            
             elif op == "5":
                 unificar_base_datos()
+                
             elif op == "6":
-                ini = dt.datetime.strptime(input("Desde: "), "%d-%m-%Y").date()
-                fin = dt.datetime.strptime(input("Hasta: "), "%d-%m-%Y").date()
-                refresh_base_datos(ini, fin)
-        except Exception as e:
-            print(f"❌ Error: {e}")
+                ini = input("Desde (dd-mm-aaaa): ")
+                fin = input("Hasta (dd-mm-aaaa): ")
+                d_ini = dt.datetime.strptime(ini, "%d-%m-%Y").date()
+                d_fin = dt.datetime.strptime(fin, "%d-%m-%Y").date()
+                refresh_base_datos(d_ini, d_fin)
+
+        except Exception as e: 
+            print(f"\n❌ Error: {e}")
