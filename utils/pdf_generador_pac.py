@@ -17,21 +17,6 @@ import os
 # PDF GENERATOR - PAC DSSO
 # ==============================
 
-from reportlab.platypus import (
-    SimpleDocTemplate,
-    Paragraph,
-    Spacer,
-    Image,
-    Table,
-    TableStyle
-)
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.pagesizes import A4
-from reportlab.lib import colors
-from datetime import datetime
-import tempfile
-import os
-
 
 def generar_pdf_pac(
     df_datos,
