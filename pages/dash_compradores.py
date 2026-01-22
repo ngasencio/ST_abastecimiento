@@ -216,48 +216,56 @@ with col4:
 st.markdown("## 📊 Análisis Gráfico ")
 col1, col2, col3= st.columns(3)
 with col1:
-
-    # --- 1) Convertir fecha desde formato DD-MM-YYYY ---
-    df_filtrado["fecha derivado"] = pd.to_datetime(
-        df_filtrado["fecha derivado"],
-        format="%d-%m-%Y",
-        errors="coerce"
+    # --- 0. Preparación de Fechas ---
+    # Convertimos a datetime
+    df_filtrado["fecha_dt"] = pd.to_datetime(
+        df_filtrado["fecha derivado"], format="%d-%m-%Y", errors="coerce"
     )
-    # --- 2) Crear columna de MES (año + mes) ---
-    df_filtrado["mes"] = df_filtrado["fecha derivado"].dt.to_period("M").dt.to_timestamp()
-    # --- 3) Agrupar por mes y contar formularios ---
-    serie = (
+    # Creamos una columna de TEXTO "Año-Mes" (ej: "2023-01") para que actúe como categoría
+    df_filtrado["Periodo"] = df_filtrado["fecha_dt"].dt.strftime("%Y-%m")
+
+    # --- 1. Conteo ---
+    conteo_mes = (
         df_filtrado
-        .groupby("mes")["newiD"]
+        .groupby(["Periodo", "ProcesoCompra"])["newiD"]
         .count()
         .reset_index(name="cantidad")
-        .sort_values("mes")
     )
 
-    # --- 4) Gráfico de líneas mensual ---
-    fig = px.line(
-        serie,
-        x="mes",
-        y="cantidad",
-        markers=True,
-        title="Evolución Mensual de Formularios Derivados",
-        labels={
-            "mes": "Mes",
-            "cantidad": "Cantidad de Formularios"
-        }
+    # --- 2. Orden (Cronológico) ---
+    # En vez de ordenar por suma total, ordenamos las fechas alfabéticamente (YYYY-MM funciona así)
+    orden_fechas = sorted(conteo_mes["Periodo"].unique())
+
+    # --- 3. Convertir a categoría ordenada ---
+    conteo_mes["Periodo"] = pd.Categorical(
+        conteo_mes["Periodo"],
+        categories=orden_fechas,
+        ordered=True
     )
+# --- 5. Gráfico ---
+    fig = px.bar(
+        conteo_mes,
+        x="Periodo",
+        y="cantidad",
+        color="ProcesoCompra",
+        text="cantidad",
+        title="Evolución Mensual por Proceso de Compra",
+        barmode="group"
+    )  # <--- ¡AQUÍ ESTÁ EL ERROR! Te falta este paréntesis de cierre en tu código.
 
     fig.update_layout(
+        xaxis_tickangle=-45,
+        barmode="stack",
         template="plotly_white",
+        legend_title_text="Tipo de Proceso",
         xaxis_title="Mes",
-        yaxis_title="Cantidad",
+        yaxis_title="Cantidad de Formularios"
     )
 
-    # --- 5) (Opcional) Mostrar etiquetas sobre cada punto ---
-    fig.update_traces(text=serie["cantidad"], textposition="top center")
+    # Colocamos el texto afuera para que se lea mejor en barras agrupadas
+    fig.update_traces(textposition="outside", cliponaxis=False)
 
     st.plotly_chart(fig, use_container_width=True)
-    
 with col2:
     # --- Conteo por ProcesoCompra ---
     conteo_pc = (
@@ -273,8 +281,8 @@ with col2:
         conteo_pc,
         y="ProcesoCompra",
         x="cantidad",
-        color="ProcesoCompra",     # 👈 color por categoría
-        orientation="h",           # 👈 horizontal
+        color="ProcesoCompra",     
+        orientation="h",           
         text="cantidad",
         title="Cantidad de Formularios por Proceso de Compra",
         labels={

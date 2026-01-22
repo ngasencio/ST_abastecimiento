@@ -6,7 +6,8 @@ import plotly.graph_objects as go
 from datetime import datetime
 import sys
 import os
-
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # ===== CARGAR CSS =====
 def cargar_css():
@@ -71,25 +72,45 @@ st.markdown(
 # =============================== EXPORTAR ================================
 
 
-
 # =============================== FILTRO ================================================================
-# --- Normalizar texto (recomendado) ---
+
+# --- 0. Preparación de Fechas (Extracción de Año) ---
+# Convertimos a datetime para extraer el año correctamente
+df_fsc["fecha_dt_temp"] = pd.to_datetime(
+    df_fsc["fecha derivado"], 
+    format="%d-%m-%Y", 
+    errors="coerce"
+)
+# Creamos la columna de año (eliminamos nulos para el filtro)
+df_fsc["Año"] = df_fsc["fecha_dt_temp"].dt.year.fillna(0).astype(int)
+
+# --- Normalizar texto ---
 df_fsc["SUBDIRECCION"] = df_fsc["SUBDIRECCION"].astype(str).str.strip()
 df_fsc["DEPTO"] = df_fsc["DEPTO"].astype(str).str.strip()
 
-# ========= OPCIONES =========
-opciones_subdireccion = sorted(
-    df_fsc["SUBDIRECCION"].dropna().unique()
-)
+# ========= OPCIONES INICIALES =========
+# Filtramos el año 0 (errores de fecha) de las opciones
+opciones_anio = sorted([a for a in df_fsc["Año"].unique() if a > 0], reverse=True)
 
-opciones_depto = sorted(
-    df_fsc["DEPTO"].dropna().unique()
-)
+# ========= SELECTORES EN COLUMNAS =========
+col0, col1, col2 = st.columns([2, 5, 5])
 
-# ========= SELECT MULTI =========
-col1, col2 = st.columns(2)
+# ---- 📅 Filtro de Año (Nuevo) ----
+with col0:
+    anio_sel = st.multiselect(
+        "📅 Año",
+        opciones_anio,
+        placeholder="Todos"
+    )
 
-# ---- Subdirección (nivel 1) ----
+# DataFrame base para la cascada (Subdirección depende del Año)
+df_cascada_sub = df_fsc.copy()
+if anio_sel:
+    df_cascada_sub = df_cascada_sub[df_cascada_sub["Año"].isin(anio_sel)]
+
+# ---- 🏢 Subdirección (nivel 1) ----
+opciones_subdireccion = sorted(df_cascada_sub["SUBDIRECCION"].dropna().unique())
+
 with col1:
     subdireccion_sel = st.multiselect(
         "🏢 Subdirección",
@@ -97,18 +118,13 @@ with col1:
         placeholder="Seleccione"
     )
 
-# DataFrame base para cascada
-df_cascada = df_fsc.copy()
-
+# DataFrame base para el Departamento (depende de Año y Subdirección)
+df_cascada_depto = df_cascada_sub.copy()
 if subdireccion_sel:
-    df_cascada = df_cascada[
-        df_cascada["SUBDIRECCION"].isin(subdireccion_sel)
-    ]
+    df_cascada_depto = df_cascada_depto[df_cascada_depto["SUBDIRECCION"].isin(subdireccion_sel)]
 
-# ---- Departamento (nivel 2) ----
-opciones_depto = sorted(
-    df_cascada["DEPTO"].dropna().unique()
-)
+# ---- 📊 Departamento (nivel 2) ----
+opciones_depto = sorted(df_cascada_depto["DEPTO"].dropna().unique())
 
 with col2:
     depto_sel = st.multiselect(
@@ -117,25 +133,35 @@ with col2:
         placeholder="Seleccione"
     )
 
-# ========= APLICAR FILTROS =========
+# ========= APLICAR FILTROS FINALES A DF_FILTRADO =========
+# Usamos df_filtrado como trabajas habitualmente
 df_filtrado = df_fsc.copy()
 
+if anio_sel:
+    df_filtrado = df_filtrado[df_filtrado["Año"].isin(anio_sel)]
+
 if subdireccion_sel:
-    df_filtrado = df_filtrado[
-        df_filtrado["SUBDIRECCION"].isin(subdireccion_sel)
-    ]
+    df_filtrado = df_filtrado[df_filtrado["SUBDIRECCION"].isin(subdireccion_sel)]
 
 if depto_sel:
-    df_filtrado = df_filtrado[
-        df_filtrado["DEPTO"].isin(depto_sel)
-    ]
+    df_filtrado = df_filtrado[df_filtrado["DEPTO"].isin(depto_sel)]
+
+# Limpieza: eliminamos la columna temporal si no se requiere más adelante
+# df_filtrado = df_filtrado.drop(columns=["fecha_dt_temp"])
+
+# ===========================================
 
 # =========================================================================
 
 ##### KPIS ####
 st.markdown("## 📈 Datos Generales")
-col1, col2, col3, col4 = st.columns(4)
+
+# Definimos las proporciones: col1(1) + col2(1) = col3(2)
+# Esto hace que col3 ocupe exactamente el 50% del ancho total
+col1, col2, col3 = st.columns([1, 1, 2])
+
 with col1:
+    # Usamos df_fsc para el total y df_filtrado para lo seleccionado
     total_fsc_general = df_fsc["newiD"].count()
     total_fsc_filtrado = df_filtrado["newiD"].count()
 
@@ -145,35 +171,32 @@ with col1:
     )
 
     st.metric(
-        "📋 Total FSC",
-        f"{total_fsc_filtrado:,}",
-        f"{porcentaje_fsc:.1f}% del total"
+        label="📋 Total FSC",
+        value=f"{total_fsc_filtrado:,}",
+        delta=f"{porcentaje_fsc:.1f}% del total",
+        delta_color="normal"
     )   
     
 with col2:
-    monto_total_general = df_fsc["monto estimado"].sum()
-    monto_filtrado = df_filtrado["monto estimado"].sum()
+    # Aseguramos conversión a número por si hay errores en el origen
+    monto_gen = pd.to_numeric(df_fsc["monto estimado"], errors='coerce').sum()
+    monto_filt = pd.to_numeric(df_filtrado["monto estimado"], errors='coerce').sum()
 
     porcentaje_monto = (
-        (monto_filtrado / monto_total_general) * 100
-        if monto_total_general > 0 else 0
+        (monto_filt / monto_gen) * 100
+        if monto_gen > 0 else 0
     )
 
     st.metric(
-        "💰 Montos FSC",
-        f"${monto_filtrado:,.0f}",
-        f"{porcentaje_monto:.1f}% del monto total"
+        label="💰 Montos FSC",
+        value=f"${monto_filt:,.0f}",
+        delta=f"{porcentaje_monto:.1f}% del monto total",
+        delta_color="normal"
     )
 
 with col3:
-    conversion_prom = df["conversion_rate"].mean()
-    st.metric("🎯 Tasa de Conversión", 
-            f"{conversion_prom:.2f}%",
-            f"{np.random.uniform(0.5, 2):.1f}%")
-    
-with col4:
-        pass
-
+    # Este espacio ahora ocupa el 50% de la fila
+    pass
 
 ##### GRAFICOS ####
 st.markdown("## 📊 Análisis Grafico")
@@ -187,7 +210,7 @@ df_filtrado["fecha derivado"] = pd.to_datetime(
 # Crear columna mensual
 df_filtrado["Mes"] = df_filtrado["fecha derivado"].dt.to_period("M").dt.to_timestamp()
 
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns([2, 2, 1])
 
 # ======================================
 # 📊 FSC por Mes (Cantidad)
@@ -281,23 +304,130 @@ font=dict(family="Segoe UI")
 
     st.plotly_chart(fig_m, use_container_width=True)
 
-
-st.markdown("## 🚦 Centro de Alertas Inteligentes ")
-alertas = []
-
-if df["ingresos_diarios"].tail(7).mean() < df["ingresos_diarios"].head(-7).mean():
-    alertas.append({'tipo': "⚠️ Alerta: Ingresos diarios por debajo del promedio en 7 dias.", 'color': "orange"})
-
-if df["conversion_rate"].tail(1).iloc[0] < 2.0:
-    alertas.append({'tipo': "❗ Alerta: Tasa de conversión ha caído por debajo del 2% en la última semana.", 'color': "red"})
-
-if df["usuarios_activos"].tail(1).iloc[0] > df["usuarios_activos"].quantile(0.9):
-    alertas.append({'tipo': "✅ Notificación: Usuarios activos han superado el 90 percentil.", 'color': "green"})
+with col3:
+    # --- Lógica Métrica 1 (Cantidad) ---
+    serie_pac = df_filtrado["DENTRO/FUERA"].astype(str).str.strip().str.upper()
+    total_f = len(df_filtrado)
     
-for alerta in alertas:
-    st.markdown(f"""<div style="padding: 1rem; margin:0.5rem 0; background-color: {alerta['color']}; color: white; border-radius: 10px; font-weight: bold;">{alerta['tipo']}:{alerta['tipo']}</div>""", unsafe_allow_html=True)
+    if total_f > 0:
+        dentro_pac_q = serie_pac.str.contains("DENTRO", na=False).sum()
+        porc_q = (dentro_pac_q / total_f) * 100
+    else:
+        dentro_pac_q, porc_q = 0, 0.0
+
+    st.metric(
+        label="✅ FSC Dentro PAC (%)", 
+        value=f"{porc_q:.1f}%", 
+        delta=f"{dentro_pac_q} Unds",
+        help="Porcentaje basado en la cantidad de formularios."
+    )
+
+    # Espaciador pequeño entre métricas
+    st.write("") 
+
+    # --- Lógica Métrica 2 (Monto) ---
+    monto_total_g = df_filtrado["monto estimado"].sum()
     
+    if monto_total_g > 0:
+        mask_d = serie_pac.str.contains("DENTRO", na=False)
+        monto_d = df_filtrado.loc[mask_d, "monto estimado"].sum()
+        porc_m = (monto_d / monto_total_g) * 100
+    else:
+        monto_d, porc_m = 0, 0.0
+
+    st.metric(
+        label="💰 Monto Dentro PAC (%)", 
+        value=f"{porc_m:.1f}%", 
+        delta=f"$ {monto_d:,.0f}",
+        help="Porcentaje basado en el valor monetario total."
+    )
+
+
+
+st.markdown("## 📈 Tabla Dinámica: Análisis por Departamento y PAC")
+
+# Aseguramos que el monto sea numérico para los cálculos
+df_filtrado["monto estimado"] = pd.to_numeric(df_filtrado["monto estimado"], errors="coerce").fillna(0)
+
+# Definimos las columnas
+col1, col2 = st.columns(2)
+
+with col1:
+    # --- 1. Creación de la Tabla Dinámica ---
+    # Usamos pivot_table para cruzar Departamentos con el estado DENTRO/FUERA
+    tabla_dinamica = df_filtrado.pivot_table(
+        index="DEPTO_unido",
+        columns="DENTRO/FUERA",
+        values=["newiD", "monto estimado"],
+        aggfunc={
+            "newiD": "count",          # Recuento de registros (FSC)
+            "monto estimado": "sum"    # Suma de montos estimados
+        },
+        fill_value=0,
+        margins=True,                  # Totales por fila y columna
+        margins_name="TOTAL GENERAL"
+    )
+
+    # --- 2. Aplanar niveles de columnas para visualización limpia ---
+    tabla_dinamica.columns = [f"{col[0]} ({col[1]})" for col in tabla_dinamica.columns]
+    tabla_dinamica = tabla_dinamica.reset_index()
+
+    # --- 3. Ordenar por cantidad total de registros ---
+    col_orden = [c for c in tabla_dinamica.columns if "newiD (TOTAL GENERAL)" in c]
+    if col_orden:
+        tabla_dinamica = tabla_dinamica.sort_values(by=col_orden[0], ascending=False)
+
+    # --- 4. Renderizado con Estilos ---
+    st.dataframe(
+        tabla_dinamica.style.format({
+            col: "$ {:,.0f}" for col in tabla_dinamica.columns if "monto" in col
+        }).background_gradient(
+            subset=[c for c in tabla_dinamica.columns if "newiD" in c], 
+            cmap="Blues"
+        ),
+        use_container_width=True,
+        hide_index=True
+    )
+    # --- 6. Resumen rápido en texto ---
+total_monto_dinamico = df_filtrado["monto estimado"].sum()
+st.caption(f"💰 **Monto Total Filtrado:** $ {total_monto_dinamico:,.0f} | 📋 **Total Registros:** {len(df_filtrado)}")
+with col2:
+    pass
+
+
+st.markdown("## 🚦 Centro de Alertas Inteligentes")
+
+# --- 1. Cálculo de métricas para alertas ---
+total_f = len(df_filtrado)
+if total_f > 0:
+    # Porcentaje de cumplimiento PAC
+    dentro_pac_count = df_filtrado["DENTRO/FUERA"].astype(str).str.upper().str.contains("DENTRO").sum()
+    porcentaje_pac = (dentro_pac_count / total_f) * 100
     
+    # --- 2. Lógica de Alertas con componentes nativos ---
+
+    # Alerta de Error (Crítico): Cumplimiento PAC muy bajo
+    if porcentaje_pac < 50:
+        st.error(f"**Crítico:** El cumplimiento de PAC está en un **{porcentaje_pac:.1f}%**. "
+                 f"Hay {total_f - dentro_pac_count} formularios fuera de planificación.")
+
+    # Alerta de Advertencia: Tasa de conversión o caída de registros
+    # Ejemplo: Si hay más de 10 formularios "FUERA" de PAC
+    fuera_pac_count = total_f - dentro_pac_count
+    if fuera_pac_count > 10:
+        st.warning(f"**Advertencia:** Se detectaron **{fuera_pac_count}** formularios fuera de PAC en el filtro actual.")
+
+    # Notificación de Éxito: Buen desempeño
+    if porcentaje_pac >= 85:
+        st.success(f"**Excelente:** El nivel de cumplimiento PAC es del **{porcentaje_pac:.1f}%**. "
+                   "La gestión se mantiene dentro de los márgenes planificados.")
+                   
+else:
+    st.info("No hay datos disponibles para generar alertas con los filtros seleccionados.")
+
+
+
+
 st.markdown("##  📅 Tabla de Datos")
 with st.expander(" 📅Ver Datos Completos"):
     st.dataframe(df.style.format({
