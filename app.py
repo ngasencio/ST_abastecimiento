@@ -51,7 +51,7 @@ st.markdown(
     <div style="
         padding: 1.2rem 1.5rem;
         margin-bottom: 1.5rem;
-        background: linear-gradient(90deg, #1748EB, #3f6ef2);
+        background: linear-gradient(90deg, #138AEC, #3E9FEF);
         color: white;
         border-radius: 14px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.15);
@@ -60,8 +60,7 @@ st.markdown(
             📊 Panel General
         </div>
         <div style="font-size: 15px; opacity: 0.9; margin-top: 4px;">
-            Este módulo entrega una visión ejecutiva del desempeño de los compradores de la organización, 
-permitiendo analizar su gestión en términos de eficiencia, cumplimiento y volumen de adquisiciones.
+            Este módulo entrega una visión general de los formularios de solicitud de compra.
         </div>
     </div>
     """,

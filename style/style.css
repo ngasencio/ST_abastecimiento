@@ -1,30 +1,14 @@
 /* ===== FONDO GENERAL ===== */
 .stApp {
-    background-color: #EBF3FA;
+    background-color: #E7F3FD;
 }
 
 
-/* ===== TITULOS H2 PERSONALIZADOS ===== */
-h2 {
-    background-color: #ffffff !important;
-    color: #1A4564 !important;
 
-    font-size: 26px !important;
-    font-weight: 800 !important;
-
-    border-radius: 10px;
-    padding: 10px 14px;
-
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-    border-left: 6px solid #1A4564;
-
-    margin-top: 12px;
-    margin-bottom: 12px;
-}
 
 /* ===== SIDEBAR PROFESIONAL DSSO ===== */
 [data-testid="stSidebar"] {
-    background-color: #1A4564 !important;
+    background-color: #0C5997 !important;
 }
 
 /* Texto general */
@@ -75,7 +59,7 @@ h2 {
 /* Contenedor completo de la métrica */
 /* ===== TITULOS H2 PERSONALIZADOS ===== */
 h2 {
-    background-color: #3387CC !important;
+    background-color: #68B4F3 !important;
     color: #ffffff !important;
     font-size: 26px !important;
     font-weight: 800 !important;
@@ -109,7 +93,7 @@ h2 {
 
 /* Título de la métrica */
 [data-testid="stMetricLabel"] {
-    color: #1A4564 !important;
+    color: #0C5997 !important;
     font-weight: 600 !important;
 }
 
@@ -127,7 +111,7 @@ h2 {
 
 [data-testid="stMetric"] {
     background: #ffffff !important;
-    border-left: 6px solid #1A4564 !important;
+    border-left: 6px solid #0C5997 !important;
     border-radius: 10px;
     padding: 12px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);

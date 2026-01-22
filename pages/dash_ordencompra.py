@@ -81,7 +81,7 @@ st.markdown(
     <div style="
         padding: 1.2rem 1.5rem;
         margin-bottom: 1.5rem;
-        background: linear-gradient(90deg, #1748EB, #3f6ef2);
+        background: linear-gradient(90deg, #138AEC, #3E9FEF);
         color: white;
         border-radius: 14px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.15);
@@ -90,7 +90,7 @@ st.markdown(
             🧾 Ordenes de Compra DSSO
         </div>
         <div style="font-size: 15px; opacity: 0.9; margin-top: 4px;">
-            Este módulo entrega la planificación del PAC 2026 buscando su cumplimiento de adquisiciones.
+            Este módulo entrega la visualización de las Ordenes de Compra 
         </div>
     </div>
     """,
