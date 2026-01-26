@@ -52,7 +52,7 @@ st.markdown(
     <div style="
         padding: 1.2rem 1.5rem;
         margin-bottom: 1.5rem;
-        background: linear-gradient(90deg, #138AEC, #3E9FEF);
+        background: linear-gradient(90deg, #0063AE, #0076D1);
         color: white;
         border-radius: 14px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.15);

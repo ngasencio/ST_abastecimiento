@@ -75,81 +75,84 @@ df_pac["Fecha de Inicio Compra"] = pd.to_datetime(
 
 df_pac["Año"] = df_pac["Fecha de Inicio Compra"].dt.year
 df_pac["Mes"] = df_pac["Fecha de Inicio Compra"].dt.month
-df_pac["Mes_nombre"] = df_pac["Fecha de Inicio Compra"].dt.strftime("%B")
+# Esto genera el nombre en inglés (January, February...)
+df_pac["Mes_nombre"] = df_pac["Fecha de Inicio Compra"].dt.strftime("%B") 
 
+# --- 🔄 TRADUCCIÓN DE MESES (NUEVO) ---
+# Mapeamos manualmente para asegurar español sin depender de la configuración del servidor
+meses_es = {
+    "January": "Enero", "February": "Febrero", "March": "Marzo",
+    "April": "Abril", "May": "Mayo", "June": "Junio",
+    "July": "Julio", "August": "Agosto", "September": "Septiembre",
+    "October": "Octubre", "November": "Noviembre", "December": "Diciembre"
+}
+df_pac["Mes_nombre"] = df_pac["Mes_nombre"].replace(meses_es)
 
 # =============================================================================
-# FILTROS
+# FILTROS (6 COLUMNAS)
 # =============================================================================
-col1, col2, col3, col4, col5 = st.columns(5)
+col1, col2, col3, col4, col5, col6 = st.columns(6)
+
+df_cascada = df_pac.copy()
 
 # --- Filtro 1: Subdirección ---
 with col1:
-    subdireccion_sel = st.multiselect(
-        "🏢 Subdirección",
-        sorted(df_pac["Subdirección"].dropna().unique()),
-        placeholder="Seleccione"
-    )
+    subdireccion_sel = st.multiselect("🏢 Subdirección", sorted(df_cascada["Subdirección"].dropna().unique()), placeholder="Seleccione")
 
-df_cascada = df_pac.copy()
 if subdireccion_sel:
     df_cascada = df_cascada[df_cascada["Subdirección"].isin(subdireccion_sel)]
 
 # --- Filtro 2: Departamento ---
 with col2:
-    depto_sel = st.multiselect(
-        "📊 Departamento",
-        sorted(df_cascada["Departamento_SHORT"].dropna().unique()),
-        placeholder="Seleccione"
-    )
+    depto_sel = st.multiselect("📊 Depto.", sorted(df_cascada["Departamento_SHORT"].dropna().unique()), placeholder="Seleccione")
 
 if depto_sel:
     df_cascada = df_cascada[df_cascada["Departamento_SHORT"].isin(depto_sel)]
 
 # --- Filtro 3: Responsable ---
 with col3:
-    responsable_sel = st.multiselect(
-        "👤 Responsable",
-        sorted(df_cascada["Nombre responsable"].dropna().unique()),
-        placeholder="Seleccione"
-    )
+    responsable_sel = st.multiselect("👤 Resp.", sorted(df_cascada["Nombre responsable"].dropna().unique()), placeholder="Seleccione")
 
 if responsable_sel:
     df_cascada = df_cascada[df_cascada["Nombre responsable"].isin(responsable_sel)]
 
 # --- Filtro 4: ID Proyecto ---
 with col4:
-    proyecto_sel = st.multiselect(
-        "🆔 ID Proyecto",
-        sorted(df_cascada["ID Proyecto"].dropna().unique()),
-        placeholder="Seleccione"
-    )
+    proyecto_sel = st.multiselect("🆔 ID Proy.", sorted(df_cascada["ID Proyecto"].dropna().unique()), placeholder="Seleccione")
 
 if proyecto_sel:
     df_cascada = df_cascada[df_cascada["ID Proyecto"].isin(proyecto_sel)]
 
 # --- Filtro 5: Año ---
 with col5:
-    anio_sel = st.multiselect(
-        "📅 Año",
-        sorted(df_cascada["Año"].dropna().unique()),
+    anio_sel = st.multiselect("📅 Año", sorted(df_cascada["Año"].dropna().unique()), placeholder="Seleccione")
+
+if anio_sel:
+    df_cascada = df_cascada[df_cascada["Año"].isin(anio_sel)]
+
+# --- Filtro 6: Mes (Ahora detectará correctamente el Español) ---
+with col6:
+    # Lista fija para forzar el orden cronológico
+    orden_meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    
+    # Obtenemos los meses que realmente existen en los datos filtrados
+    meses_disponibles = df_cascada["Mes_nombre"].dropna().unique()
+    
+    # Intersección: Solo mostramos los meses disponibles pero en el orden correcto
+    meses_opciones = [m for m in orden_meses if m in meses_disponibles]
+
+    mes_sel = st.multiselect(
+        "🗓️ Mes",
+        meses_opciones,
         placeholder="Seleccione"
     )
 
-# --- Filtro Final: Mes (Fuera de columnas o en una nueva fila) ---
-df_filtrado = df_cascada.copy()
-if anio_sel:
-    df_filtrado = df_filtrado[df_filtrado["Año"].isin(anio_sel)]
-
-mes_sel = st.multiselect(
-    "🗓️ Mes",
-    sorted(df_filtrado["Mes_nombre"].dropna().unique()),
-    placeholder="Seleccione"
-)
-
 if mes_sel:
-    df_filtrado = df_filtrado[df_filtrado["Mes_nombre"].isin(mes_sel)]
+    df_cascada = df_cascada[df_cascada["Mes_nombre"].isin(mes_sel)]
 
+# --- Resultado Final ---
+df_filtrado = df_cascada.copy()
 # =============================================================================
 # KPIs
 # =============================================================================

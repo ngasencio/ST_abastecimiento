@@ -1,11 +1,11 @@
 /* ===== FONDO GENERAL ===== */
 .stApp {
-    background-color: #E7F3FD;
+    background-color: #F7FCFF;
 }
 
 /* ===== SIDEBAR PROFESIONAL DSSO ===== */
 [data-testid="stSidebar"] {
-    background-color: #0C5997 !important;
+    background-color: #001C41 !important;
 }
 
 /* Texto general */
@@ -56,7 +56,7 @@
 /* Contenedor completo de la métrica */
 /* ===== TITULOS H2 PERSONALIZADOS ===== */
 h2 {
-    background-color: #68B4F3 !important;
+    background-color: #0076D1 !important;
     color: #ffffff !important;
     font-size: 26px !important;
     font-weight: 800 !important;
