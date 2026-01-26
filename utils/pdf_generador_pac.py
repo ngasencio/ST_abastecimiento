@@ -12,6 +12,7 @@ from reportlab.lib import colors
 from datetime import datetime
 import tempfile
 import os
+from fpdf import FPDF
 
 # ==============================
 # PDF GENERATOR - PAC DSSO
@@ -193,6 +194,82 @@ def generar_pdf_pac(
         )
     )
     contenido.append(tabla_datos)
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    
+    # --- TÍTULO ---
+    pdf.cell(190, 10, "Reporte Plan Anual de Compras 2026", ln=True, align="C")
+    pdf.ln(10)
+    
+    # --- KPIs PRINCIPALES ---
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(95, 10, f"Total Proyectos: {total_proyectos}", border=1)
+    pdf.cell(95, 10, f"Monto Total: ${monto_total:,.0f}", border=1, ln=True)
+    pdf.ln(5)
+
+    # --- GRÁFICO ---
+    # (Aquí va tu lógica actual para guardar fig_plotly como imagen e insertarla)
+    # image_path = "temp_chart.png"
+    # fig_plotly.write_image(image_path)
+    # pdf.image(image_path, x=10, y=None, w=180)
+    # pdf.ln(5)
+
+    # =============================================================================
+    # NUEVA SECCIÓN: RESUMEN DE ESTADOS
+    # =============================================================================
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(190, 10, "Resumen de Ejecucion Temporal", ln=True)
+    pdf.set_font("Arial", "", 10)
+    
+    # Calculamos el resumen dentro de la función para asegurar consistencia
+    resumen = df_datos.groupby("Estado_PAC").agg({
+        "ID Proyecto": "count",
+        "Suma de Monto Total Ítem Año 2026": "sum"
+    }).reset_index()
+
+    # Cabecera de Tabla Resumen
+    pdf.set_fill_color(200, 220, 255)
+    pdf.cell(70, 8, "Estado", border=1, fill=True)
+    pdf.cell(50, 8, "Cant. Proyectos", border=1, fill=True)
+    pdf.cell(70, 8, "Monto Estimado", border=1, fill=True, ln=True)
+
+    # Datos de Resumen
+    for _, fila in resumen.iterrows():
+        pdf.cell(70, 8, str(fila["Estado_PAC"]), border=1)
+        pdf.cell(50, 8, str(fila["ID Proyecto"]), border=1)
+        pdf.cell(70, 8, f"$ {fila['Suma de Monto Total Ítem Año 2026']:,.0f}", border=1, ln=True)
+    
+    pdf.ln(10)
+
+    # =============================================================================
+    # NUEVA SECCIÓN: DETALLE PENDIENTES DEL MES
+    # =============================================================================
+    df_mes = df_datos[df_datos["Estado_PAC"] == "🟡 PAC PENDIENTE (Mes Actual)"]
+    
+    if not df_mes.empty:
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(190, 10, "Detalle Proyectos Pendientes (Mes Actual)", ln=True)
+        pdf.set_font("Arial", "B", 9)
+        
+        # Cabeceras detalle
+        pdf.cell(30, 8, "ID Proy.", border=1)
+        pdf.cell(80, 8, "Subdireccion", border=1)
+        pdf.cell(40, 8, "Fecha Inicio", border=1)
+        pdf.cell(40, 8, "Monto", border=1, ln=True)
+        
+        pdf.set_font("Arial", "", 8)
+        for _, fila in df_mes.iterrows():
+            pdf.cell(30, 7, str(fila["ID Proyecto"]), border=1)
+            # Cortar texto si es muy largo
+            sub_text = (str(fila["Subdirección"])[:40] + '..') if len(str(fila["Subdirección"])) > 40 else str(fila["Subdirección"])
+            pdf.cell(80, 7, sub_text, border=1)
+            pdf.cell(40, 7, fila["Fecha de Inicio Compra"].strftime('%d-%m-%Y'), border=1)
+            pdf.cell(40, 7, f"$ {fila['Suma de Monto Total Ítem Año 2026']:,.0f}", border=1, ln=True)
+    else:
+        pdf.set_font("Arial", "I", 10)
+        pdf.cell(190, 10, "No hay proyectos pendientes para el mes actual.", ln=True)
 
     # ==============================
     # GENERAR PDF

@@ -154,62 +154,162 @@ if mes_sel:
 # --- Resultado Final ---
 df_filtrado = df_cascada.copy()
 # =============================================================================
-# KPIs
+# DASHBOARD: KPIs + GRÁFICO (2 Columnas)
 # =============================================================================
-st.markdown("## 📈 Datos Generales PAC26")
+st.markdown("## 📈 Dashboard General PAC26")
 
-col1, col2, col3 = st.columns([1, 1, 4])
+# Definimos proporciones: [1, 3] significa que la col_grafico es 3 veces más ancha
+col_kpis, col_grafico = st.columns([1, 3])
 
-with col1:
+# --- COLUMNA 1: MÉTRICAS APILADAS ---
+with col_kpis:
+    # --- Métrica 1: Cantidad de Proyectos ---
     total_proyectos_general = df_pac["ID Proyecto"].nunique()
     total_proyectos_filtrado = df_filtrado["ID Proyecto"].nunique()
+
+    # Cálculo seguro del porcentaje
+    porc_proyectos = (total_proyectos_filtrado / total_proyectos_general * 100) if total_proyectos_general > 0 else 0
 
     st.metric(
         "🗂️ Cantidad de Proyectos",
         total_proyectos_filtrado,
-        f"{(total_proyectos_filtrado / total_proyectos_general * 100):.1f}% del total"
+        f"{porc_proyectos:.1f}% del total"
     )
-
-with col2:
+    
+    # Espaciador o línea divisoria para separar visualmente la métrica de arriba con la de abajo
+    #st.markdown("---") 
+    
+    # --- Métrica 2: Montos ---
     monto_total_general = df_pac["Suma de Monto Total Ítem Año 2026"].sum()
     monto_total_filtrado = df_filtrado["Suma de Monto Total Ítem Año 2026"].sum()
+    
+    # Cálculo seguro del porcentaje
+    porc_monto = (monto_total_filtrado / monto_total_general * 100) if monto_total_general > 0 else 0
 
     st.metric(
         "💰 Monto Estimado 2026",
         f"${monto_total_filtrado:,.0f}",
-        f"{(monto_total_filtrado / monto_total_general * 100):.1f}% del monto total"
+        f"{porc_monto:.1f}% del total"
     )
 
-with col3:
-    pass
+# --- COLUMNA 2: GRÁFICO ---
+with col_grafico:
+    
+    # Preparación de datos
+    df_grafico = df_filtrado.copy()
+    
+    # Convertimos a formato Periodo para agrupar y luego a String para graficar
+    df_grafico["Mes_Año"] = df_grafico["Fecha de Inicio Compra"].dt.to_period("M").astype(str)
+
+    df_mensual = (
+        df_grafico
+        .groupby("Mes_Año", as_index=False)["ID Proyecto"]
+        .nunique()
+    )
+
+    # Creación del gráfico
+    fig = px.bar(
+        df_mensual,
+        x="Mes_Año",
+        y="ID Proyecto",
+        text_auto=True,
+        labels={"Mes_Año": "Mes", "ID Proyecto": "Proyectos"},
+        title="📊 Cantidad de Proyectos por Mes"
+    )
+    
+    # Ajustes visuales para que se vea bien en el contenedor
+    fig.update_layout(
+        height=450, # Altura fija para alinear mejor con las 2 métricas
+        xaxis_title=None
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
 
 # =============================================================================
-# GRÁFICO
+# 🚦 ESTADO DE EJECUCIÓN (Lógica Temporal)
 # =============================================================================
-st.markdown("## 📊 Análisis Gráfico PAC26")
+st.markdown("## 🚦 Estado de Ejecución (Según Fecha Actual)")
 
-df_grafico = df_filtrado.copy()
-df_grafico["Mes_Año"] = (
-    df_grafico["Fecha de Inicio Compra"].dt.to_period("M").astype(str)
+# 1. Obtener fecha actual
+hoy = datetime.now()
+mes_actual = hoy.month
+anio_actual = hoy.year
+
+# 2. Función para clasificar el estado
+def clasificar_estado(fecha):
+    if pd.isna(fecha):
+        return "❓ Sin Fecha"
+    
+
+    # Comparamos Año y Mes
+    if fecha.year < anio_actual or (fecha.year == anio_actual and fecha.month < mes_actual):
+        return "✅ Ejecutado / Vencido"
+    elif fecha.year == anio_actual and fecha.month == mes_actual:
+        return "🟡 PAC PENDIENTE (Mes Actual)"
+    else:
+        return "🔵 Por Ejecutar (Futuro)"
+
+# Aplicamos la lógica sobre df_filtrado
+df_filtrado["Estado_PAC"] = df_filtrado["Fecha de Inicio Compra"].apply(clasificar_estado)
+
+# 3. Crear Tabla Resumen (Agrupada)
+resumen_estado = (
+    df_filtrado
+    .groupby("Estado_PAC", as_index=False)
+    .agg(
+        Cantidad=("ID Proyecto", "count"),
+        Monto=("Suma de Monto Total Ítem Año 2026", "sum")
+    )
 )
 
-df_mensual = (
-    df_grafico
-    .groupby("Mes_Año", as_index=False)["ID Proyecto"]
-    .nunique()
-)
+# Mostramos el resumen en métricas o tabla pequeña
+col_res1, col_res2 = st.columns([1, 2])
+with col_res1:
+    st.info(f"📅 Fecha de corte: **{hoy.strftime('%B %Y')}**")
+    st.dataframe(
+        resumen_estado.style.format({"Monto": "$ {:,.0f}"}),
+        use_container_width=True,
+        hide_index=True
+    )
 
-fig = px.bar(
-    df_mensual,
-    x="Mes_Año",
-    y="ID Proyecto",
-    text_auto=True,
-    labels={"Mes_Año": "Mes", "ID Proyecto": "Cantidad de Proyectos"},
-    title="Cantidad de Proyectos por Mes"
-)
-
-st.plotly_chart(fig, use_container_width=True)
-
+# =============================================================================
+# 🟡 TABLA DETALLE: PAC PENDIENTE (Mes Actual)
+# =============================================================================
+with col_res2:
+    # Filtramos solo lo que es del mes actual
+    tabla_pendientes = df_filtrado[df_filtrado["Estado_PAC"] == "🟡 PAC PENDIENTE (Mes Actual)"]
+    
+    with st.expander(f"⚠️ Ver Detalle PAC PENDIENTE - {len(tabla_pendientes):,} proyectos este mes", expanded=True):
+        if not tabla_pendientes.empty:
+            st.dataframe(
+                tabla_pendientes[[
+                    "ID Proyecto", 
+                    "Fecha de Inicio Compra", 
+                    "Subdirección", 
+                    "Nombre responsable", 
+                    "Suma de Monto Total Ítem Año 2026"
+                ]],
+                use_container_width=True,
+                height=300,
+                hide_index=True,
+                column_config={
+                    "ID Proyecto": st.column_config.TextColumn(
+                        "ID Proyecto",
+                        pinned=True
+                    ),
+                    "Fecha de Inicio Compra": st.column_config.DateColumn(
+                        "Inicio Compra",
+                        format="DD-MM-YYYY"
+                    ),
+                    "Suma de Monto Total Ítem Año 2026": st.column_config.NumberColumn(
+                        "Monto (CLP)",
+                        format="$ %d" # Formato moneda simple
+                    ),
+                    "Nombre responsable": "Responsable"
+                }
+            )
+        else:
+            st.success("✅ ¡No hay procesos de compra planificados para iniciar este mes!")
 
 # =============================================================================
 # BOTÓN EXPORTAR PDF
