@@ -25,10 +25,7 @@ def cargar_css():
             st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
     except FileNotFoundError:
         st.error("⚠️ No se encontró el archivo style.css")
-
-
 cargar_css()
-
 
 # =============================================================================
 # CARGA DE DATOS
@@ -58,7 +55,6 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
 
 # =============================================================================
 # NORMALIZACIÓN DE DATOS
@@ -159,9 +155,9 @@ if mes_sel:
 # =============================================================================
 st.markdown("## 📈 Datos Generales PAC26")
 
-k1, k2 = st.columns(2)
+col1, col2, col3 = st.columns([1, 1, 4])
 
-with k1:
+with col1:
     total_proyectos_general = df_pac["ID Proyecto"].nunique()
     total_proyectos_filtrado = df_filtrado["ID Proyecto"].nunique()
 
@@ -171,7 +167,7 @@ with k1:
         f"{(total_proyectos_filtrado / total_proyectos_general * 100):.1f}% del total"
     )
 
-with k2:
+with col2:
     monto_total_general = df_pac["Suma de Monto Total Ítem Año 2026"].sum()
     monto_total_filtrado = df_filtrado["Suma de Monto Total Ítem Año 2026"].sum()
 
@@ -181,6 +177,8 @@ with k2:
         f"{(monto_total_filtrado / monto_total_general * 100):.1f}% del monto total"
     )
 
+with col3:
+    pass
 
 # =============================================================================
 # GRÁFICO

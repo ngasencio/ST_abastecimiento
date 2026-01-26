@@ -23,7 +23,7 @@ df_fsc = load_fsc_data()
 
 
 st.set_page_config(
-    page_title="Dashboard DSSO",
+    page_title="Portal DSSO",
     page_icon="logosso.jpg", 
     layout="wide",
     initial_sidebar_state="expanded")
@@ -395,7 +395,7 @@ with col2:
     pass
 
 
-st.markdown("## 🚦 Centro de Alertas Inteligentes")
+st.markdown("## 🚦 Centro de Alertas")
 
 # --- 1. Cálculo de métricas para alertas ---
 total_f = len(df_filtrado)
