@@ -144,249 +144,130 @@ if depto_sel:
 
 # Limpieza: eliminamos la columna temporal si no se requiere más adelante
 # df_filtrado = df_filtrado.drop(columns=["fecha_dt_temp"])
-
-# ===========================================
-
-# =========================================================================
-
-##### KPIS ####
-st.markdown("## 📈 Datos Generales")
-
-# Definimos las proporciones: col1(1) + col2(1) = col3(2)
-# Esto hace que col3 ocupe exactamente el 50% del ancho total
-col1, col2, col3 = st.columns([1, 1, 2])
-
-with col1:
-    # Usamos df_fsc para el total y df_filtrado para lo seleccionado
-    total_fsc_general = df_fsc["newiD"].count()
-    total_fsc_filtrado = df_filtrado["newiD"].count()
-
-    porcentaje_fsc = (
-        (total_fsc_filtrado / total_fsc_general) * 100
-        if total_fsc_general > 0 else 0
-    )
-
-    st.metric(
-        label="📋 Total FSC",
-        value=f"{total_fsc_filtrado:,}",
-        delta=f"{porcentaje_fsc:.1f}% del total",
-        delta_color="normal"
-    )   
-    
-with col2:
-    # Aseguramos conversión a número por si hay errores en el origen
-    monto_gen = pd.to_numeric(df_fsc["monto estimado"], errors='coerce').sum()
-    monto_filt = pd.to_numeric(df_filtrado["monto estimado"], errors='coerce').sum()
-
-    porcentaje_monto = (
-        (monto_filt / monto_gen) * 100
-        if monto_gen > 0 else 0
-    )
-
-    st.metric(
-        label="💰 Montos FSC",
-        value=f"${monto_filt:,.0f}",
-        delta=f"{porcentaje_monto:.1f}% del monto total",
-        delta_color="normal"
-    )
-
-with col3:
-    # Este espacio ahora ocupa el 50% de la fila
-    pass
-
-##### GRAFICOS ####
-st.markdown("## 📊 Análisis Grafico")
-
-# Asegurar fecha en datetime
-df_filtrado["fecha derivado"] = pd.to_datetime(
-    df_filtrado["fecha derivado"],
-    errors="coerce"
-)
-
-# Crear columna mensual
+# =============================================================================
+# 1. PREPARACIÓN ÚNICA DE DATOS (Centralizado para evitar errores)
+# =============================================================================
+df_filtrado["fecha derivado"] = pd.to_datetime(df_filtrado["fecha derivado"], errors="coerce")
+df_filtrado["monto estimado"] = pd.to_numeric(df_filtrado["monto estimado"], errors="coerce").fillna(0)
 df_filtrado["Mes"] = df_filtrado["fecha derivado"].dt.to_period("M").dt.to_timestamp()
 
-col1, col2, col3 = st.columns([2, 2, 1])
+# Limpieza de texto para lógica de cumplimiento
+serie_pac = df_filtrado["DENTRO/FUERA"].astype(str).str.strip().str.upper()
+mask_dentro = serie_pac.str.contains("DENTRO", na=False)
 
-# ======================================
-# 📊 FSC por Mes (Cantidad)
-# ======================================
+# =============================================================================
+# 2. SECCIÓN: RESUMEN EJECUTIVO (KPIs)
+# =============================================================================
+st.markdown("## 📈 Resumen Ejecutivo")
+kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
-conteo_mes = (
-    df_filtrado
-    .groupby(["Mes", "DENTRO/FUERA"], as_index=False)
-    .agg({"newiD": "count"})
-    .rename(columns={"newiD": "Cantidad FSC"})
-)
+with kpi1:
+    total_q = len(df_filtrado)
+    st.metric("📋 Total Solicitudes", f"{total_q:,}")
 
-print("COLUMNAS:", conteo_mes.columns.tolist())
-print(conteo_mes.head(10))
-print("DUPLICADOS:", conteo_mes.duplicated(["Mes","DENTRO/FUERA"]).sum())
+with kpi2:
+    total_m = df_filtrado["monto estimado"].sum()
+    st.metric("💰 Monto Total", f"$ {total_m:,.0f}")
+
+with kpi3:
+    dentro_q = mask_dentro.sum()
+    porc_q = (dentro_q / total_q * 100) if total_q > 0 else 0
+    st.metric("✅ Cumplimiento PAC (Cant.)", f"{porc_q:.1f}%", f"{dentro_q} FSC")
+
+with kpi4:
+    monto_d = df_filtrado.loc[mask_dentro, "monto estimado"].sum()
+    porc_m = (monto_d / total_m * 100) if total_m > 0 else 0
+    st.metric("💵 Cumplimiento PAC (Monto)", f"{porc_m:.1f}%", f"$ {monto_d:,.0f}")
 
 
-with col1:
-    conteo_mes = (
-        df_filtrado
-        .groupby(["Mes", "DENTRO/FUERA"])["newiD"]
-        .count()
-        .reset_index(name="Cantidad FSC")
-    )
 
+# =============================================================================
+# 3. SECCIÓN: ANÁLISIS TEMPORAL (GRÁFICOS)
+# =============================================================================
+st.markdown("## 📊 Análisis de Tendencias Mensuales")
+col_g1, col_g2 = st.columns(2)
+
+# Datos agrupados para gráficos
+df_mes = df_filtrado.groupby(["Mes", "DENTRO/FUERA"]).agg({
+    "newiD": "count",
+    "monto estimado": "sum"
+}).reset_index()
+
+with col_g1:
     fig_q = px.bar(
-        conteo_mes,
-        x="Mes",
-        y="Cantidad FSC",
-        color="DENTRO/FUERA",
-        title="📊 Cantidad de FSC por Mes (Dentro / Fuera PAC)",
-        labels={
-            "Mes": "Mes",
-            "Cantidad FSC": "Cantidad de FSC",
-            "DENTRO/FUERA": "Estado PAC"
-        },
-        color_discrete_map={
-            "Dentro PAC": "#36e93f",   # verde
-            "Fuera PAC": "#ec4545"     # rojo
-        }
+        df_mes, x="Mes", y="newiD", color="DENTRO/FUERA",
+        title="Cantidad de FSC por Mes",
+        labels={"newiD": "Cant. FSC", "DENTRO/FUERA": "Estado"},
+        color_discrete_map={"Dentro PAC": "#36e93f", "Fuera PAC": "#ec4545"},
+        template="plotly_white"
     )
-
-    fig_q.update_layout(
-        barmode="stack",
-        height=400,
-        template="plotly_white",
-        font=dict(family="Segoe UI")
-    )
-
+    fig_q.update_layout(height=350, barmode="stack", margin=dict(t=40, b=0, l=0, r=0))
     st.plotly_chart(fig_q, use_container_width=True)
 
-print(
-conteo_mes.duplicated(["Mes","DENTRO/FUERA"]).sum()
-)
-# ======================================
-# 💰 FSC por Mes (Monto)
-# ======================================
-with col2:
-    monto_mes = (
-        df_filtrado
-        .groupby(["Mes", "DENTRO/FUERA"])["monto estimado"]
-        .sum()
-        .reset_index(name="Monto Estimado")
-    )
-
+with col_g2:
     fig_m = px.bar(
-        monto_mes,
-        x="Mes",
-        y="Monto Estimado",
-        color="DENTRO/FUERA",
-        title="💰 Monto Estimado FSC por Mes (Dentro / Fuera PAC)",
-        labels={
-            "Mes": "Mes",
-            "Monto Estimado": "Monto Estimado (CLP)",
-            "DENTRO/FUERA": "Estado PAC"
-        },
-        color_discrete_map={
-            "Dentro PAC": "#36e93f",   # verde
-            "Fuera PAC": "#ec4545"     # rojo
-        }
+        df_mes, x="Mes", y="monto estimado", color="DENTRO/FUERA",
+        title="Monto Estimado por Mes",
+        labels={"monto estimado": "Monto ($)", "DENTRO/FUERA": "Estado"},
+        color_discrete_map={"Dentro PAC": "#36e93f", "Fuera PAC": "#ec4545"},
+        template="plotly_white"
     )
-
-    fig_m.update_layout(
-        barmode="stack",
-        height=400,
-        template="plotly_white",
-        yaxis_tickprefix="$",
-        yaxis_tickformat=",.0f",
-font=dict(family="Segoe UI")
-    )
-
+    fig_m.update_layout(height=350, barmode="stack", margin=dict(t=40, b=0, l=0, r=0))
+    fig_m.update_yaxes(tickprefix="$", tickformat=",.0f")
     st.plotly_chart(fig_m, use_container_width=True)
+st.markdown(" ")
+# =============================================================================
+# 4. SECCIÓN: DETALLE OPERATIVO (TABLA)
+# =============================================================================
+# =============================================================================
+# 🏢 DESGLOSE OPERATIVO: ANÁLISIS POR DEPARTAMENTO
+# =============================================================================
+st.markdown("## 🏢 Análisis de Carga y Cumplimiento por Departamento")
 
-with col3:
-    # --- Lógica Métrica 1 (Cantidad) ---
-    serie_pac = df_filtrado["DENTRO/FUERA"].astype(str).str.strip().str.upper()
-    total_f = len(df_filtrado)
-    
-    if total_f > 0:
-        dentro_pac_q = serie_pac.str.contains("DENTRO", na=False).sum()
-        porc_q = (dentro_pac_q / total_f) * 100
-    else:
-        dentro_pac_q, porc_q = 0, 0.0
+# 1. Creación de la tabla dinámica con nombres técnicos base
+tabla_dinamica = df_filtrado.pivot_table(
+    index="DEPTO_unido",
+    columns="DENTRO/FUERA",
+    values=["newiD", "monto estimado"],
+    aggfunc={"newiD": "count", "monto estimado": "sum"},
+    fill_value=0,
+    margins=True,
+    margins_name="TOTAL"
+)
 
-    st.metric(
-        label="✅ FSC Dentro PAC (%)", 
-        value=f"{porc_q:.1f}%", 
-        delta=f"{dentro_pac_q} Unds",
-        help="Porcentaje basado en la cantidad de formularios."
-    )
+# 2. Aplanado y Renombrado Profesional
+# Creamos nombres limpios: "Cant. Dentro PAC", "Monto Total", etc.
+nuevas_columnas = []
+for col in tabla_dinamica.columns:
+    metrica = "Cant. FSC" if col[0] == "newiD" else "Monto ($)"
+    estado = col[1]
+    nuevas_columnas.append(f"{metrica} ({estado})")
 
-    # Espaciador pequeño entre métricas
-    st.write("") 
+tabla_dinamica.columns = nuevas_columnas
+tabla_dinamica = tabla_dinamica.reset_index().rename(columns={"DEPTO_unido": "Departamento"})
 
-    # --- Lógica Métrica 2 (Monto) ---
-    monto_total_g = df_filtrado["monto estimado"].sum()
-    
-    if monto_total_g > 0:
-        mask_d = serie_pac.str.contains("DENTRO", na=False)
-        monto_d = df_filtrado.loc[mask_d, "monto estimado"].sum()
-        porc_m = (monto_d / monto_total_g) * 100
-    else:
-        monto_d, porc_m = 0, 0.0
+# 3. Lógica de Ordenamiento (Usamos la columna de cantidad total recién nombrada)
+col_orden = "Cant. FSC (TOTAL)"
+if col_orden in tabla_dinamica.columns:
+    tabla_dinamica = tabla_dinamica.sort_values(by=col_orden, ascending=False)
 
-    st.metric(
-        label="💰 Monto Dentro PAC (%)", 
-        value=f"{porc_m:.1f}%", 
-        delta=f"$ {monto_d:,.0f}",
-        help="Porcentaje basado en el valor monetario total."
-    )
-
-
-
-st.markdown("## 📈 Tabla Dinámica: Análisis por Departamento y PAC")
-
-# Aseguramos que el monto sea numérico para los cálculos
-df_filtrado["monto estimado"] = pd.to_numeric(df_filtrado["monto estimado"], errors="coerce").fillna(0)
-
-# Definimos las columnas
-col1, col2 = st.columns(2)
-
-with col1:
-    # --- 1. Creación de la Tabla Dinámica ---
-    # Usamos pivot_table para cruzar Departamentos con el estado DENTRO/FUERA
-    tabla_dinamica = df_filtrado.pivot_table(
-        index="DEPTO_unido",
-        columns="DENTRO/FUERA",
-        values=["newiD", "monto estimado"],
-        aggfunc={
-            "newiD": "count",          # Recuento de registros (FSC)
-            "monto estimado": "sum"    # Suma de montos estimados
-        },
-        fill_value=0,
-        margins=True,                  # Totales por fila y columna
-        margins_name="TOTAL GENERAL"
-    )
-
-    # --- 2. Aplanar niveles de columnas para visualización limpia ---
-    tabla_dinamica.columns = [f"{col[0]} ({col[1]})" for col in tabla_dinamica.columns]
-    tabla_dinamica = tabla_dinamica.reset_index()
-
-    # --- 3. Ordenar por cantidad total de registros ---
-    col_orden = [c for c in tabla_dinamica.columns if "newiD (TOTAL GENERAL)" in c]
-    if col_orden:
-        tabla_dinamica = tabla_dinamica.sort_values(by=col_orden[0], ascending=False)
-
-    # --- 4. Renderizado con Estilos ---
-    st.dataframe(
-        tabla_dinamica.style.format({
-            col: "$ {:,.0f}" for col in tabla_dinamica.columns if "monto" in col
-        }).background_gradient(
-            subset=[c for c in tabla_dinamica.columns if "newiD" in c], 
-            cmap="Blues"
-        ),
-        use_container_width=True,
-        hide_index=True
-    )
+# 4. Visualización con Estilos Mejorados
+st.dataframe(
+    tabla_dinamica.style.format({
+        col: "$ {:,.0f}" for col in tabla_dinamica.columns if "Monto" in col
+    }).background_gradient(
+        subset=[c for c in tabla_dinamica.columns if "Cant." in c], 
+        cmap="Blues"
+    ).highlight_max(subset=[c for c in tabla_dinamica.columns if "Monto" in c], color="#f0f0f0"),
+    use_container_width=True,
+    hide_index=True
+)
     # --- 6. Resumen rápido en texto ---
 total_monto_dinamico = df_filtrado["monto estimado"].sum()
 st.caption(f"💰 **Monto Total Filtrado:** $ {total_monto_dinamico:,.0f} | 📋 **Total Registros:** {len(df_filtrado)}")
+st.caption("🔍 **Interpretación Lean:** Los departamentos en la parte superior generan la mayor carga administrativa (Muda de procesamiento).")
+
+
 with col2:
     pass
 
@@ -453,8 +334,6 @@ with c_kpi3:
     else:
         st.metric("Área con Mayor Desviación", "0 casos", delta="Todo OK")
 
-st.markdown("---")
-
 # =============================================================================
 # 3. MOTOR DE ALERTAS INTELIGENTE
 # =============================================================================
@@ -485,13 +364,19 @@ if monto_fuera > 0:
         with st.expander("🔍 Ver proyectos que generan este impacto"):
             # Mostrar tabla simplificada
             st.dataframe(
-                df_fuera[["newiD", "SUBDIRECCION", "DEPTO", "monto estimado"]]
+                df_fuera[["newiD","fecha derivado","SUBDIRECCION", "DEPTO","usuario requirente","requerimiento","monto estimado", "justificacion"]]
                 .sort_values("monto estimado", ascending=False)
-                .head(10)
                 .style.format({"monto estimado": "${:,.0f}"}),
                 use_container_width=True,
                 hide_index=True
-            )
+         )      # 6. Botón de Descarga
+            csv = df_fuera.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Descargar datos filtrados (CSV)",
+                data=csv,
+                file_name='registros_filtrados_fuera_pac.csv',
+                mime='text/csv',
+            )    
 
 # --- ALERTA 3: FOCO DE GESTIÓN (Detectar quién necesita ayuda) ---
 if not df_fuera.empty:
@@ -640,7 +525,7 @@ with c_table:
     st.caption("Detalle de Registros (Últimos 100)")
     
     # Seleccionamos columnas relevantes para la vista
-    cols_view = ["ID Proyecto", "DEPTO", "fecha derivado", "monto estimado", "DENTRO/FUERA"]
+    cols_view = ["DEPTO", "monto estimado", "DENTRO/FUERA"]
     # Verificamos que existan en el DF (para evitar errores si cambian nombres)
     cols_existing = [c for c in cols_view if c in df_pac_dashboard.columns]
     
@@ -668,13 +553,12 @@ with c_table:
         hide_index=True
     )
 
-
     # =============================================================================
 # 📋 TABLA DETALLADA DE REGISTROS (EXPANDER)
 # =============================================================================
 st.markdown("### 🔎 Revisión de Registros")
 
-with st.expander("📂 Ver Tabla Completa de Registros (df_filtrado)", expanded=False):
+with st.expander("📂 Ver Tabla Completa de Registros", expanded=False):
     
     # 1. Preparación de la Vista (Copia para no alterar el original)
     df_ver = df_filtrado.copy()
@@ -682,8 +566,7 @@ with st.expander("📂 Ver Tabla Completa de Registros (df_filtrado)", expanded=
     # 2. Selección de Columnas Clave (Ajusta según tus nombres exactos)
     # Intenta seleccionar estas columnas, si no existen, usa todas.
     cols_deseadas = [
-        "newiD", "fecha derivado", "SUBDIRECCION", "DEPTO", 
-        "monto estimado", "Estado_PAC", "DENTRO/FUERA"
+        "newiD", "fecha derivado", "SUBDIRECCION", "DEPTO", "requerimiento", "monto estimado", "Estado_PAC", "DENTRO/FUERA"
     ]
     # Filtramos solo las que realmente existen en tu DF para evitar errores
     cols_finales = [c for c in cols_deseadas if c in df_ver.columns]
@@ -987,3 +870,5 @@ with c_graf_2:
 
 # 4. OKR TRACKER: Reducción de Desviaciones
 st.info("**🎯 OKR del Trimestre:** Reducir en un 15% el monto de formularios 'Fuera de PAC' en el Tipo con mayor desviación.")
+
+
