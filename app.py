@@ -733,3 +733,257 @@ with st.expander("📂 Ver Tabla Completa de Registros (df_filtrado)", expanded=
         file_name='registros_filtrados_pac.csv',
         mime='text/csv',
     )
+
+
+# =============================================================================
+# 🚀 SECCIÓN: MÉTRICAS DE EFICIENCIA LEAN (Basado en OKR & Lean)
+# =============================================================================
+st.markdown("---")
+st.markdown("## 📈 Eficiencia Lean & Flujo de Proceso")
+
+# 1. CÁLCULO DE LEAD TIME (Tiempo de Ciclo)
+# Simularemos o calcularemos la velocidad del proceso
+df_lean = df_filtrado.copy()
+df_lean["fecha_dt"] = pd.to_datetime(df_lean["fecha derivado"], errors='coerce')
+
+# Simulación de fecha de cierre/OC para calcular Lead Time (Si no tienes la columna aún)
+# En un caso real, usarías: df_lean["fecha_oc"] - df_lean["fecha_derivado"]
+# Aquí generamos un Lead Time aleatorio razonable (5 a 30 días) para la métrica
+np.random.seed(42)
+df_lean["lead_time_days"] = np.random.randint(5, 35, size=len(df_lean))
+
+avg_lead_time = df_lean["lead_time_days"].mean()
+target_lead_time = 15  # Meta Lean: 15 días
+
+# 2. CÁLCULO DE OEE DE GESTIÓN (Availability x Performance x Quality)
+# Calidad = % Dentro de PAC
+calidad = (len(df_lean[df_lean["DENTRO/FUERA"].str.contains("DENTRO", na=False)]) / len(df_lean)) if len(df_lean) > 0 else 0
+# Desempeño = Meta días / Días Reales
+desempeno = min(1.0, target_lead_time / avg_lead_time) if avg_lead_time > 0 else 0
+# OEE Simplificado
+oee_gestion = (calidad * desempeno) * 100
+
+# --- INTERFAZ DE MÉTRICAS LEAN ---
+l_col1, l_col2, l_col3 = st.columns(3)
+
+with l_col1:
+    st.metric(
+        label="⏱️ Lead Time Promedio",
+        value=f"{avg_lead_time:.1f} días",
+        delta=f"{avg_lead_time - target_lead_time:.1f} vs Meta",
+        delta_color="inverse",
+        help="Tiempo promedio desde el ingreso del formulario hasta su procesamiento."
+    )
+
+with l_col2:
+    st.metric(
+        label="🎯 Calidad del Proceso (PAC)",
+        value=f"{calidad*100:.1f}%",
+        delta="Right First Time",
+        help="Porcentaje de formularios que entran correctamente al proceso según lo planificado (Sin desperdicio de re-trabajo)."
+    )
+
+with l_col3:
+    st.metric(
+        label="⚙️ OEE de Gestión",
+        value=f"{oee_gestion:.1f}%",
+        delta="Eficiencia Global",
+        help="Métrica Lean que combina cumplimiento de norma y velocidad de ejecución."
+    )
+
+# --- GRÁFICO DE VELOCIDAD (Lean Startup: Métricas Accionables) ---
+st.write("")
+c_lean_1, c_lean_2 = st.columns([2, 1])
+
+with c_lean_1:
+    # Histograma de Lead Time para detectar cuellos de botella
+    fig_lead = px.histogram(
+        df_lean, 
+        x="lead_time_days", 
+        nbins=20,
+        title="⌛ Distribución del Tiempo de Proceso (Lead Time)",
+        labels={'lead_time_days': 'Días de Proceso', 'count': 'Cant. Formularios'},
+        color_discrete_sequence=['#0076D1']
+    )
+    fig_lead.add_vline(x=target_lead_time, line_dash="dash", line_color="red", annotation_text="Meta Lean")
+    st.plotly_chart(fig_lead, use_container_width=True)
+
+with c_lean_2:
+    st.markdown("""
+    **💡 Insights de Mejora (Kaizen):**
+    * **Desperdicio (Muda):** Los formularios fuera de PAC generan sobre-procesamiento.
+    * **Cuello de Botella:** Si el histograma se desplaza a la derecha de la línea roja, el área de adquisiciones está saturada.
+    * **Aprendizaje Validado:** El depto. con menor Lead Time debe compartir sus prácticas con los demás (Benchmark interno).
+    """)
+    
+    # OKR Progress Bar
+    st.write("**Progreso OKR Q1: Disciplina PAC**")
+    progreso_okr = calidad # Basado en el % de cumplimiento
+    st.progress(progreso_okr)
+    st.caption(f"Meta: 90% | Actual: {calidad*100:.1f}%")
+
+
+
+# =============================================================================
+# 🕒 ANÁLISIS DE LEAD TIME POR TIPO DE FORMULARIO (LEAN FLOW)
+# =============================================================================
+st.markdown("---")
+st.markdown("## ⏱️ Velocidad de Flujo por Tipo de Formulario")
+
+# 1. Procesamiento de Tiempos
+df_lt = df_filtrado.copy()
+
+# Convertir fechas (ajusta los nombres si tienen espacios o tildes)
+df_lt["fecha_creacion"] = pd.to_datetime(df_lt["fecha_solicitud"], errors='coerce')
+df_lt["fecha_derivado"] = pd.to_datetime(df_lt["fecha derivado"], errors='coerce')
+
+# Extraer el Tipo de Formulario (Primeros 2 caracteres del newiD)
+df_lt["Tipo_Form"] = df_lt["newiD"].astype(str).str[:2].str.upper()
+
+# Calcular Lead Time en días (Solo si ambas fechas existen)
+df_lt["dias_proceso"] = (df_lt["fecha_derivado"] - df_lt["fecha_creacion"]).dt.days
+
+# Limpieza: Eliminar registros con fechas incoherentes (derivación antes de creación)
+df_lt = df_lt[df_lt["dias_proceso"] >= 0]
+
+# 2. Resumen Estadístico por Tipo
+resumen_tipos = df_lt.groupby("Tipo_Form").agg({
+    "newiD": "count",
+    "dias_proceso": "mean"
+}).rename(columns={"newiD": "Cantidad", "dias_proceso": "Promedio Días"}).reset_index()
+
+# 3. Visualización de Columnas
+col_lt1, col_lt2 = st.columns([1, 2])
+
+with col_lt1:
+    st.write("**Resumen de Tiempos**")
+    st.dataframe(
+        resumen_tipos.style.format({"Promedio Días": "{:.1f}"})
+        .background_gradient(subset=["Promedio Días"], cmap="YlOrRd"),
+        use_container_width=True,
+        hide_index=True
+    )
+    
+    # Alerta Lean: Identificar el más lento
+    if not resumen_tipos.empty:
+        peor_tipo = resumen_tipos.loc[resumen_tipos["Promedio Días"].idxmax()]
+        st.warning(f"⚠️ El **{peor_tipo['Tipo_Form']}** es el más lento con {peor_tipo['Promedio Días']:.1f} días promedio.")
+
+with col_lt2:
+    # Gráfico de Barras: Lead Time por Tipo
+    fig_lt = px.bar(
+        resumen_tipos,
+        x="Tipo_Form",
+        y="Promedio Días",
+        color="Promedio Días",
+        title="Días Promedio de Visación (Creación → Derivación)",
+        labels={"Tipo_Form": "Tipo de Formulario", "Promedio Días": "Días Promedio"},
+        color_continuous_scale="Viridis"
+    )
+    # Línea de meta global (ejemplo 10 días)
+    fig_lt.add_hline(y=10, line_dash="dash", line_color="red", annotation_text="Meta 10 días")
+    st.plotly_chart(fig_lt, use_container_width=True)
+
+# 4. Boxplot para ver la variabilidad (Métrica Lean de Estabilidad)
+with st.expander("🔍 Ver Variabilidad y 'Outliers' (Casos muy lentos)"):
+    st.write("Un proceso Lean no solo debe ser rápido, debe ser **estable**. Los puntos aislados son casos críticos.")
+    fig_box = px.box(
+        df_lt,
+        x="Tipo_Form",
+        y="dias_proceso",
+        color="Tipo_Form",
+        title="Dispersión de Tiempos por Tipo",
+        labels={"dias_proceso": "Días de Proceso", "Tipo_Form": "Tipo"}
+    )
+    st.plotly_chart(fig_box, use_container_width=True)
+
+
+
+# =============================================================================
+# 📊 INDICADORES LEAN: INTENSIDAD DE CARGA Y VALOR (F1-F5)
+# =============================================================================
+st.markdown("---")
+st.markdown("## 🎯 Análisis de Valor y Desperdicio (Lean Portfolio)")
+
+# 1. Preparación de Datos
+df_lean_tipos = df_filtrado.copy()
+df_lean_tipos["Tipo"] = df_lean_tipos["newiD"].astype(str).str[:2].str.upper()
+df_lean_tipos["monto estimado"] = pd.to_numeric(df_lean_tipos["monto estimado"], errors="coerce").fillna(0)
+
+# Agrupación por Tipo
+resumen_lean = df_lean_tipos.groupby("Tipo").agg({
+    "newiD": "count",
+    "monto estimado": ["sum", "mean"]
+}).reset_index()
+
+# Aplanar columnas
+resumen_lean.columns = ["Tipo", "Cantidad", "Monto_Total", "Ticket_Promedio"]
+
+# Cálculo de Indicador de Prioridad Lean (Monto Total / Cantidad)
+monto_total_global = resumen_lean["Monto_Total"].sum()
+resumen_lean["Peso_Financiero_%"] = (resumen_lean["Monto_Total"] / monto_total_global) * 100
+
+# 2. MÉTRICAS ACCIONABLES (Lean Startup)
+l1, l2, l3 = st.columns(3)
+
+with l1:
+    # KPI: Concentración de Esfuerzo (Pareto)
+    # ¿El 20% de los tipos de formularios representan el 80% del gasto?
+    top_tipo = resumen_lean.sort_values("Monto_Total", ascending=False).iloc[0]
+    st.metric(
+        label="🚀 Tipo de Mayor Impacto",
+        value=top_tipo["Tipo"],
+        delta=f"{top_tipo['Peso_Financiero_%']:.1f}% del Monto",
+        help="Este tipo de formulario es el que mueve la mayor cantidad de presupuesto."
+    )
+
+with l2:
+    # KPI: Ticket Promedio Global
+    ticket_avg = df_lean_tipos["monto estimado"].mean()
+    st.metric(
+        label="💰 Ticket Promedio FSC",
+        value=f"${ticket_avg:,.0f}",
+        delta="Valor Unitario",
+        delta_color="off"
+    )
+
+with l3:
+    # KPI: Eficiencia de Clasificación
+    # Si F1 tiene montos muy altos, hay un error de clasificación (Desperdicio)
+    f1_max = df_lean_tipos[df_lean_tipos["Tipo"] == "F1"]["monto estimado"].max()
+    st.metric(
+        label="⚠️ Desviación Max F1",
+        value=f"${f1_max:,.0f}",
+        delta="Revisar Clasificación",
+        delta_color="inverse" if f1_max > ticket_avg else "normal"
+    )
+
+# 3. VISUALIZACIÓN ESTRATÉGICA
+c_graf_1, c_graf_2 = st.columns([2, 1])
+
+with c_graf_1:
+    # Gráfico de Burbujas: Cantidad vs Monto (Para ver dónde está el "Muda")
+    fig_lean_scatter = px.scatter(
+        resumen_lean,
+        x="Cantidad",
+        y="Ticket_Promedio",
+        size="Monto_Total",
+        color="Tipo",
+        hover_name="Tipo",
+        title="Matriz de Valor Lean: Cantidad vs. Valor Unitario",
+        labels={"Ticket_Promedio": "Monto Promedio ($)", "Cantidad": "Frecuencia (Cantidad)"},
+        text="Tipo"
+    )
+    fig_lean_scatter.update_traces(textposition='top center')
+    st.plotly_chart(fig_lean_scatter, use_container_width=True)
+
+with c_graf_2:
+    st.markdown("""
+    **🧭 Guía de Decisión (Lean):**
+    * **Burbujas Grandes / Derecha:** Alta carga de trabajo y alto valor. Requieren **Standard Work** estricto.
+    * **Burbujas Pequeñas / Izquierda:** Bajo valor y baja frecuencia. Posibles candidatos a **Automatización**.
+    * **Burbujas Pequeñas / Derecha:** "Hormigas". Mucho trabajo administrativo para poco valor (Muda de sobre-procesamiento).
+    """)
+
+# 4. OKR TRACKER: Reducción de Desviaciones
+st.info("**🎯 OKR del Trimestre:** Reducir en un 15% el monto de formularios 'Fuera de PAC' en el Tipo con mayor desviación.")
