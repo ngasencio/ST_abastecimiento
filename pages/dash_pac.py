@@ -228,115 +228,6 @@ with col_grafico:
     st.plotly_chart(fig, use_container_width=True)
 
 # =============================================================================
-# 🚦 ESTADO DE EJECUCIÓN (Lógica Temporal)
-# =============================================================================
-st.markdown("## 🚦 Estado de Ejecución (Según Fecha Actual)")
-
-# 1. Obtener fecha actual
-hoy = datetime.now()
-mes_actual = hoy.month
-anio_actual = hoy.year
-
-# 2. Función para clasificar el estado
-def clasificar_estado(fecha):
-    if pd.isna(fecha):
-        return "❓ Sin Fecha"
-    
-
-    # Comparamos Año y Mes
-    if fecha.year < anio_actual or (fecha.year == anio_actual and fecha.month < mes_actual):
-        return "✅ Ejecutado / Vencido"
-    elif fecha.year == anio_actual and fecha.month == mes_actual:
-        return "🟡 PAC PENDIENTE (Mes Actual)"
-    else:
-        return "🔵 Por Ejecutar (Futuro)"
-
-# Aplicamos la lógica sobre df_filtrado
-df_filtrado["Estado_PAC"] = df_filtrado["Fecha de Inicio Compra"].apply(clasificar_estado)
-
-# 3. Crear Tabla Resumen (Agrupada)
-resumen_estado = (
-    df_filtrado
-    .groupby("Estado_PAC", as_index=False)
-    .agg(
-        Cantidad=("ID Proyecto", "count"),
-        Monto=("Suma de Monto Total Ítem Año 2026", "sum")
-    )
-)
-
-# Mostramos el resumen en métricas o tabla pequeña
-col_res1, col_res2 = st.columns([1, 2])
-with col_res1:
-    st.info(f"📅 Fecha de corte: **{hoy.strftime('%B %Y')}**")
-    st.dataframe(
-        resumen_estado.style.format({"Monto": "$ {:,.0f}"}),
-        use_container_width=True,
-        hide_index=True
-    )
-
-# =============================================================================
-# 🟡 TABLA DETALLE: PAC PENDIENTE (Mes Actual)
-# =============================================================================
-with col_res2:
-    # Filtramos solo lo que es del mes actual
-    tabla_pendientes = df_filtrado[df_filtrado["Estado_PAC"] == "🟡 PAC PENDIENTE (Mes Actual)"]
-    
-    with st.expander(f"⚠️ Ver Detalle PAC PENDIENTE - {len(tabla_pendientes):,} proyectos este mes", expanded=True):
-        if not tabla_pendientes.empty:
-            st.dataframe(
-                tabla_pendientes[[
-                    "ID Proyecto", 
-                    "Fecha de Inicio Compra", 
-                    "Subdirección", 
-                    "Nombre responsable", 
-                    "Suma de Monto Total Ítem Año 2026"
-                ]],
-                use_container_width=True,
-                height=300,
-                hide_index=True,
-                column_config={
-                    "ID Proyecto": st.column_config.TextColumn(
-                        "ID Proyecto",
-                        pinned=True
-                    ),
-                    "Fecha de Inicio Compra": st.column_config.DateColumn(
-                        "Inicio Compra",
-                        format="DD-MM-YYYY"
-                    ),
-                    "Suma de Monto Total Ítem Año 2026": st.column_config.NumberColumn(
-                        "Monto (CLP)",
-                        format="$ %d" # Formato moneda simple
-                    ),
-                    "Nombre responsable": "Responsable"
-                }
-            )
-        else:
-            st.success("✅ ¡No hay procesos de compra planificados para iniciar este mes!")
-
-# =============================================================================
-# BOTÓN EXPORTAR PDF
-# =============================================================================
-st.markdown("## 📄 Exportar Reporte")
-
-if st.button("📥 Generar PDF PAC 2026"):
-    pdf_path = generar_pdf_pac(
-        df_datos=df_filtrado,
-        total_proyectos=total_proyectos_filtrado,
-        monto_total=monto_total_filtrado,
-        fig_plotly=fig
-    )
-
-    with open(pdf_path, "rb") as f:
-        st.download_button(
-            "⬇️ Descargar PDF",
-            f,
-            file_name="Reporte_PAC_2026.pdf",
-            mime="application/pdf"
-        )
-
-# =============================================================================
-
-
 # --- 🔄 EXPANSIÓN DE ÓRDENES DE COMPRA (RELACIONAL) ---
 # Creamos un DataFrame expandido: una fila por cada fecha en 'Meses envío OC'
 df_expandido = df_filtrado.copy()
@@ -363,7 +254,7 @@ with tab1:
     st.dataframe(
         df_filtrado[[
             "ID Proyecto", "Nombre Proyecto", "Nombre ítem", 
-            "Nombre responsable2", "Fecha de Inicio Compra", "Suma de Monto Total Ítem Año 2026"
+            "Nombre responsable", "Fecha de Inicio Compra", "Suma de Monto Total Ítem Año 2026"
         ]],
         use_container_width=True,
         hide_index=True
@@ -373,10 +264,37 @@ with tab2:
     # Mostramos la data normalizada (una fila por cada fecha de OC proyectada)
     st.write("Cada fila representa una Orden de Compra individual programada:")
     df_display_oc = df_expandido[[
-        "Meses envío OC", "Nombre ítem", "ID Proyecto", "Nombre responsable2", "Departamento_SHORT"
+        "Meses envío OC", "Nombre ítem", "ID Proyecto", "Nombre responsable", "Departamento_SHORT"
     ]].sort_values("Meses envío OC")
     
     st.dataframe(df_display_oc, use_container_width=True, hide_index=True)
+
+
+
+
+
+
+# =============================================================================
+# BOTÓN EXPORTAR PDF
+# =============================================================================
+st.markdown("## 📄 Exportar Reporte (Por Crear)")
+
+if st.button("📥 Generar PDF PAC 2026"):
+    pdf_path = generar_pdf_pac(
+        df_datos=df_filtrado,
+        total_proyectos=total_proyectos_filtrado,
+        monto_total=monto_total_filtrado,
+        fig_plotly=fig
+    )
+
+    with open(pdf_path, "rb") as f:
+        st.download_button(
+            "⬇️ Descargar PDF",
+            f,
+            file_name="Reporte_PAC_2026.pdf",
+            mime="application/pdf"
+        )
+
 
 # =============================================================================
 # EXPORTACIÓN
