@@ -1,5 +1,3 @@
-# pages/licitaciones.py
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -234,53 +232,53 @@ for _, row in df_filtrado.iterrows():
 df_gantt = pd.DataFrame(gantt_data)
 
 # 3. Renderizado del Gráfico
-st.markdown("### 📅 Cronograma con Duración por Etapa")
+#st.markdown("### 📅 Cronograma con Duración por Etapa")
 
-if not df_gantt.empty:
-    fig = px.timeline(
-        df_gantt, 
-        x_start="Inicio", 
-        x_end="Fin", 
-        y="Identificador", 
-        color="Etapa",
-        text="Texto_Etiqueta", # <--- AQUÍ AGREGAMOS LA ETIQUETA
-        hover_data={"Identificador": False, "Nombre_Completo": True, "Días": True, "Texto_Etiqueta": False},
-        color_discrete_sequence=px.colors.qualitative.Prism
-    )
+#if not df_gantt.empty:
+ #   fig = px.timeline(
+  #      df_gantt, 
+   #     x_start="Inicio", 
+    #    x_end="Fin", 
+     #   y="Identificador", 
+      #  color="Etapa",
+       # text="Texto_Etiqueta", # <--- AQUÍ AGREGAMOS LA ETIQUETA
+        #hover_data={"Identificador": False, "Nombre_Completo": True, "Días": True, "Texto_Etiqueta": False},
+        #color_discrete_sequence=px.colors.qualitative.Prism
+    #)
 
     # --- A) AJUSTE DE POSICIÓN DE TEXTO ---
-    fig.update_traces(
-        textposition='inside', # Pone el texto dentro de la barra
-        insidetextanchor='middle', # Lo centra
-        textfont_size=12
-    )
+    #fig.update_traces(
+    #    textposition='inside', # Pone el texto dentro de la barra
+    #    insidetextanchor='middle', # Lo centra
+    #    textfont_size=12
+    #)
 
     # --- B) LÍNEA VERTICAL DE HOY ---
-    hoy = datetime(2026, 1, 17)
-    fig.add_vline(
-        x=hoy.timestamp() * 1000, 
-        line_width=3, 
-        line_dash="dash", 
-        line_color="red",
-        annotation_text="HOY", 
-        annotation_position="top right"
-    )
+    #hoy = datetime(2026, 1, 17)
+    #fig.add_vline(
+    #    x=hoy.timestamp() * 1000, 
+    #    line_width=3, 
+    #    line_dash="dash", 
+    #    line_color="red",
+    #    annotation_text="HOY", 
+    #    annotation_position="top right"
+    #)
 
     # --- C) AJUSTES FINALES ---
-    fig.update_yaxes(autorange="reversed", title="Licitación (ID | Nombre)")
+    #fig.update_yaxes(autorange="reversed", title="Licitación (ID | Nombre)")
     
-    cantidad_filas = int(len(df_filtrado["Etiqueta_Y"].unique()))
-    alto_grafico = 400 + (cantidad_filas * 35) # Un poco más de espacio por fila para las etiquetas
+    #cantidad_filas = int(len(df_filtrado["Etiqueta_Y"].unique()))
+    #alto_grafico = 400 + (cantidad_filas * 35) # Un poco más de espacio por fila para las etiquetas
 
-    fig.update_layout(
-        height=alto_grafico,
-        legend_title="Etapas",
-        margin=dict(l=10, r=10, t=50, b=10)
-    )
+    #fig.update_layout(
+    #    height=alto_grafico,
+    #    legend_title="Etapas",
+    #    margin=dict(l=10, r=10, t=50, b=10)
+    #)
 
-    st.plotly_chart(fig, use_container_width=True)
-else:
-    st.info("No hay datos suficientes para mostrar el cronograma.")
+    #st.plotly_chart(fig, use_container_width=True)
+#else:
+#   st.info("No hay datos suficientes para mostrar el cronograma.")
 # ========================================================================  
 
 
@@ -299,3 +297,180 @@ with st.expander("🔍 Ver Datos Maestros (Resumen)", expanded=True):
             height=400, 
             use_container_width=True
         )
+
+
+# ==============================================================================
+# 🚀 MÓDULO LEAN & OKR: ANÁLISIS DE RENDIMIENTO DE LICITACIONES
+# ==============================================================================
+
+st.markdown("---")
+st.markdown("## ⏱️ Análisis de Flujo de Valor (Lean VSM) y OKRs")
+
+# 1. PREPARACIÓN DE DATOS DE TIEMPOS (Data Wrangling)
+# Usamos df_filtrado para respetar los filtros del usuario
+df_lean = df_filtrado.copy()
+
+# Definición de las columnas de fecha clave según tu base de datos
+cols_fechas = [
+    'FechaCreacion', 'FechaPublicacion', 'FechaCierre', 
+    'FechaAdjudicacion', 'FechaInicioContrato'
+]
+
+# Conversión robusta a datetime
+for col in cols_fechas:
+    if col in df_lean.columns:
+        df_lean[col] = pd.to_datetime(df_lean[col], errors='coerce')
+
+# --- CÁLCULO DE LEAD TIMES (Días) ---
+# LT Total: Desde que nace la necesidad (Creación) hasta que inicia el contrato (Valor entregado)
+df_lean['LT_Total'] = (df_lean['FechaInicioContrato'] - df_lean['FechaCreacion']).dt.days
+
+# Desglose por Etapas (Value Stream Breakdown)
+# 1. Burocracia Interna Previa: Creación -> Publicación
+df_lean['T_Prep'] = (df_lean['FechaPublicacion'] - df_lean['FechaCreacion']).dt.days
+# 2. Tiempo de Mercado: Publicación -> Cierre
+df_lean['T_Mercado'] = (df_lean['FechaCierre'] - df_lean['FechaPublicacion']).dt.days
+# 3. Tiempo de Evaluación: Cierre -> Adjudicación
+df_lean['T_Evaluacion'] = (df_lean['FechaAdjudicacion'] - df_lean['FechaCierre']).dt.days
+# 4. Formalización: Adjudicación -> Contrato
+df_lean['T_Formalizacion'] = (df_lean['FechaInicioContrato'] - df_lean['FechaAdjudicacion']).dt.days
+
+# Limpieza de inconsistencias (fechas negativas o nulas)
+cols_tiempos = ['LT_Total', 'T_Prep', 'T_Mercado', 'T_Evaluacion', 'T_Formalizacion']
+for col in cols_tiempos:
+    df_lean[col] = df_lean[col].apply(lambda x: x if x >= 0 else np.nan)
+
+# ==============================================================================
+# 🎯 SECCIÓN 1: OKRs OPERACIONALES (Objectives & Key Results)
+# ==============================================================================
+st.subheader("🎯 Estado de OKRs Operacionales")
+
+# Cálculo de métricas para OKRs
+licitaciones_cerradas = df_lean.dropna(subset=['LT_Total'])
+tasa_adjudicacion = 0
+if len(df_lean) > 0:
+    # Asumiendo que el estado 'Adjudicada' existe o similar
+    adjudicadas = df_lean[df_lean['Estado'].str.contains('Adjudicada', case=False, na=False)].shape[0]
+    tasa_adjudicacion = (adjudicadas / len(df_lean)) * 100
+
+lt_promedio = licitaciones_cerradas['LT_Total'].mean() if not licitaciones_cerradas.empty else 0
+
+# Visualización de Tarjetas OKR
+okr1, okr2, okr3 = st.columns(3)
+
+with okr1:
+    st.markdown("**O1: Agilidad del Proceso**")
+    st.metric(
+        label="KR: Lead Time Promedio",
+        value=f"{lt_promedio:.1f} días",
+        delta="-5 días (Meta)" if lt_promedio > 0 else None,
+        delta_color="inverse", # Menos es mejor
+        help="Tiempo promedio desde Creación hasta Inicio Contrato"
+    )
+
+with okr2:
+    st.markdown("**O2: Eficacia de Licitación**")
+    st.metric(
+        label="KR: Tasa de Adjudicación",
+        value=f"{tasa_adjudicacion:.1f}%",
+        delta="vs 85% (Meta)",
+        help="Porcentaje de procesos que terminan adjudicados vs desiertos/revocados"
+    )
+
+with okr3:
+    st.markdown("**O3: Eficiencia Administrativa**")
+    # Ratio: Cuánto dinero movemos por cada producto gestionado
+    # Si gestionas muchos productos baratos, el ratio baja (posible ineficiencia administrativa)
+    total_items = df_det_filtrado['Cantidad'].sum()
+    monto_total = df_filtrado['MontoEstimado'].sum()
+    ratio_valor = monto_total / total_items if total_items > 0 else 0
+    
+    st.metric(
+        label="KR: Valor por Item Gestionado",
+        value=f"${ratio_valor:,.0f}",
+        help="Monto total estimado / Cantidad total de productos. Busca identificar carga operativa de bajo valor."
+    )
+
+# ==============================================================================
+# 📊 SECCIÓN 2: VISUALIZACIÓN DE FLUJO (Lead Time Breakdown)
+# ==============================================================================
+c_chart1, c_chart2 = st.columns([2, 1])
+
+with c_chart1:
+    st.markdown("#### ⏳ Desglose de Tiempos por Tipo de Licitación")
+    if not licitaciones_cerradas.empty:
+        # Preparamos datos para gráfico apilado (Stacked Bar)
+        df_melt = licitaciones_cerradas.groupby('Tipo')[['T_Prep', 'T_Mercado', 'T_Evaluacion', 'T_Formalizacion']].mean().reset_index()
+        df_melt = df_melt.melt(id_vars='Tipo', var_name='Etapa', value_name='Días')
+        
+        # Mapeo de nombres para que sean legibles
+        nombres_etapa = {
+            'T_Prep': '1. Prep. Interna',
+            'T_Mercado': '2. Mercado (Publicado)',
+            'T_Evaluacion': '3. Evaluación',
+            'T_Formalizacion': '4. Formalización'
+        }
+        df_melt['Etapa'] = df_melt['Etapa'].map(nombres_etapa)
+        
+        fig_lt = px.bar(
+            df_melt, 
+            x='Tipo', 
+            y='Días', 
+            color='Etapa',
+            title="¿Dónde se pierde el tiempo? (Lead Time por Etapas)",
+            text_auto='.1f',
+            color_discrete_sequence=px.colors.qualitative.Prism
+        )
+        fig_lt.update_layout(template="plotly_white", xaxis_title=None)
+        st.plotly_chart(fig_lt, use_container_width=True)
+    else:
+        st.info("No hay suficientes datos con ciclo completo para mostrar el desglose de tiempos.")
+
+with c_chart2:
+    st.markdown("#### 🐢 vs 🐇 Ranking Velocidad")
+    if not licitaciones_cerradas.empty:
+        # Top Compradores más ágiles (menor Lead Time)
+        top_agiles = licitaciones_cerradas.groupby('C_Usuario')['LT_Total'].mean().sort_values().head(5).reset_index()
+        
+        fig_rank = px.bar(
+            top_agiles,
+            x='LT_Total',
+            y='C_Usuario',
+            orientation='h',
+            title="Usuarios con menor Lead Time (Top 5)",
+            color='LT_Total',
+            color_continuous_scale='Bluered_r' # Azul es rápido, Rojo es lento
+        )
+        fig_rank.update_layout(template="plotly_white", yaxis={'categoryorder':'total descending'}, showlegend=False)
+        st.plotly_chart(fig_rank, use_container_width=True)
+
+# ==============================================================================
+# 🔍 SECCIÓN 3: MATRIZ DE EFICIENCIA (Monto vs Cantidad)
+# ==============================================================================
+with st.expander("🔎 Ver Matriz de Eficiencia (Detectar 'Grasa' Administrativa)"):
+    st.markdown("""
+    **Interpretación Lean:**
+    * **Cuadrante Inferior Derecho (Muchos productos, Poco Monto):** Alta carga administrativa, bajo impacto financiero. Candidatos a automatizar o consolidar (Convenio Marco).
+    * **Cuadrante Superior Izquierdo (Pocos productos, Alto Monto):** Licitaciones estratégicas. Requieren atención detallada.
+    """)
+    
+    # Unir resumen con detalle agrupado para tener cantidad de items por licitación
+    items_por_lic = df_det_filtrado.groupby('CodigoLicitacion')['Cantidad'].sum().reset_index()
+    df_matrix = df_filtrado.merge(items_por_lic, on='CodigoLicitacion', how='inner')
+    
+    if not df_matrix.empty:
+        fig_scatter = px.scatter(
+            df_matrix,
+            x='Cantidad',
+            y='MontoEstimado',
+            color='Tipo',
+            hover_data=['CodigoLicitacion', 'Nombre', 'C_Usuario'],
+            log_x=True, # Escala logarítmica ayuda a ver mejor si hay mucha dispersión
+            log_y=True,
+            title="Matriz de Impacto: Esfuerzo (Items) vs Valor (Monto)",
+            labels={'Cantidad': 'Cantidad de Productos (Log)', 'MontoEstimado': 'Monto Estimado $ (Log)'}
+        )
+        fig_scatter.update_layout(template="plotly_white")
+        st.plotly_chart(fig_scatter, use_container_width=True)
+    else:
+        st.warning("No hay datos cruzados entre Resumen y Detalle para generar la matriz.")

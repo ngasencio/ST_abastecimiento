@@ -41,6 +41,7 @@ pg = st.navigation(
             pagina_convenios,
             pagina_compradores
         ],
+       
         "🏛️ Mercado Público": [
             pagina_ordenes,
             pagina_licitaciones
@@ -54,7 +55,6 @@ with st.sidebar:
         st.image("resources/logoaba2.png", width=60)
     with col_text:
         st.markdown("**Sistema Gestión Abastecimiento**")
-
 
 # ==========================================
 # 4. EJECUCIÓN
