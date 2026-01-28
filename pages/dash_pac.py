@@ -242,13 +242,27 @@ df_expandido = df_expandido.explode('Meses envío OC')
 df_expandido['Meses envío OC'] = pd.to_datetime(df_expandido['Meses envío OC'].str.strip(), errors='coerce')
 df_expandido = df_expandido.dropna(subset=['Meses envío OC'])
 
-
-
 st.markdown("---")
 st.markdown("### 📋 Detalle de Compras y Cronograma de OC")
 
 # Pestañas para organizar la visualización
 tab1, tab2 = st.tabs(["🔍 Vista por Proyecto", "📅 Cronograma de Órdenes (Expandido)"])
+
+# Configuración común para las tablas (Fechas y Moneda)
+config_columnas = {
+    "Fecha de Inicio Compra": st.column_config.DateColumn(
+        "Fecha Inicio",
+        format="DD-MM-YYYY",
+    ),
+    "Meses envío OC": st.column_config.DateColumn(
+        "Fecha de OC",
+        format="DD-MM-YYYY",
+    ),
+    "Suma de Monto Total Ítem Año 2026": st.column_config.NumberColumn(
+        "Monto Total ($)",
+        format="$ %,.0f",  # El %,.0f agrega el $ y los separadores de miles
+    )
+}
 
 with tab1:
     st.dataframe(
@@ -256,18 +270,26 @@ with tab1:
             "ID Proyecto", "Nombre Proyecto", "Nombre ítem", 
             "Nombre responsable", "Fecha de Inicio Compra", "Suma de Monto Total Ítem Año 2026"
         ]],
+        column_config=config_columnas, # Aplicamos el formato aquí
         use_container_width=True,
         hide_index=True
     )
 
 with tab2:
-    # Mostramos la data normalizada (una fila por cada fecha de OC proyectada)
     st.write("Cada fila representa una Orden de Compra individual programada:")
+    # Aseguramos que la columna sea datetime para que el config funcione
+    df_expandido['Meses envío OC'] = pd.to_datetime(df_expandido['Meses envío OC'])
+    
     df_display_oc = df_expandido[[
         "Meses envío OC", "Nombre ítem", "ID Proyecto", "Nombre responsable", "Departamento_SHORT"
     ]].sort_values("Meses envío OC")
     
-    st.dataframe(df_display_oc, use_container_width=True, hide_index=True)
+    st.dataframe(
+        df_display_oc, 
+        column_config=config_columnas, # Aplicamos el formato aquí también
+        use_container_width=True, 
+        hide_index=True
+    )
 
 # =============================================================================
 # BOTÓN EXPORTAR PDF
