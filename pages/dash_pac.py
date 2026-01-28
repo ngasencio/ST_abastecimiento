@@ -269,11 +269,6 @@ with tab2:
     
     st.dataframe(df_display_oc, use_container_width=True, hide_index=True)
 
-
-
-
-
-
 # =============================================================================
 # BOTÓN EXPORTAR PDF
 # =============================================================================
@@ -294,17 +289,3 @@ if st.button("📥 Generar PDF PAC 2026"):
             file_name="Reporte_PAC_2026.pdf",
             mime="application/pdf"
         )
-
-
-# =============================================================================
-# EXPORTACIÓN
-# =============================================================================
-st.sidebar.markdown("### 📥 Reportes")
-if st.sidebar.button("Generar Reporte PDF"):
-    pdf_buffer = generar_pdf_pac(df_filtrado)
-    st.sidebar.download_button(
-        label="Descargar PDF",
-        data=pdf_buffer,
-        file_name=f"PAC_2026_{datetime.now().strftime('%Y%m%d')}.pdf",
-        mime="application/pdf"
-    )
