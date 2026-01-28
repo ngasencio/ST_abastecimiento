@@ -312,8 +312,6 @@ with st.expander("📅 Ver Tabla Maestra de OCs"):
         "PorcentajeIva": "{:.1f}%".format,
     }), height=400, use_container_width=True)
 
-
-
 # ==========================================================
 # 6. ANÁLISIS GRÁFICO LEAN
 # ==========================================================
@@ -418,7 +416,6 @@ if not df_productos_filtrados.empty:
 
 else:
     st.info("No hay detalles de productos disponibles para la selección actual.")
-
 
 # ==========================================================
 # ⏱️ MÓDULO: ANÁLISIS DE CICLO DE VIDA (LEAN VSM)
