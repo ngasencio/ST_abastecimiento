@@ -32,8 +32,6 @@ cargar_css()
 # =============================================================================
 df_pac = load_pac26_data()
 
-
-
 # =============================================================================
 # HEADER
 # =============================================================================
@@ -333,60 +331,3 @@ if st.button("📥 Generar PDF PAC 2026"):
             file_name="Reporte_PAC_2026.pdf",
             mime="application/pdf"
         )
-
-# =============================================================================
-
-
-# --- 🔄 EXPANSIÓN DE ÓRDENES DE COMPRA (RELACIONAL) ---
-# Creamos un DataFrame expandido: una fila por cada fecha en 'Meses envío OC'
-df_expandido = df_filtrado.copy()
-
-# 1. Convertir la columna a string y separar por comas
-df_expandido['Meses envío OC'] = df_expandido['Meses envío OC'].astype(str).str.split(',')
-
-# 2. 'Explode' convierte cada elemento de la lista en una nueva fila
-df_expandido = df_expandido.explode('Meses envío OC')
-
-# 3. Limpiar espacios y convertir a fecha
-df_expandido['Meses envío OC'] = pd.to_datetime(df_expandido['Meses envío OC'].str.strip(), errors='coerce')
-df_expandido = df_expandido.dropna(subset=['Meses envío OC'])
-
-
-
-st.markdown("---")
-st.markdown("### 📋 Detalle de Compras y Cronograma de OC")
-
-# Pestañas para organizar la visualización
-tab1, tab2 = st.tabs(["🔍 Vista por Proyecto", "📅 Cronograma de Órdenes (Expandido)"])
-
-with tab1:
-    st.dataframe(
-        df_filtrado[[
-            "ID Proyecto", "Nombre Proyecto", "Nombre ítem", 
-            "Nombre responsable2", "Fecha de Inicio Compra", "Suma de Monto Total Ítem Año 2026"
-        ]],
-        use_container_width=True,
-        hide_index=True
-    )
-
-with tab2:
-    # Mostramos la data normalizada (una fila por cada fecha de OC proyectada)
-    st.write("Cada fila representa una Orden de Compra individual programada:")
-    df_display_oc = df_expandido[[
-        "Meses envío OC", "Nombre ítem", "ID Proyecto", "Nombre responsable2", "Departamento_SHORT"
-    ]].sort_values("Meses envío OC")
-    
-    st.dataframe(df_display_oc, use_container_width=True, hide_index=True)
-
-# =============================================================================
-# EXPORTACIÓN
-# =============================================================================
-st.sidebar.markdown("### 📥 Reportes")
-if st.sidebar.button("Generar Reporte PDF"):
-    pdf_buffer = generar_pdf_pac(df_filtrado)
-    st.sidebar.download_button(
-        label="Descargar PDF",
-        data=pdf_buffer,
-        file_name=f"PAC_2026_{datetime.now().strftime('%Y%m%d')}.pdf",
-        mime="application/pdf"
-    )
