@@ -16,7 +16,6 @@ st.set_page_config(
 # No acepta 'width' manual, se ajusta automáticamente al ancho de la barra.
 st.logo("resources/logosso2.jpg")
 
-
 # ==========================================
 # 2. DEFINICIÓN DE PÁGINAS
 # ==========================================
