@@ -1,17 +1,9 @@
-from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
-)
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.pagesizes import A4
-from reportlab.lib import colors
 from datetime import datetime
 import tempfile
 import os
-
 from fpdf import FPDF
 import pandas as pd
-import tempfile
-import os
+
 
 class PAC_PDF(FPDF):
     def header(self):
