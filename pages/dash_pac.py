@@ -11,7 +11,6 @@ from datetime import datetime
 from utils.pdf_generador_pac import generar_pdf_pac
 from data.data_loader import load_pac26_data
 
-
 # =============================================================================
 # CONFIGURACIÓN INICIAL
 # =============================================================================
