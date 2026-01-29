@@ -3,6 +3,10 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 from datetime import datetime
+import pandas as pd
+
+# Aumentar el límite de celdas para el Styler
+pd.set_option("styler.render.max_elements", 500000)
 
 import api.OC_data_loader as loader_oc
 
@@ -530,3 +534,7 @@ if not df_ciclo_completo.empty:
 
 else:
     st.info("ℹ️ No hay suficientes datos con ciclo completo (Recepción Conforme) para calcular los tiempos detallados en el periodo seleccionado.")
+
+
+
+
