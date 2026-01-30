@@ -30,6 +30,9 @@ pagina_compradores = st.Page("pages/dash_compradores.py", title="Compradores", i
 pagina_licitaciones = st.Page("pages/dash_licitaciones.py", title="Licitaciones", icon="📄")
 pagina_ordenes = st.Page("pages/dash_ordencompra.py", title="Ordenes de Compra", icon="🧾")
 
+#Grupo Facturas
+pagina_facturas = st.Page("pages/dash_facturas.py", title="Facturas", icon="📥")
+
 #Grupo: Documentos
 pagina_documentos = st.Page("pages/dash_documentos.py", title="Documentos", icon="📋")
 
@@ -51,6 +54,9 @@ pg = st.navigation(
             pagina_ordenes,
             pagina_licitaciones
         ],
+        "📥Facturas":[
+            pagina_facturas],
+
         "📚 Biblioteca Normativa": [
             pagina_documentos
         ],
