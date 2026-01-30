@@ -20,7 +20,8 @@ st.logo("resources/logosso2.jpg")
 # 2. DEFINICIÓN DE PÁGINAS
 # ==========================================
 # Grupo: Sistema Interno
-pagina_inicio = st.Page("app.py", title="Inicio", icon="🏠", default=True)
+pagina_inicio = st.Page("pages/home.py", title="Inicio", icon="🏠", default=True)
+pagina_fsc = st.Page("pages/dash_fsc.py", title="Formularios de Compra", icon="📄", default=True)
 pagina_pac = st.Page("pages/dash_pac.py", title="Plan de Compras", icon="🛒")
 pagina_convenios = st.Page("pages/dash_convenios.py", title="Convenios", icon="🤝")
 pagina_compradores = st.Page("pages/dash_compradores.py", title="Compradores", icon="👥")
@@ -37,6 +38,7 @@ pg = st.navigation(
     {
         "💻 Sistema Interno": [
             pagina_inicio,
+            pagina_fsc,
             pagina_pac,
             pagina_convenios,
             pagina_compradores

@@ -538,3 +538,15 @@ else:
 
 
 
+st.markdown("---")
+st.markdown("### 📋 Detalle de Compras y Cronograma de OC")
+
+# Pestañas para organizar la visualización
+tab1, tab2, tab3 = st.tabs(["🔍 Vista por Proyecto", "📅 Cronograma de Órdenes (Expandido)", "📊 Análisis de Costos"])
+
+with tab1:
+    pass
+
+with tab2:
+    pass
+ 
