@@ -11,7 +11,7 @@ import api.OC_data_loader as loader_oc
 
 # ### NUEVO - INTEGRACIÓN PAC: Importamos los módulos creados ###
 # (Asegúrate de tener estos archivos o funciones disponibles)
-from data.data_pac.data_loader_pac import load_pac_consolidado
+from data.data_pac.data_loader_pac import load_pac_oc_consolidado
 from data.data_pac.data_validation_pac import validate_oc_in_pac
 from data.data_pac.data_metric_pac import calculate_pac_performance
 
@@ -27,20 +27,21 @@ def obtener_datos_oc():
 # EJECUCIÓN EN EL DASHBOARD
 # ==========================================
 try:
-    # 1. Llamada a la función con caché
+    # 1. Llamada a la función con caché (OCs)
     df_MaestroOC_Resumen, df_MaestroOC_Detalle = obtener_datos_oc()
+
+    # ### NUEVO: CARGAR Y CRUZAR PAC 2026 ###
+    # Cargamos el PAC desde caché
+    df_pac_consolidado = load_pac_oc_consolidado()
     
-    # ### NUEVO - INTEGRACIÓN PAC: Carga y Validación ###
-    df_pac_ref = load_pac_consolidado()
-    
-    if df_MaestroOC_Resumen.empty:
-        st.warning("⚠️ No se encontraron datos de Órdenes de Compra.")
-    else:
-        # ### NUEVO: Aplicamos la validación ANTES de cualquier filtro ###
-        # Esto añade las columnas "En_PAC_2026" y "ID_Proyecto_PAC" a tu maestro
-        df_MaestroOC_Resumen = validate_oc_in_pac(df_MaestroOC_Resumen, df_pac_ref)
+    if not df_MaestroOC_Resumen.empty:
+        # Ejecutamos la validación. Esto agrega la col "En_PAC_2026" al maestro.
+        # Lo hacemos ANTES de cualquier filtro para que el dato exista siempre.
+        df_MaestroOC_Resumen = validate_oc_in_pac(df_MaestroOC_Resumen, df_pac_consolidado)
         
-        st.success(f"✅ Datos cargados: {len(df_MaestroOC_Resumen)} Órdenes. Validación PAC aplicada.")
+        st.success(f"✅ Datos cargados: {len(df_MaestroOC_Resumen)} OCs. Validación PAC 2026 aplicada.")
+    else:
+        st.warning("⚠️ No se encontraron datos de Órdenes de Compra.")
 
 except Exception as e:
     st.error(f"❌ Ocurrió un error al cargar los datos: {e}")
@@ -190,14 +191,53 @@ with c_kpi4:
     st.metric("✅ Tasa de Flujo Efectivo", f"{efficiency:.1f}%", help="% de Órdenes procesadas exitosamente")
 
 with c_kpi5:
-    # KPI DE CUMPLIMIENTO PAC
-    st.metric("planificado", f"{pct_pac:.1f}%", help="% de OCs que estaban en el Plan 2026")
+    # NUEVO KPI PAC
+    st.metric("📊 Adherencia PAC", f"{pct_pac:.1f}%", help="% de OCs que coinciden con el Plan Anual 2026")
 
 with c_kpi6:
-    # KPI DE DESVIACIÓN
-    st.metric("🚫 Fuera de Plan", f"{total_out} OCs", delta_color="inverse")
-
+    # NUEVO KPI DESVIACION
+    st.metric("🚫 Fuera de Plan", f"{total_fuera} OCs", delta_color="inverse", help="Cantidad de OCs no planificadas")
 # ================================== GRAFICOS ===============================================
+# ==========================================================
+# ### NUEVO: VISUALIZACIÓN ESPECÍFICA PAC ###
+# ==========================================================
+if not df_filtrado.empty:
+    with st.expander("📈 Análisis Detallado: Cumplimiento Plan Anual de Compras (PAC)", expanded=True):
+        col_pac1, col_pac2 = st.columns([1, 2])
+        
+        with col_pac1:
+            # Gráfico de Torta simple
+            fig_pac_pie = px.pie(
+                df_filtrado, 
+                names="En_PAC_2026", 
+                title="Distribución de Cumplimiento",
+                color="En_PAC_2026",
+                color_discrete_map={"Sí": "#2ECC71", "No": "#E74C3C"},
+                hole=0.4
+            )
+            st.plotly_chart(fig_pac_pie, use_container_width=True)
+            
+        with col_pac2:
+            # Gráfico de Barras: Montos Gastados Dentro vs Fuera
+            # Agrupamos para saber cuánto dinero se va en compras no planificadas
+            df_pac_monto = df_filtrado.groupby("En_PAC_2026")["TotalBruto"].sum().reset_index()
+            
+            fig_pac_bar = px.bar(
+                df_pac_monto,
+                x="TotalBruto",
+                y="En_PAC_2026",
+                orientation='h',
+                title="Gasto ($) Planificado vs No Planificado",
+                text_auto='.2s',
+                color="En_PAC_2026",
+                color_discrete_map={"Sí": "#2ECC71", "No": "#E74C3C"}
+            )
+            fig_pac_bar.update_layout(xaxis_title="Monto Total (CLP)", yaxis_title="En Plan")
+            st.plotly_chart(fig_pac_bar, use_container_width=True)
+
+
+
+
 # ##### GRAFICOS OC CON MESES EN ESPAÑOL ####
 st.markdown("## 📊 Análisis Gráfico de Órdenes de Compra")
 
@@ -313,39 +353,6 @@ with col2:
     st.plotly_chart(fig_m_oc, use_container_width=True)
 
 # ==========================================================
-# ### NUEVO SECCIÓN VISUALIZACIÓN PAC ###
-# ==========================================================
-if not df_filtrado.empty:
-    with st.expander("📊 Ver Análisis de Cumplimiento Plan Anual de Compras (PAC 2026)", expanded=True):
-        col_pac1, col_pac2 = st.columns([1, 2])
-        
-        with col_pac1:
-            # Gráfico de Torta: Dentro vs Fuera del Plan
-            fig_pac_pie = px.pie(
-                df_filtrado, 
-                names="En_PAC_2026", 
-                title="Distribución Cumplimiento PAC",
-                color="En_PAC_2026",
-                color_discrete_map={"Sí": "#2E86C1", "No": "#E74C3C"}
-            )
-            st.plotly_chart(fig_pac_pie, use_container_width=True)
-            
-        with col_pac2:
-            # Gráfico de Barras: Montos Gastados Dentro vs Fuera
-            df_pac_monto = df_filtrado.groupby("En_PAC_2026")["TotalBruto"].sum().reset_index()
-            fig_pac_bar = px.bar(
-                df_pac_monto,
-                x="En_PAC_2026",
-                y="TotalBruto",
-                title="Gasto ($) Planificado vs No Planificado",
-                text_auto='.2s',
-                color="En_PAC_2026",
-                color_discrete_map={"Sí": "#2E86C1", "No": "#E74C3C"}
-            )
-            st.plotly_chart(fig_pac_bar, use_container_width=True)
-
-# ... (El resto de tu código de gráficos de Meses, Tablas, Lean VSM continúa igual) ...
-# Solo asegúrate de agregar la columna "En_PAC_2026" en la visualización de la tabla maestra si quieres ver el detalle.
 
 st.markdown("## 🛒 Órdenes de Compra Consolidadas")
 with st.expander("📅 Ver Tabla Maestra de OCs"):
@@ -358,7 +365,6 @@ with st.expander("📅 Ver Tabla Maestra de OCs"):
         "TotalBruto": "${:,.0f}".format
     }), use_container_width=True)
 
-st.markdown("## 🛒 Órdenes de Compra Consolidadas")
 
 with st.expander("📅 Ver Tabla Maestra de OCs"):
     st.dataframe(df_oc_res.style.format({

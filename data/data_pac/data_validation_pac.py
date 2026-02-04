@@ -1,38 +1,36 @@
 import pandas as pd
-import re
+from data_clean_pac import normalizar_texto
 
-def validate_oc_in_pac(df_oc, df_pac):
+def validate_oc_in_pac(df_ordenes_compra, df_pac_consolidado):
     """
-    df_oc: Tu DataFrame df_MaestroOC_Resumen
-    df_pac: El DataFrame que sale de load_pac_consolidado
+    Cruza el DF de OCs con el DF del PAC y añade columna de validación.
     """
-    if df_pac is None or df_oc.empty:
-        df_oc["En_PAC_2026"] = "No Verificado"
-        df_oc["ID_Proyecto_PAC"] = "N/A"
-        return df_oc
+    if df_pac_consolidado is None or df_pac_consolidado.empty:
+        df_ordenes_compra["En_PAC_2026"] = "No Verificado"
+        df_ordenes_compra["ID_Proyecto_PAC"] = "N/A"
+        return df_ordenes_compra
 
-    # 1. Normalizar la columna 'Codigo' de tus OCs reales para igualar formato
-    def normalizar(texto):
-        texto = str(texto).strip().upper()
-        return re.sub(r'[^A-Z0-9-]', '', texto)
+    # 1. Crear llave temporal normalizada en las OCs (usando la misma lógica)
+    # Asumimos que la columna en tus OCs se llama 'Codigo' o 'CodigoOC'
+    col_oc = "Codigo" if "Codigo" in df_ordenes_compra.columns else "CodigoOC"
     
-    # Creamos columna temporal para el merge
-    df_oc["Codigo_Norm_Temp"] = df_oc["Codigo"].apply(normalizar)
+    df_ordenes_compra["OC_KEY_TEMP"] = df_ordenes_compra[col_oc].apply(normalizar_texto)
     
-    # 2. Merge (Left Join) para traer info del PAC
-    df_merged = df_oc.merge(
-        df_pac[["OC_Normalizada", "ID Proyecto"]],
-        left_on="Codigo_Norm_Temp",
-        right_on="OC_Normalizada",
+    # 2. Merge (Left Join)
+    # Traemos 'ID Proyecto' del PAC para tener contexto
+    df_merged = df_ordenes_compra.merge(
+        df_pac_consolidado[["OC_KEY_PAC", "ID Proyecto"]],
+        left_on="OC_KEY_TEMP",
+        right_on="OC_KEY_PAC",
         how="left"
     )
     
-    # 3. Crear columnas finales
-    # Si 'OC_Normalizada' no es nulo, es porque hizo match
-    df_merged["En_PAC_2026"] = df_merged["OC_Normalizada"].notna().map({True: "Sí", False: "No"})
+    # 3. Crear columna booleana visual ("Sí" / "No")
+    # Si 'OC_KEY_PAC' no es nulo, hubo coincidencia
+    df_merged["En_PAC_2026"] = df_merged["OC_KEY_PAC"].notna().apply(lambda x: "Sí" if x else "No")
     df_merged["ID_Proyecto_PAC"] = df_merged["ID Proyecto"].fillna("No Planificado")
     
-    # 4. Limpieza de columnas temporales
-    df_merged.drop(columns=["Codigo_Norm_Temp", "OC_Normalizada", "ID Proyecto"], inplace=True)
+    # 4. Limpieza de columnas auxiliares
+    df_merged.drop(columns=["OC_KEY_TEMP", "OC_KEY_PAC", "ID Proyecto"], inplace=True)
     
     return df_merged
