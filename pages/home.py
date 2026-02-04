@@ -68,18 +68,6 @@ col_logo, col_title, col_user = st.columns([1, 4, 2])
 with col_title:
     st.title("Panel de Control de Abastecimiento")
     st.markdown(f"**Fecha:** {datetime.now().strftime('%d-%m-%Y')} | **Estado:** Operativo")
-
-with col_user:
-    st.markdown(
-        """
-        <div style="text-align: right; padding-top: 20px;">
-            👤 <b>Bienvenido, Usuario</b><br>
-            <span style="color: grey; font-size: 0.9em;">Perfil: Administrador</span>
-        </div>
-        """, 
-        unsafe_allow_html=True
-    )
-
 st.markdown("---")
 
 # =============================================================================
@@ -111,19 +99,7 @@ with col_main:
     st.subheader("📈 Tendencia de Requerimientos")
     
     # Simulación de datos para gráfico
-    data_mock = pd.DataFrame({
-        "Mes": ["Ene", "Feb", "Mar", "Abr", "May", "Jun"],
-        "Solicitudes": [12, 19, 15, 25, 32, 28],
-        "Procesados": [10, 15, 14, 25, 28, 25]
-    })
-    
-    fig = px.area(
-        data_mock, x="Mes", y=["Solicitudes", "Procesados"],
-        color_discrete_sequence=["#aecfe9", "#138AEC"],
-        title="Volumen de Solicitudes vs Procesados (Últimos 6 meses)"
-    )
-    fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=350)
-    st.plotly_chart(fig, use_container_width=True)
+   
 
 # --- COLUMNA DERECHA: ACCESOS RÁPIDOS Y ALERTAS ---
 with col_side:
