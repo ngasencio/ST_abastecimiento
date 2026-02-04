@@ -11,9 +11,9 @@ import api.OC_data_loader as loader_oc
 
 # ### NUEVO - INTEGRACIÓN PAC: Importamos los módulos creados ###
 # (Asegúrate de tener estos archivos o funciones disponibles)
-from pac_loader import load_pac_consolidado
-from validation import validate_oc_in_pac
-from metrics import calculate_pac_performance
+from data.data_pac.data_loader_pac import load_pac_consolidado
+from data.data_pac.data_validation_pac import validate_oc_in_pac
+from data.data_pac.data_metric_pac import calculate_pac_performance
 
 # ==========================================
 # CARGA DE DATOS OPTIMIZADA (CACHÉ)
