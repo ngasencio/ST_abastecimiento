@@ -1,8 +1,3 @@
-# pages/dash_compras.py
-
-# =============================================================================
-# IMPORTS
-# =============================================================================
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -14,8 +9,7 @@ from data.data_loader import load_pac26_data
 # =============================================================================
 # CONFIGURACIÓN INICIAL
 # =============================================================================
-st.set_page_config(layout="wide")
-
+# Nota: st.set_page_config se elimina porque main.py maneja el layout.
 
 def cargar_css():
     try:

@@ -1,305 +1,357 @@
-/* ===== FONDO GENERAL ===== */
+/* =============================================================================
+   🎨 ESTILO PROFESIONAL - SISTEMA DE ABASTECIMIENTO
+   Diseño: Clean Modern / Corporate Blue
+   ============================================================================= */
+
+/* --- VARIABLES CSS --- */
+:root {
+    --primary-color: #138AEC;
+    /* Azul Principal (Logo) */
+    --secondary-color: #001C41;
+    /* Azul Marino Profundo (Sidebar) */
+    --accent-color: #36e93f;
+    /* Verde Acento (Tags/Éxito) */
+    --bg-color: #F8FAFC;
+    /* Fondo General muy suave */
+    --card-bg: #FFFFFF;
+    /* Fondo Tarjetas */
+    --text-primary: #1e293b;
+    /* Texto Principal */
+    --text-secondary: #64748b;
+    /* Texto Secundario */
+    --border-radius: 12px;
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.08);
+    --font-family: 'Segoe UI', Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* =============================================================================
+   1. GLOBAL & FONDO
+   ============================================================================= */
 .stApp {
-    background-color: #F7FCFF;
+    background-color: var(--bg-color);
+    font-family: var(--font-family);
+    color: var(--text-primary);
 }
 
-/* ===== SIDEBAR PROFESIONAL DSSO ===== */
+/* Scrollbar Personalizado (Webkit) */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* =============================================================================
+   2. SIDEBAR (NAVEGACIÓN)
+   ============================================================================= */
 [data-testid="stSidebar"] {
-    background-color: #001C41 !important;
+    background: linear-gradient(180deg, var(--secondary-color) 0%, #0f355c 100%) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Texto general */
+/* Elementos de Navegación */
+[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"] {
+    background: transparent;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"]:hover {
+    background: rgb(249, 249, 249);
+    transform: translateX(4px);
+    border-left: 1px solid var(--primary-color);
+}
+
+/* Texto en Sidebar */
+/* Texto en Sidebar - REGLA GENERAL AGRESIVA */
+[data-testid="stSidebar"],
 [data-testid="stSidebar"] * {
-    color: #ffffff !important;
+    color: #FFFFFF !important;
 }
 
-/* Títulos dentro del sidebar */
+/* Excepción: Enlaces al hacer HOVER (Fondo blanco -> Texto oscuro) */
+[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"]:hover * {
+    color: var(--secondary-color) !important;
+}
+
+/* Excepción: Inputs internos (texto negro sobre fondo blanco si aplica) */
+[data-testid="stSidebar"] input,
+[data-testid="stSidebar"] textarea,
+[data-testid="stSidebar"] select {
+    color: #FFFFFF !important;
+    /* Mantenemos blanco si el fondo es semitransparente oscuro */
+}
+
+[data-testid="stSidebar"] div[role="listbox"] div {
+    color: var(--text-primary) !important;
+    /* Opciones del dropdown en negro */
+}
+
+/* Texto específico en Sidebar (Refuerzo) */
 [data-testid="stSidebar"] h1,
 [data-testid="stSidebar"] h2,
-[data-testid="stSidebar"] h3 {
-    color: #ffffff !important;
-    font-weight: 700;
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] .stMarkdown,
+[data-testid="stSidebar"] p {
+    color: #FFFFFF !important;
 }
 
-/* Selectbox y inputs */
-[data-testid="stSidebar"] .stSelectbox,
-[data-testid="stSidebar"] .stTextInput,
-[data-testid="stSidebar"] .stDateInput {
-    background-color: #ffffff15;
-    border-radius: 8px;
+/* Inputs en Sidebar */
+[data-testid="stSidebar"] .stSelectbox>div>div,
+[data-testid="stSidebar"] .stTextInput>div>div {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: white;
 }
 
-/* Hover de opciones */
-[data-testid="stSidebar"] div[role="option"]:hover {
-    background-color: #ffffff25;
+[data-testid="stSidebar"] .stSelectbox>div>div:hover {
+    border-color: var(--primary-color);
 }
 
-/* Separadores */
-[data-testid="stSidebar"] hr {
-    border: 1px solid rgba(255, 255, 255, 0.3);
+/* =============================================================================
+   3. TITULOS Y TEXTOS
+   ============================================================================= */
+h1 {
+    font-weight: 800 !important;
+    color: var(--secondary-color) !important;
+    font-size: 2.2rem !important;
+    letter-spacing: -0.5px;
 }
 
-/* Botones dentro del sidebar */
-[data-testid="stSidebar"] button {
-    background-color: #ffffff20;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.4);
-}
-
-[data-testid="stSidebar"] button:hover {
-    background-color: #ffffff35;
-}
-
-
-/* ===== METRIC CARDS PROFESIONALES ===== */
-
-/* Contenedor completo de la métrica */
-/* ===== TITULOS H2 PERSONALIZADOS ===== */
 h2 {
-    background-color: #0076D1 !important;
-    color: #ffffff !important;
-    font-size: 26px !important;
-    font-weight: 800 !important;
-    border-radius: 10px;
-    padding: 10px 14px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-    border-left: 6px solid #1A4564;
-
-    /* CAMBIO CLAVE: Aumentar margen inferior y usar margin-bottom con !important */
-    margin-top: 20px !important;
-    margin-bottom: 25px !important;
-}
-
-/* ===== METRIC CARDS PROFESIONALES ===== */
-[data-testid="stMetric"] {
-    background: #ffffff !important;
-    border-left: 6px solid #1A4564 !important;
-    border-radius: 10px;
-    padding: 12px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
-
-    /* CAMBIO CLAVE: Asegurar que la tarjeta tenga su propio espacio superior */
-    margin-top: 5px !important;
-    transition: all 0.2s ease;
-}
-
-/* Efecto hover */
-[data-testid="stMetric"]:hover {
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18) !important;
-}
-
-/* Título de la métrica */
-[data-testid="stMetricLabel"] {
-    color: #0C5997 !important;
-    font-weight: 600 !important;
-}
-
-/* Valor principal */
-[data-testid="stMetricValue"] {
-    color: #000000 !important;
-    font-size: 26px !important;
-    font-weight: 800 !important;
-}
-
-/* Delta (porcentaje) */
-[data-testid="stMetricDelta"] {
-    font-weight: 600 !important;
-}
-
-[data-testid="stMetric"] {
-    background: #ffffff !important;
-    border-left: 6px solid #0C5997 !important;
-    border-radius: 10px;
-    padding: 12px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
-}
-
-
-
-/* =========================================================
-   FILTROS MULTISELECT - ESTILO DSSO PROFESIONAL
-   ========================================================= */
-
-/* Contenedor principal del multiselect */
-.stMultiSelect>div {
-    background-color: #ffffff !important;
-    border-radius: 12px !important;
-    border: 1px solid #e5e7eb !important;
-
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
-    padding: 6px 8px !important;
-
-    transition: all 0.2s ease;
-}
-
-/* Hover del contenedor */
-.stMultiSelect>div:hover {
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18) !important;
-    border: 1px solid #1A4564 !important;
-}
-
-/* Etiqueta del filtro (Subdirección / Departamento) */
-.stMultiSelect label {
-    color: #1A4564 !important;
     font-weight: 700 !important;
-    font-size: 15px !important;
+    color: var(--secondary-color) !important;
+    font-size: 1.6rem !important;
+    margin-top: 1.5rem !important;
+    margin-bottom: 1rem !important;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e0e6ef;
+    /* Línea sutil en lugar de fondo bloque */
+    background: transparent !important;
+    /* Quitamos el fondo azul anterior */
+    box-shadow: none !important;
+    border-left: none !important;
+    border-radius: 0 !important;
 }
 
-/* Chips seleccionados */
+h3 {
+    color: #334155 !important;
+    font-weight: 600 !important;
+    font-size: 1.25rem !important;
+}
+
+/* =============================================================================
+   4. TARJETAS DE MÉTRICAS (KPIs)
+   ============================================================================= */
+[data-testid="stMetric"] {
+    background: var(--card-bg) !important;
+    padding: 18px !important;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid #f1f5f9;
+    /* Borde izquierdo colorido para destacar */
+    border-left: 5px solid var(--primary-color) !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+[data-testid="stMetric"]:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+[data-testid="stMetricLabel"] {
+    color: var(--text-secondary) !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+}
+
+[data-testid="stMetricValue"] {
+    color: var(--secondary-color) !important;
+    font-size: 1.8rem !important;
+    font-weight: 800 !important;
+}
+
+[data-testid="stMetricDelta"] {
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    background-color: #f0fdf4;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* =============================================================================
+   5. CONTENEDORES Y PANELES (Expander, Dataframes, Plots)
+   ============================================================================= */
+
+/* Expander - Acordeón */
+[data-testid="stExpander"] {
+    background-color: var(--card-bg) !important;
+    border-radius: var(--border-radius) !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: var(--shadow-sm) !important;
+    overflow: hidden;
+    /* Para respetar border-radius */
+}
+
+[data-testid="stExpander"] summary {
+    font-weight: 600 !important;
+    color: var(--secondary-color) !important;
+    background-color: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+[data-testid="stExpander"] summary:hover {
+    background-color: #f1f5f9;
+    color: var(--primary-color) !important;
+}
+
+/* Gráficos Plotly */
+[data-testid="stPlotlyChart"] {
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    padding: 16px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid #e2e8f0;
+}
+
+/* Dataframes y Tablas */
+div[data-testid="stDataFrame"],
+div[data-testid="stTable"] {
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    padding: 10px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid #e2e8f0;
+}
+
+/* Cabecera de tabla */
+thead tr th {
+    background-color: #f1f5f9 !important;
+    color: var(--secondary-color) !important;
+    font-weight: 700 !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+}
+
+/* Filas */
+tbody tr:hover {
+    background-color: #f8fafc !important;
+}
+
+/* =============================================================================
+   6. INPUTS Y FILTROS (Selectbox, Multiselect, DateInput)
+   ============================================================================= */
+.stMultiSelect>div,
+.stSelectbox>div>div,
+.stDateInput>div>div,
+.stTextInput>div>div {
+    background-color: var(--card-bg) !important;
+    border-radius: 8px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.2s;
+}
+
+/* Estado Focus/Hover en Inputs */
+.stMultiSelect>div:hover,
+.stSelectbox>div>div:hover,
+.stTextInput>div>div:hover {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 3px rgba(19, 138, 236, 0.1) !important;
+}
+
+/* Etiquetas de inputs */
+.stMultiSelect label,
+.stSelectbox label,
+.stDateInput label {
+    font-weight: 600 !important;
+    color: var(--text-secondary) !important;
+}
+
+/* Tags/Chips dentro de Multiselect */
 .stMultiSelect span[data-baseweb="tag"] {
-    background-color: #1A4564 !important;
-    color: #ffffff !important;
+    background-color: #e0f2fe !important;
+    /* Azul muy claro */
+    border: 1px solid #bae6fd !important;
+}
+
+.stMultiSelect span[data-baseweb="tag"] span {
+    color: #0369a1 !important;
+    /* Texto del chip */
+    font-weight: 600;
+}
+
+/* =============================================================================
+   7. BOTONES
+   ============================================================================= */
+.stButton>button {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0d6efd 100%) !important;
+    color: white !important;
+    border: none !important;
+    padding: 0.5rem 1rem !important;
     border-radius: 8px !important;
     font-weight: 600 !important;
+    letter-spacing: 0.3px;
+    box-shadow: 0 4px 6px rgba(19, 138, 236, 0.25) !important;
+    transition: all 0.2s ease;
+    width: 100%;
+    /* Botones full width por defecto para consistencia */
 }
 
-/* Botón de eliminar chip */
-.stMultiSelect span[data-baseweb="tag"] span[aria-hidden="true"] {
-    color: #36e93f !important;
+.stButton>button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(19, 138, 236, 0.35) !important;
+    filter: brightness(110%);
 }
 
-/* Texto interno del input */
-.stMultiSelect input {
-    color: #000000 !important;
+.stButton>button:active {
+    transform: translateY(0);
 }
 
-/* Menú desplegable */
-div[role="listbox"] {
-    background-color: #ffffff !important;
-    border-radius: 12px !important;
-    border: 1px solid #e5e7eb !important;
+/* Botones secundarios (usando type="secondary" si fuera posible, 
+   pero Streamlit usa clases genéricas. Aquí asumimos el estilo base) */
 
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15) !important;
+/* =============================================================================
+   8. PESTAÑAS (TABS)
+   ============================================================================= */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+    background-color: transparent;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0px;
 }
 
-/* Opción al pasar el mouse */
-div[role="option"]:hover {
-    background-color: #e8edf7 !important;
-}
-
-/* Opción seleccionada */
-div[aria-selected="true"] {
-    background-color: #1A4564 !important;
-    color: #ffffff !important;
-}
-
-/* ===============================================
-
-
-/* ===== Tarjetas de graficos ===== */
-div[data-testid="stPlotlyChart"] {
-    background: white;
-    border-radius: 12px;
-    padding: 10px;
-    border: 1px solid #e0e6ef;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
-}
-
-/* Hover suave */
-div[data-testid="stPlotlyChart"]:hover {
-    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
-}
-
-/* Titulos de seccion */
-h2 {
-    color: #1A4564;
-    font-weight: bold;
-}
-
-/* Grid interno mas suave */
-.js-plotly-plot .xgrid,
-.js-plotly-plot .ygrid {
-    stroke: #e6ecf5;
-}
-
-/* Fondo blanco seguro */
-.js-plotly-plot .plotly .bg {
-    fill: white;
-}
-
-
-/* ===== EXPANDER ===== */
-div[data-testid="stExpander"] {
-    background-color: #ffffff !important;
-    border-radius: 14px !important;
-    border: 1px solid #e0e6f2 !important;
-    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08) !important;
-    margin-bottom: 12px !important;
-}
-
-/* Título del expander */
-div[data-testid="stExpander"] summary {
-    font-weight: 700 !important;
-    color: #1A4564 !important;
-    padding: 8px 10px !important;
-}
-
-/* Hover del expander */
-div[data-testid="stExpander"]:hover {
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12) !important;
-}
-
-
-/* ===== DATAFRAME ===== */
-div[data-testid="stDataFrame"] {
-    background-color: #ffffff !important;
-    border-radius: 14px !important;
-    border: 1px solid #e0e6f2 !important;
-    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08) !important;
-    padding: 6px !important;
-}
-
-/* Cabecera de la tabla */
-div[data-testid="stDataFrame"] thead th {
-    background-color: #1A4564 !important;
-    color: white !important;
-    font-weight: 700 !important;
-}
-
-/* Filas alternadas */
-div[data-testid="stDataFrame"] tbody tr:nth-child(even) {
-    background-color: #f5f8ff !important;
-}
-
-/* Hover fila */
-div[data-testid="stDataFrame"] tbody tr:hover {
-    background-color: #e8edf7 !important;
-}
-
-/* ===== STYLER (df.style) ===== */
-table {
-    border-radius: 12px !important;
-    overflow: hidden !important;
-}
-
-th {
-    background: #1A4564 !important;
-    color: white !important;
-    padding: 8px !important;
-}
-
-td {
-    padding: 6px 8px !important;
-}
-
-/* ===== BOTONES DE NAVEGACIÓN ===== */
-
-.nav-container {
-    margin: 10px 0 20px 0;
-}
-
-div.stButton>button {
-    width: 100% !important;
-    background: #1A4564 !important;
-    color: white !important;
-    border-radius: 12px !important;
-    height: 46px !important;
-    font-weight: 700 !important;
+.stTabs [data-baseweb="tab"] {
+    background-color: transparent;
     border: none !important;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12) !important;
+    color: var(--text-secondary);
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 8px 8px 0 0;
+    transition: color 0.2s;
 }
 
-div.stButton>button:hover {
-    background: #1748EB !important;
-    transform: translateY(-1px);
+.stTabs [data-baseweb="tab"]:hover {
+    color: var(--primary-color);
+    background-color: #f1f5f9;
+}
+
+.stTabs [aria-selected="true"] {
+    color: var(--primary-color) !important;
+    background-color: white !important;
+    border-bottom: 3px solid var(--primary-color) !important;
 }

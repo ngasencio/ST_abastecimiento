@@ -1,46 +1,24 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.express as px
-import plotly.graph_objects as go
 from datetime import datetime
-import sys
-import os
-import matplotlib.pyplot as plt
-import seaborn as sns
 
-# ===== CARGAR CSS =====
+# =============================================================================
+# 1. CONFIGURACIÓN Y ESTILOS
+# =============================================================================
+# Nota: st.set_page_config se maneja en main.py
+
+# Función para cargar CSS local
 def cargar_css():
-    with open("style/style.css", encoding="utf-8") as f:
-      st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    try:
+        with open("style/style.css", encoding="utf-8") as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    except FileNotFoundError:
+        pass # Si no encuentra el estilo, sigue sin él
 
 cargar_css()
 
-
-st.set_page_config(
-    page_title="Portal DSSO",
-    page_icon="logosso.jpg", 
-    layout="wide",
-    initial_sidebar_state="expanded")
-
-
-import streamlit as st
-import pandas as pd
-import plotly.express as px
-from datetime import datetime
-
-# =============================================================================
-# 1. CONFIGURACIÓN DE PÁGINA Y ESTILOS
-# =============================================================================
-st.set_page_config(
-    page_title="Portal de Abastecimiento",
-    page_icon="🏢",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# CSS PROFESIONAL
-# Define tarjetas, tipografía y colores corporativos (Azul #138AEC)
+# CSS Adicional específico para modificaciones en caliente
 st.markdown("""
     <style>
     /* Estilo para el contenedor principal */
@@ -136,7 +114,7 @@ with col_main:
     data_mock = pd.DataFrame({
         "Mes": ["Ene", "Feb", "Mar", "Abr", "May", "Jun"],
         "Solicitudes": [12, 19, 15, 25, 32, 28],
-        "Procesados": [10, 15, 14, 20, 28, 25]
+        "Procesados": [10, 15, 14, 25, 28, 25]
     })
     
     fig = px.area(
@@ -154,7 +132,6 @@ with col_side:
         st.markdown("### 🚀 Accesos Rápidos")
         st.write("Navegue a los módulos principales:")
         
-        # Asegúrate de que los nombres de archivo en 'page' sean correctos
         st.page_link("pages/dash_pac.py", label="Planificación PAC 2026", icon="📅")
         st.page_link("pages/dash_ordencompra.py", label="Seguimiento de Órdenes", icon="🛒")
         st.page_link("pages/dash_documentos.py", label="Repositorio Documental", icon="📚")
