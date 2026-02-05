@@ -46,11 +46,11 @@ DOCUMENTOS = [
         "icono": "⚖️"
     },
     {
-        "titulo": "Reglamento de la Ley de Compras",
-        "archivo": "Reglamento_Compras.pdf",
-        "categoria": "Marco Legal",
-        "descripcion": "Decreto 250 que aprueba el reglamento de la ley 19.886.",
-        "icono": "⚖️"
+        "titulo": "Certificado de Disponibilidad Presupuestaria 2026",
+        "archivo": "4. CDP 2026.docx",
+        "categoria": "Documentos",
+        "descripcion": "Certificado de Disponibilidad Presupuestaria 2026.",
+        "icono": "📘"
     },
     {
         "titulo": "Manual de Procedimientos Abastecimiento 2025",

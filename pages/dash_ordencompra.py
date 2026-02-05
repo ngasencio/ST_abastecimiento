@@ -116,7 +116,7 @@ st.markdown(
 df_cascada = df_oc_res.copy()
 
 # Creamos 5 columnas para que quepa todo el flujo
-c1, c2, c3, c4, c5 = st.columns(5)
+c1, c2, c3, c4, c5, c6 = st.columns(6)
 
 # --- FILTRO 1: ESTADO PAC (PRIORITARIO) ---
 with c1:
@@ -155,6 +155,10 @@ with c5:
     f_min = df_oc_res['FechaCreacion'].min()
     f_max = df_oc_res['FechaCreacion'].max()
     fechas_sel = st.date_input("📅 Periodo", [f_min, f_max])
+
+# ---- Filtro de Año ----
+with c6:
+    pass
 
 # ==========================================================
 # APLICACIÓN FINAL AL DATAFRAME DE TRABAJO
