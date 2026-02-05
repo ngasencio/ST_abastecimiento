@@ -8,3 +8,4 @@ seaborn
 fpdf
 kaleido
 openpyxl
+xlrd

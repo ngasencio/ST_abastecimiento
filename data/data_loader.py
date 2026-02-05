@@ -11,7 +11,7 @@ CARPETA_DATOS = "data"
 # ===============================
 # FSC 2025
 # ===============================
-NOMBRE_ARCHIVO_FSC = "FSC 2025.xlsx"
+NOMBRE_ARCHIVO_FSC = "/data_fsc/FSC 2025.xlsx"
 HOJA_FSC = "FSC 2025"
 
 RUTA_FSC = os.path.join(CARPETA_DATOS, NOMBRE_ARCHIVO_FSC)
@@ -32,11 +32,10 @@ def load_fsc_data():
         st.error(f"Error al leer FSC: {e}")
         return None
 
-
 # ===============================
 # PAC26
 # ===============================
-NOMBRE_ARCHIVO_PAC = "PAC26.xlsx"
+NOMBRE_ARCHIVO_PAC = "/data_pac/PAC26.xlsx"
 HOJA_PAC = "OficialReal"
 
 RUTA_PAC = os.path.join(CARPETA_DATOS, NOMBRE_ARCHIVO_PAC)
@@ -57,6 +56,14 @@ def load_pac26_data():
         st.error(f"Error al leer PAC26: {e}")
         return None
 
+# =============================================================================
+# PAC26 - PIPELINE DE NORMALIZACIÓN
+# =============================================================================
+
+@st.cache_data
+def load_ocpac_master():
+    df_OCPAC_Maestro = pd.read_csv(os.path.join(CARPETA_DATOS, "data_pac/OCPAC_Maestro.csv"), dtype={"OC Asociada PAC": str})
+    return df_OCPAC_Maestro
 
 # =============================================================================
 # FACTURAS - PIPELINE DE NORMALIZACIÓN

@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 from datetime import datetime
+import os
 
 # Aumentar el límite de celdas para el Styler
 pd.set_option("styler.render.max_elements", 500000)
@@ -557,4 +558,6 @@ with tab1:
 
 with tab2:
     pass
- 
+
+with tab3:
+    pass
