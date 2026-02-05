@@ -7,14 +7,14 @@ import glob
 # CONFIGURACIÓN GENERAL
 # ===============================
 CARPETA_DATOS = "data"
-
 # ===============================
 # FSC 2025
 # ===============================
-NOMBRE_ARCHIVO_FSC = "/data_fsc/FSC 2025.xlsx"
+CARPETA_FSC = "data_fsc"
+NOMBRE_ARCHIVO_FSC = "FSC 2025.xlsx"
 HOJA_FSC = "FSC 2025"
 
-RUTA_FSC = os.path.join(CARPETA_DATOS, NOMBRE_ARCHIVO_FSC)
+RUTA_FSC = os.path.join(CARPETA_DATOS,CARPETA_FSC, NOMBRE_ARCHIVO_FSC)
 
 @st.cache_data
 def load_fsc_data():
@@ -35,10 +35,11 @@ def load_fsc_data():
 # ===============================
 # PAC26
 # ===============================
-NOMBRE_ARCHIVO_PAC = "/data_pac/PAC26.xlsx"
+CARPETA_PLANIFICACION_PAC = "data_planificacionPac"
+NOMBRE_ARCHIVO_PAC = "PlanificacionPAC26.xlsx"
 HOJA_PAC = "OficialReal"
 
-RUTA_PAC = os.path.join(CARPETA_DATOS, NOMBRE_ARCHIVO_PAC)
+RUTA_PAC = os.path.join(CARPETA_DATOS,CARPETA_PLANIFICACION_PAC, NOMBRE_ARCHIVO_PAC)
 
 @st.cache_data
 def load_pac26_data():

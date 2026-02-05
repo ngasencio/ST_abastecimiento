@@ -23,7 +23,7 @@ st.logo("resources/logosso2.jpg")
 pagina_inicio = st.Page("pages/home.py", title="Inicio", icon="🏠", default=True)
 pagina_fsc = st.Page("pages/dash_fsc.py", title="Formularios de Compra", icon="📄" )
 pagina_pac = st.Page("pages/dash_pac.py", title="Plan de Compras", icon="🛒")
-pagina_convenios = st.Page("pages/dash_convenios.py", title="Convenios", icon="🤝")
+pagina_convenios = st.Page("pages/dash_convenios.py", title=" Cartera de Convenios", icon="📂")
 pagina_compradores = st.Page("pages/dash_compradores.py", title="Compradores", icon="👥")
 
 # Grupo: Mercado Público
