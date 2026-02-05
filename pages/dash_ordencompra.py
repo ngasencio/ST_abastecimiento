@@ -9,43 +9,40 @@ pd.set_option("styler.render.max_elements", 500000)
 
 import api.OC_data_loader as loader_oc
 
-# ==========================================
-# 0. CONFIGURACIÓN LEAN (COLORES Y ESTÁNDARES)
-# ==========================================
-# Definimos la paleta de colores para Gestión Visual Consistente
-#COLOR_MAP = {
-#    "Compra Ágil": "#0000FF", "AG": "#0000FF",
-#    "Licitación": "#87CEEB", "L1": "#87CEEB", "LE": "#87CEEB", "LP": "#87CEEB",
-#    "Sin Emisión": "#FF0000", "SE": "#FF0000",
-#    "Convenio Marco": "#FFC0CB", "CM": "#FFC0CB",
-#    "Trato Directo": "#008000", "TD": "#008000",
-#    "Orden de Compra": "#90EE90",
-#    "Desconocido": "#808080"
-#}
+# ### NUEVO - INTEGRACIÓN PAC: Importamos los módulos creados ###
+# (Asegúrate de tener estos archivos o funciones disponibles)
+from data.data_pac.data_loader_pac import load_pac_oc_consolidado
+from data.data_pac.data_validation_pac import validate_oc_in_pac
+from data.data_pac.data_metric_pac import calculate_pac_performance
 
 # ==========================================
 # CARGA DE DATOS OPTIMIZADA (CACHÉ)
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner="Cargando Base de Datos de Compras...") 
 def obtener_datos_oc():
-    """ Llama al loader externo y guarda el resultado en memoria caché.
-    ttl=3600 significa que refrescará los datos cada 1 hora automáticamente.
-    """
-    # Usamos la función única del loader
     df_OCres, df_OCdet = loader_oc.cargar_maestros_oc()
     return df_OCres, df_OCdet
+
 # ==========================================
 # EJECUCIÓN EN EL DASHBOARD
 # ==========================================
 try:
-    # 1. Llamada a la función con caché
+    # 1. Llamada a la función con caché (OCs)
     df_MaestroOC_Resumen, df_MaestroOC_Detalle = obtener_datos_oc()
 
-    # 2. Validación básica
-    if df_MaestroOC_Resumen.empty:
-        st.warning("⚠️ No se encontraron datos de Órdenes de Compra. Verifica haber ejecutado el 'Unificar Base Datos'.")
+    # ### NUEVO: CARGAR Y CRUZAR PAC 2026 ###
+    # Cargamos el PAC desde caché
+    df_pac_consolidado = load_pac_oc_consolidado()
+    
+    if not df_MaestroOC_Resumen.empty:
+        # Ejecutamos la validación. Esto agrega la col "En_PAC_2026" al maestro.
+        # Lo hacemos ANTES de cualquier filtro para que el dato exista siempre.
+        df_MaestroOC_Resumen = validate_oc_in_pac(df_MaestroOC_Resumen, df_pac_consolidado)
+        
+        st.success(f"✅ Datos cargados: {len(df_MaestroOC_Resumen)} OCs. Validación PAC 2026 aplicada.")
     else:
-        st.success(f"✅ Datos cargados: {len(df_MaestroOC_Resumen)} Órdenes de Compra disponibles.")
+        st.warning("⚠️ No se encontraron datos de Órdenes de Compra.")
+
 except Exception as e:
     st.error(f"❌ Ocurrió un error al cargar los datos: {e}")
 
@@ -72,6 +69,7 @@ else:
 # C. Cálculo de Lead Time (Velocidad del Flujo)
 # Tiempo desde Creación hasta Aceptación (Ciclo de Aprobación)
 df_oc_res['LeadTime_Dias'] = (df_oc_res['FechaAceptacion'] - df_oc_res['FechaCreacion']).dt.days
+
 # Limpieza de valores negativos o errores
 df_oc_res['LeadTime_Dias'] = df_oc_res['LeadTime_Dias'].apply(lambda x: x if x >= 0 else np.nan)
 
@@ -109,7 +107,7 @@ st.markdown(
 for col in ["EstadoOC", "C_Unidad", "C_Contacto"]:
     df_oc_res[col] = df_oc_res[col].astype(str).str.strip()
 
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3, col4, col5 = st.columns(5)
 df_cascada = df_oc_res.copy()
 
 # 1. Estado
@@ -137,6 +135,10 @@ with col4:
     fecha_max = df_oc_res['FechaCreacion'].max()
     fechas_sel = st.date_input("📅 Periodo de Creación", [fecha_min, fecha_max])
 
+with col5:
+    opciones_pac = ["Sí", "No"]
+    pac_sel = st.multiselect("📅 En Plan 2026", opciones_pac, placeholder="Todos")
+
 # --- APLICAR FILTROS AL DATAFRAME FINAL ---
 df_filtrado = df_oc_res.copy()
 
@@ -146,6 +148,8 @@ if unidad_sel:
     df_filtrado = df_filtrado[df_filtrado["C_Unidad"].isin(unidad_sel)]
 if contacto_sel:
     df_filtrado = df_filtrado[df_filtrado["C_Contacto"].isin(contacto_sel)]
+if pac_sel:
+    df_filtrado = df_filtrado[df_filtrado["En_PAC_2026"].isin(pac_sel)]
 if len(fechas_sel) == 2:
     df_filtrado = df_filtrado[
         (df_filtrado['FechaCreacion'].dt.date >= fechas_sel[0]) & 
@@ -155,8 +159,12 @@ if len(fechas_sel) == 2:
 # ==========================================================
 # 5. KPIS LEAN Y OKRS
 # ==========================================================
+
+# Calculamos métricas PAC sobre los datos filtrados
+pct_pac, total_in, total_out = calculate_pac_performance(df_filtrado)
+
 st.markdown("## 🎯 Métricas de Rendimiento (OKRs)")
-c_kpi1, c_kpi2, c_kpi3, c_kpi4 = st.columns(4)
+c_kpi1, c_kpi2, c_kpi3, c_kpi4, c_kpi5, c_kpi6 = st.columns(6)
 
 with c_kpi1:
     total_oc_filt = len(df_filtrado)
@@ -182,9 +190,54 @@ with c_kpi4:
     efficiency = (ok_count / total_oc_filt * 100) if total_oc_filt > 0 else 0
     st.metric("✅ Tasa de Flujo Efectivo", f"{efficiency:.1f}%", help="% de Órdenes procesadas exitosamente")
 
+with c_kpi5:
+    # NUEVO KPI PAC
+    st.metric("📊 Adherencia PAC", f"{pct_pac:.1f}%", help="% de OCs que coinciden con el Plan Anual 2026")
 
-
+with c_kpi6:
+    # NUEVO KPI DESVIACION
+    st.metric("🚫 Fuera de Plan", f"{total_fuera} OCs", delta_color="inverse", help="Cantidad de OCs no planificadas")
 # ================================== GRAFICOS ===============================================
+# ==========================================================
+# ### NUEVO: VISUALIZACIÓN ESPECÍFICA PAC ###
+# ==========================================================
+if not df_filtrado.empty:
+    with st.expander("📈 Análisis Detallado: Cumplimiento Plan Anual de Compras (PAC)", expanded=True):
+        col_pac1, col_pac2 = st.columns([1, 2])
+        
+        with col_pac1:
+            # Gráfico de Torta simple
+            fig_pac_pie = px.pie(
+                df_filtrado, 
+                names="En_PAC_2026", 
+                title="Distribución de Cumplimiento",
+                color="En_PAC_2026",
+                color_discrete_map={"Sí": "#2ECC71", "No": "#E74C3C"},
+                hole=0.4
+            )
+            st.plotly_chart(fig_pac_pie, use_container_width=True)
+            
+        with col_pac2:
+            # Gráfico de Barras: Montos Gastados Dentro vs Fuera
+            # Agrupamos para saber cuánto dinero se va en compras no planificadas
+            df_pac_monto = df_filtrado.groupby("En_PAC_2026")["TotalBruto"].sum().reset_index()
+            
+            fig_pac_bar = px.bar(
+                df_pac_monto,
+                x="TotalBruto",
+                y="En_PAC_2026",
+                orientation='h',
+                title="Gasto ($) Planificado vs No Planificado",
+                text_auto='.2s',
+                color="En_PAC_2026",
+                color_discrete_map={"Sí": "#2ECC71", "No": "#E74C3C"}
+            )
+            fig_pac_bar.update_layout(xaxis_title="Monto Total (CLP)", yaxis_title="En Plan")
+            st.plotly_chart(fig_pac_bar, use_container_width=True)
+
+
+
+
 # ##### GRAFICOS OC CON MESES EN ESPAÑOL ####
 st.markdown("## 📊 Análisis Gráfico de Órdenes de Compra")
 
@@ -299,7 +352,19 @@ with col2:
 
     st.plotly_chart(fig_m_oc, use_container_width=True)
 
+# ==========================================================
+
 st.markdown("## 🛒 Órdenes de Compra Consolidadas")
+with st.expander("📅 Ver Tabla Maestra de OCs"):
+    # Agregamos las nuevas columnas a la visualización
+    cols_to_show = ["Codigo", "En_PAC_2026", "ID_Proyecto_PAC", "EstadoOC", "TotalBruto", "FechaCreacion"]
+    # Filtramos columnas que existan
+    cols_existentes = [c for c in cols_to_show if c in df_filtrado.columns]
+    
+    st.dataframe(df_filtrado[cols_existentes].style.format({
+        "TotalBruto": "${:,.0f}".format
+    }), use_container_width=True)
+
 
 with st.expander("📅 Ver Tabla Maestra de OCs"):
     st.dataframe(df_oc_res.style.format({
