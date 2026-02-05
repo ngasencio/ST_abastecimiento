@@ -226,6 +226,38 @@ with col4:
     tasa_cierre = (fsc_finalizados / total_fsc_filtrado * 100) if total_fsc_filtrado > 0 else 0
     st.metric("✅ Tasa de Finalización", f"{tasa_cierre:.1f}%", help="Eficiencia del flujo de valor")
 
+st.markdown("## 📋 Detalles de Orden de Compra")
+# Pestañas para organizar la visualización
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9  = st.tabs(["🛒 Plan de Compras", "⏳ Estado Orden de Compra","🗃️ Unidad de Compras", "💼 Gestión de Compra", "📦 Productos","🚚 Recepciones", "👥 Proveedores", "🏭 Proveedores", "📊 Métricas Lean"])
+
+with tab1:
+    st.write("Plan de Compras")
+
+with tab2:
+    st.write("Estado Orden de Compra")
+
+with tab3:
+    st.write("Unidad de Compras")
+
+with tab4:
+    st.write("Gestión de Compra")
+
+with tab5:
+    st.write("Productos")
+
+with tab6:
+    st.write("Recepciones")
+
+with tab7:
+    st.write("Proveedores")
+
+with tab8:
+    st.write("Proveedores")
+
+with tab9:
+    st.write("Métricas Lean")
+
+
 
 st.markdown("## 📊 Análisis de Estabilidad y Carga ")
 col1, col2, col3= st.columns(3)
