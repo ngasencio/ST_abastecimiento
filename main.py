@@ -29,6 +29,7 @@ pagina_compradores = st.Page("pages/dash_compradores.py", title="Compradores", i
 # Grupo: Mercado Público
 pagina_licitaciones = st.Page("pages/dash_licitaciones.py", title="Licitaciones", icon="📄")
 pagina_ordenes = st.Page("pages/dash_ordencompra.py", title="Ordenes de Compra", icon="🧾")
+pagina_compraagil = st.Page("pages/dash_compraagil.py", title="Compra Ágil", icon="⚡")
 
 #Grupo Facturas
 pagina_facturas = st.Page("pages/dash_facturas.py", title="Facturas", icon="📥")
@@ -52,7 +53,8 @@ pg = st.navigation(
        
         "🏛️ Mercado Público": [
             pagina_ordenes,
-            pagina_licitaciones
+            pagina_licitaciones,
+            pagina_compraagil
         ],
         "📥Facturas":[
             pagina_facturas],

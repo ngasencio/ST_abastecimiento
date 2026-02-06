@@ -4,7 +4,7 @@ import numpy as np
 import plotly.express as px
 from datetime import datetime
 import os
-
+# http://www.mercadopublico.cl/PurchaseOrder/Modules/PO/DetailsPurchaseOrder.aspx?codigoOC=
 # Aumentar el límite de celdas para el Styler
 pd.set_option("styler.render.max_elements", 500000)
 
@@ -108,7 +108,18 @@ st.markdown(
     </div>
     """, unsafe_allow_html=True
 )
+# ==========================================================
+# 4. PREPARACIÓN DE DATOS
+# ==========================================================
 
+df_oc_res["FechaCreacion"] = pd.to_datetime(
+    df_oc_res["FechaCreacion"],
+    format="%d-%m-%Y",
+    errors="coerce"
+)
+df_oc_res["Año"] = df_oc_res["FechaCreacion"].dt.year
+
+opciones_anio = sorted(df_oc_res["Año"].dropna().unique())
 # ==========================================================
 # 3. FILTROS EN CASCADA
 # ==========================================================
@@ -121,7 +132,7 @@ c1, c2, c3, c4, c5, c6 = st.columns(6)
 # --- FILTRO 1: ESTADO PAC (PRIORITARIO) ---
 with c1:
     opciones_pac = ["Enlazada", "No Enlazada"]
-    pac_sel = st.multiselect("📌 Filtro PAC", opciones_pac, default=opciones_pac)
+    pac_sel = st.multiselect("📌 Filtro PAC", opciones_pac, placeholder="Todos")
 
 if pac_sel:
     df_cascada = df_cascada[df_cascada["PAC"].isin(pac_sel)]
@@ -137,7 +148,7 @@ if estado_oc_sel:
 # --- FILTRO 3: UNIDAD ---
 opciones_unidad = sorted(df_cascada["C_Unidad"].dropna().unique())
 with c3:
-    unidad_sel = st.multiselect("🏢 Unidad", opciones_unidad, placeholder="Todas")
+    unidad_sel = st.multiselect("🏢 Unidad de Compra", opciones_unidad, placeholder="Todas")
 
 if unidad_sel:
     df_cascada = df_cascada[df_cascada["C_Unidad"].isin(unidad_sel)]
@@ -158,8 +169,10 @@ with c5:
 
 # ---- Filtro de Año ----
 with c6:
-    pass
-
+    anio_sel = st.multiselect("📆 Año", opciones_anio, placeholder="Seleccione")
+    if anio_sel:
+        df_cascada = df_cascada[df_cascada["Año"].isin(anio_sel)]
+    
 # ==========================================================
 # APLICACIÓN FINAL AL DATAFRAME DE TRABAJO
 # ==========================================================
@@ -241,7 +254,6 @@ with c_kpi6:
         help="Conteo de órdenes de compra generadas que no fueron planificadas o no tienen asociación correcta al PAC."
     )
 
-
 st.markdown("## 📋 Detalles de Orden de Compra")
 # Pestañas para organizar la visualización
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9  = st.tabs(["🛒 Plan de Compras", "⏳ Estado Orden de Compra","🗃️ Unidad de Compras", "💼 Gestión de Compra", "📦 Productos","🚚 Recepciones", "👥 Proveedores", "🏭 Proveedores", "📊 Métricas Lean"])
@@ -287,7 +299,6 @@ with tab1:
         st.dataframe(df_filtrado[cols_existentes].style.format({
             "TotalBruto": "${:,.0f}".format
         }), use_container_width=True)
-
 
 with tab2:
     # ================================== GRAFICOS ===============================================

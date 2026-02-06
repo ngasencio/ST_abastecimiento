@@ -26,7 +26,6 @@ def cargar_css():
 
 cargar_css()
 
-
 # Definición de colores institucionales/Lean para consistencia visual
 colores_lean = {
     "Compra Agil": "#0000FF",        # Azul
@@ -256,8 +255,6 @@ with tab8:
 
 with tab9:
     st.write("Métricas Lean")
-
-
 
 st.markdown("## 📊 Análisis de Estabilidad y Carga ")
 col1, col2, col3= st.columns(3)
