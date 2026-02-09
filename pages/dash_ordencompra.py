@@ -4,7 +4,7 @@ import numpy as np
 import plotly.express as px
 from datetime import datetime
 import os
-# http://www.mercadopublico.cl/PurchaseOrder/Modules/PO/DetailsPurchaseOrder.aspx?codigoOC=
+
 # Aumentar el límite de celdas para el Styler
 pd.set_option("styler.render.max_elements", 500000)
 

@@ -22,12 +22,13 @@ st.logo("resources/logosso2.jpg")
 # Grupo: Sistema Interno
 pagina_inicio = st.Page("pages/home.py", title="Inicio", icon="🏠", default=True)
 pagina_fsc = st.Page("pages/dash_fsc.py", title="Formularios de Compra", icon="📄" )
-pagina_pac = st.Page("pages/dash_pac.py", title="Plan de Compras", icon="🛒")
 pagina_convenios = st.Page("pages/dash_convenios.py", title=" Cartera de Convenios", icon="📂")
 pagina_compradores = st.Page("pages/dash_compradores.py", title="Compradores", icon="👥")
 
 # Grupo: Mercado Público
 pagina_licitaciones = st.Page("pages/dash_licitaciones.py", title="Licitaciones", icon="📄")
+pagina_pac = st.Page("pages/dash_pac.py", title="Plan de Compras", icon="🛒")
+pagina_pac_vs_oc = st.Page("pages/dash_pac_vs_oc.py", title="PAC vs OC", icon="🛒")
 pagina_ordenes = st.Page("pages/dash_ordencompra.py", title="Ordenes de Compra", icon="🧾")
 pagina_compraagil = st.Page("pages/dash_compraagil.py", title="Compra Ágil", icon="⚡")
 
@@ -46,12 +47,13 @@ pg = st.navigation(
         "💻 Sistema Interno": [
             pagina_inicio,
             pagina_fsc,
-            pagina_pac,
             pagina_convenios,
             pagina_compradores
         ],
        
         "🏛️ Mercado Público": [
+            pagina_pac,
+            pagina_pac_vs_oc,
             pagina_ordenes,
             pagina_licitaciones,
             pagina_compraagil
