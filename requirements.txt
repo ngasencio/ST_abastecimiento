@@ -9,3 +9,8 @@ fpdf
 kaleido
 openpyxl
 xlrd
+jinja2 
+pdfkit 
+plotly 
+pandas 
+streamlit

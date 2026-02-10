@@ -27,7 +27,8 @@ pagina_compradores = st.Page("pages/dash_compradores.py", title="Compradores", i
 
 # Grupo: Mercado Público
 pagina_licitaciones = st.Page("pages/dash_licitaciones.py", title="Licitaciones", icon="📄")
-pagina_pac = st.Page("pages/dash_pac.py", title="Plan de Compras", icon="🛒")
+pagina_pac = st.Page("pages/dash_pac.py", title="Planificación PAC", icon="🛒")
+pagina_plan_pac = st.Page("pages/dash_plan_pac.py", title="Planificación PAC", icon="🛒")
 pagina_pac_vs_oc = st.Page("pages/dash_pac_vs_oc.py", title="PAC vs OC", icon="🛒")
 pagina_ordenes = st.Page("pages/dash_ordencompra.py", title="Ordenes de Compra", icon="🧾")
 pagina_compraagil = st.Page("pages/dash_compraagil.py", title="Compra Ágil", icon="⚡")
@@ -38,6 +39,8 @@ pagina_facturas = st.Page("pages/dash_facturas.py", title="Facturas", icon="📥
 #Grupo: Documentos
 pagina_documentos = st.Page("pages/dash_documentos.py", title="Documentos", icon="📋")
 
+#Grupo: Generador de Facturas
+pagina_generador_facturas = st.Page("pages/streamlitFacturaPDF/streamlitFacturaPDF.py", title="Generador de Facturas", icon="📋"    )
 
 # ==========================================
 # 3. CONFIGURACIÓN DE NAVEGACIÓN
@@ -48,7 +51,8 @@ pg = st.navigation(
             pagina_inicio,
             pagina_fsc,
             pagina_convenios,
-            pagina_compradores
+            pagina_compradores,
+            pagina_plan_pac
         ],
        
         "🏛️ Mercado Público": [
@@ -63,6 +67,9 @@ pg = st.navigation(
 
         "📚 Biblioteca Normativa": [
             pagina_documentos
+        ],
+        "📚 Generador de Facturas": [
+            pagina_generador_facturas
         ],
     }
 )
