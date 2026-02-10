@@ -389,21 +389,57 @@ def generar_pdf_con_chrome(html_str, nombre_salida):
         if os.path.exists(tmp_html): os.remove(tmp_html)
         if os.path.exists(tmp_pdf): os.remove(tmp_pdf)
 
-# 3. Preparar datos y Botón
-items_para_pdf = []
-# Mapeo simple: Proyecto -> Actividad, Monto -> Tarifa
-for index, row in df_filtrado.iterrows():
-    items_para_pdf.append({
-        "date": row["Fecha de Inicio Compra"].strftime("%d-%m-%Y") if pd.notnull(row["Fecha de Inicio Compra"]) else "-",
-        "task_executed": f"{row['Nombre Proyecto']} ({row['ID Proyecto']})",
-        "hours": 1,
-        "rate": row["Suma de Monto Total Ítem Año 2026"]
+# ========================================================================
+# ========================================================================
+
+
+items_proyectos = []
+
+for _, row in df_filtrado.iterrows():
+    # 1. Aseguramos que el valor sea tratado como fecha (si es string lo convierte, si es NaT lo mantiene)
+    fecha_inicio_val = pd.to_datetime(row["Fecha de Inicio Compra"], errors='coerce')
+    fecha_oc_val = pd.to_datetime(row["Meses envío OC"], errors='coerce')
+
+    items_proyectos.append({
+        "id_proyecto": row["ID Proyecto"],
+        "nombre_proyecto": row["Nombre Proyecto"],
+        "responsable": row["Nombre responsable"],
+        "departamento": row["Departamento_SHORT"],
+        "fecha_inicio": (
+            fecha_inicio_val.strftime("%d-%m-%Y") 
+            if pd.notnull(fecha_inicio_val) else "-"
+        ),
+        "fecha_oc": (
+            fecha_oc_val.strftime("%d-%m-%Y") 
+            if pd.notnull(fecha_oc_val) else "-"
+        ),  
+        "item": row["Nombre ítem"],
+        "monto_proyecto": row["Suma de Monto Total Ítem Año 2026"]
     })
+# Cálculo del Gran Total
+total_val = sum(p['monto_proyecto'] for p in items_proyectos)
+total_pac_str = f"{total_val:,.0f}".replace(",", ".")
+# ========================================================================
+# ========================================================================
 
 if st.button("📥 Generar PDF (Versión Chrome)", type="primary"):
     with st.spinner("Generando PDF con los filtros actuales..."):
         template = cargar_plantilla("Plantilla_Plan_PAC.html")
-        
+        # 1. Forzamos un tema que se vea bien en papel (blanco de fondo, colores vivos)
+        fig_PAC.update_layout(template="plotly_white")    
+       
+        # 2. Convertimos a imagen con alta resolución (scale=3 para nitidez total)
+        # Importante: No usar fondo transparente para evitar que el PDF lo interprete mal
+        img_bytes = pio.to_image(
+            fig_PAC, 
+            format="png", 
+            width=1000, 
+            height=500, 
+            scale=3, # Esto hace que se vea HD
+            engine="kaleido"
+        )
+    
+        chart_base64 = base64.b64encode(img_bytes).decode("utf-8")
         if template:
             # Renderizamos HTML
             html_renderizado = template.render(
@@ -417,14 +453,15 @@ if st.button("📥 Generar PDF (Versión Chrome)", type="primary"):
 
                 # NUEVAS VARIABLES PARA KPIs Y GRÁFICO
                 total_proyectos=total_proyectos_filtrado,
-                total_monto=monto_total_filtrado,
-                chart_base64=fig_PAC,
+                total_monto=f"{monto_total_filtrado:,.0f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                chart_base64=chart_base64,
 
-                items=items_para_pdf,
+                # NUEVAS VARIABLES PARA TABLAS
+                proyectos=items_proyectos,
                 subtotal=f"{monto_total_filtrado:,.0f}",
                 taxes=None,
                 total=f"{monto_total_filtrado:,.0f}",
-                invoice_notes="Este reporte refleja la vista actual del Dashboard."
+                invoice_notes="Este reporte refleja la vista actual del Dashboard.",
             )
             
             # Generamos el PDF

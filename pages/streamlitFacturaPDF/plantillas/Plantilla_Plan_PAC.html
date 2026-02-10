@@ -160,7 +160,42 @@
             max-width: 100%;
             height: auto;
         }
+
+        /* Forzar colores y fondos en el PDF */
+        * {
+            -webkit-print-color-adjust: exact !important;
+            /* Chrome, Safari, Edge */
+            print-color-adjust: exact !important;
+            /* Estándar */
+        }
+
+        .chart-container {
+            text-align: center;
+            margin: 20px 0;
+            background-color: white;
+            /* Asegura un fondo sólido */
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .chart-container img {
+            width: 100%;
+            max-width: 700px;
+            height: auto;
+        }
+
+        .table-title {
+            color: #1e3a8a;
+            font-size: 18px;
+            margin-top: 30px;
+            margin-bottom: 10px;
+            border-left: 5px solid #1e3a8a;
+            padding-left: 10px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
     </style>
+
 </head>
 
 <body>
@@ -179,7 +214,6 @@
                 <span>Fecha: {{ reporte_date }}</span>
             </div>
         </div>
-
         <!-- CLIENT -->
         <div class="client-info">
             <strong>Información de los Proyectos:</strong><br>
@@ -207,51 +241,87 @@
             {% endif %}
 
         </div>
-        <!-- KPI -->
-
+        <!-- KPI  &nbsp;
         <!-- ITEMS TABLE -->
+        <div class="table-title">
+            Proyectos con procesos de compra programados
+        </div>
+
+        <h3>📋 Plan de Compras (PAC)</h3>
+
         <table>
             <thead>
                 <tr>
-                    <th>Fecha</th>
-                    <th>Actividad</th>
-                    <th class="text-right">Horas</th>
-                    <th class="text-right">Tarifa</th>
-                    <th class="text-right">Subtotal</th>
+                    <th>ID Proyecto</th>
+                    <th>Proyecto</th>
+                    <th>Responsable</th>
+                    <th>Fecha Inicio</th>
+                    <th class="text-right">Monto Planificado</th>
                 </tr>
             </thead>
             <tbody>
-                {% for item in items %}
+                {% for p in proyectos %}
                 <tr>
-                    <td>{{ item.date }}</td>
-                    <td>{{ item.task_executed }}</td>
-                    <td class="text-right">{{ item.hours }}</td>
-                    <td class="text-right">{{ currency }} {{ item.rate }}</td>
+                    <td>{{ p.id_proyecto }}</td>
+                    <td>{{ p.nombre_proyecto }}</td>
+                    <td>{{ p.responsable }}</td>
+                    <td>{{ p.fecha_inicio }}</td>
                     <td class="text-right">
-                        {{ currency }} {{ "%.2f"|format(item.hours * item.rate) }}
+                        {{ currency }} {{ "{:,.0f}".format(p.monto_proyecto) }}
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
 
-        <!-- TOTALS -->
+        <!-- TOTAL PAC -->
         <table class="totals">
-            <tr>
-                <td>Subtotal</td>
-                <td class="text-right">{{ currency }} {{ subtotal }}</td>
-            </tr>
-            {% if taxes %}
-            <tr>
-                <td>Impuestos</td>
-                <td class="text-right">{{ currency }} {{ taxes }}</td>
-            </tr>
-            {% endif %}
             <tr class="total">
-                <td>Total</td>
-                <td class="text-right">{{ currency }} {{ total }}</td>
+                <td>Total PAC Planificado</td>
+                <td class="text-right">
+                    {{ currency }} {{ total_pac }}
+                </td>
             </tr>
         </table>
+
+        &nbsp;
+        &nbsp;
+        <!-- ITEMS TABLE -->
+        <div class="table-title">
+            Detalle de productos y servicios asociados a proyectos
+        </div>
+
+        <h3>🧾 Órdenes de Compra Programadas</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID Proyecto</th>
+                    <th>Fecha OC</th>
+                    <th>Ítem</th>
+                    <th>Responsable</th>
+                    <th>Departamento</th>
+                    <th class="text-right">Monto Asociado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in proyectos %}
+                <tr>
+                    <td>{{ p.id_proyecto }}</td>
+                    <td>{{ p.fecha_oc }}</td>
+                    <td>{{ p.item }}</td>
+                    <td>{{ p.responsable }}</td>
+                    <td>{{ p.departamento }}</td>
+                    <td class="text-right">
+                        {{ currency }} {{ "{:,.0f}".format(p.monto_proyecto) }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+
+
 
         <!-- FOOTER -->
         <div class="footer">
