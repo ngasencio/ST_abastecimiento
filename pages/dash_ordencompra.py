@@ -487,6 +487,31 @@ with tab1:
             "TotalBruto": "${:,.0f}".format
         }), use_container_width=True)
 
+    # =============================================================================
+    # 5. TABLA MAESTRA CON FORMATO CONDICIONAL
+    # =============================================================================
+    st.markdown("### 🛒 Órdenes de Compra Consolidadas")
+
+    def style_pac_rows(row):
+        # Aplicamos verde si está enlazado, rojo si no.
+        color = 'background-color: rgba(46, 204, 113, 0.2)' if row['PAC'] == 'Enlazada' else 'background-color: rgba(231, 76, 60, 0.2)'
+        return [color] * len(row)
+
+    with st.expander("📅 Abrir Tabla de Datos Detallada"):
+        cols_to_show = ["Codigo", "PAC", "ID_Proyecto_PAC", "EstadoOC", "TotalBruto", "FechaCreacion"]
+        cols_existentes = [c for c in cols_to_show if c in df_filtrado.columns]
+        
+        # Aplicamos el estilo y el formato de moneda
+        st.dataframe(
+            df_filtrado[cols_existentes].style.apply(style_pac_rows, axis=1).format({
+                "TotalBruto": "${:,.0f}"
+            }), 
+            use_container_width=True,
+            hide_index=True
+        )
+
+
+
 with tab2:
     # ================================== GRAFICOS ===============================================
     # ##### GRAFICOS OC CON MESES EN ESPAÑOL ####
@@ -604,7 +629,7 @@ with tab2:
         st.plotly_chart(fig_m_oc, use_container_width=True)
 
     # ==========================================================   
-
+    
 with tab3:
     pass
 
