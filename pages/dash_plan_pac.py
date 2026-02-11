@@ -291,10 +291,11 @@ df_expandido = df_expandido.dropna(subset=['Meses envío OC'])
 st.markdown("---")
 st.markdown("### 📋 Detalle de Compras y Cronograma de OC")
 
-# Pestañas para organizar la visualización
 tab1, tab2 = st.tabs(["🔍 Vista por Proyecto", "📅 Cronograma de Órdenes (Expandido)"])
 
-# Configuración común para las tablas (Fechas y Moneda)
+# 2. Configuración común para las tablas (Fechas y Moneda)
+# Nota: Usamos format="$ %d" para que Streamlit use el separador de miles 
+# local (puntos en Latam/España) de forma limpia y sin decimales.
 config_columnas = {
     "Fecha de Inicio Compra": st.column_config.DateColumn(
         "Fecha Inicio",
@@ -306,34 +307,44 @@ config_columnas = {
     ),
     "Suma de Monto Total Ítem Año 2026": st.column_config.NumberColumn(
         "Monto Total ($)",
-        format="$ %,.0f",  # El %,.0f agrega el $ y los separadores de miles
+        format="$ %d",  # El %d aplica el separador de miles local automáticamente
     )
 }
 
+# --- CONTENIDO PESTAÑA 1 ---
 with tab1:
-    st.write("Cada fila representa un Proyectoy su fecha de compra programada:")
+    st.write("Cada fila representa un Proyecto y su fecha de compra programada:")
+    
+    # Nos aseguramos de que las columnas existan antes de mostrar para evitar errores
+    cols_tab1 = [
+        "ID Proyecto", "Nombre Proyecto",  
+        "Nombre responsable", "Fecha de Inicio Compra", "Suma de Monto Total Ítem Año 2026"
+    ]
+    
     st.dataframe(
-        df_filtrado[[
-            "ID Proyecto", "Nombre Proyecto",  
-            "Nombre responsable", "Fecha de Inicio Compra", "Suma de Monto Total Ítem Año 2026"
-        ]],
-        column_config=config_columnas, # Aplicamos el formato aquí
+        df_filtrado[cols_tab1],
+        column_config=config_columnas,
         use_container_width=True,
         hide_index=True
     )
 
+# --- CONTENIDO PESTAÑA 2 ---
 with tab2:
     st.write("Cada fila representa una Orden de Compra individual programada:")
-    # Aseguramos que la columna sea datetime para que el config funcione
-    df_expandido['Meses envío OC'] = pd.to_datetime(df_expandido['Meses envío OC'])
     
-    df_display_oc = df_expandido[["ID Proyecto",
-        "Meses envío OC", "Nombre ítem", "Nombre responsable", "Departamento_SHORT"
+    # 3. Limpieza y preparación de df_expandido
+    # Usamos errors='coerce' por seguridad para que no rompa si hay textos raros
+    df_expandido['Meses envío OC'] = pd.to_datetime(df_expandido['Meses envío OC'], errors='coerce')
+    
+    # Ordenamos por fecha para que el cronograma tenga sentido
+    df_display_oc = df_expandido[[
+        "ID Proyecto", "Meses envío OC", "Nombre ítem", 
+        "Nombre responsable", "Departamento_SHORT", "Suma de Monto Total Ítem Año 2026"
     ]].sort_values("Meses envío OC")
     
     st.dataframe(
         df_display_oc, 
-        column_config=config_columnas, # Aplicamos el formato aquí también
+        column_config=config_columnas,
         use_container_width=True, 
         hide_index=True
     )
