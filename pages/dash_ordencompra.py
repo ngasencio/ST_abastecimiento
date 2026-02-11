@@ -610,7 +610,6 @@ with tab9:
                 x='TipoOC',
                 color='TipoOC',
                 title="Variabilidad del Ciclo Total",
-                #color_discrete_map=COLOR_MAP
             )
             fig_var.update_layout(template="plotly_white", showlegend=False)
             st.plotly_chart(fig_var, use_container_width=True)

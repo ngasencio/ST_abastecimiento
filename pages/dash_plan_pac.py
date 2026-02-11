@@ -422,7 +422,7 @@ total_pac_str = f"{total_val:,.0f}".replace(",", ".")
 # ========================================================================
 # ========================================================================
 
-if st.button("📥 Generar PDF (Versión Chrome)", type="primary"):
+if st.button("📥 Generar PDF", type="primary"):
     with st.spinner("Generando PDF con los filtros actuales..."):
         template = cargar_plantilla("Plantilla_Plan_PAC.html")
         # 1. Forzamos un tema que se vea bien en papel (blanco de fondo, colores vivos)
