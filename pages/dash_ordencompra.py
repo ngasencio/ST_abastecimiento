@@ -259,6 +259,193 @@ st.markdown("## 📋 Detalles de Orden de Compra")
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9  = st.tabs(["🛒 Plan de Compras", "⏳ Estado Orden de Compra","🗃️ Unidad de Compras", "💼 Gestión de Compra", "📦 Productos","🚚 Recepciones", "👥 Proveedores", "🏭 Proveedores", "📊 Métricas Lean"])
 
 with tab1:
+
+    # =============================================================================
+    # 1. PREPARACIÓN DE DATOS
+    # =============================================================================
+    # Aseguramos que existan las columnas derivadas necesarias
+    if "Mes" not in df_filtrado.columns:
+        df_filtrado["Mes"] = df_filtrado["FechaCreacion"].dt.to_period("M").dt.to_timestamp()
+
+    # Mapeo para asegurar que la columna PAC tenga nombres amigables si viene como booleano o código
+    if "PAC" not in df_filtrado.columns and "En_PAC_2026" in df_filtrado.columns:
+        df_filtrado["PAC"] = df_filtrado["En_PAC_2026"].apply(lambda x: "Enlazada" if x == 1 or x == "Si" else "No Enlazada")
+
+    # Paleta de colores corporativa/profesional
+    COLOR_ENLAZADA = "#2ECC71"  # Verde
+    COLOR_NO_ENLAZADA = "#E74C3C" # Rojo
+    COLOR_DISCRETE_MAP = {"Enlazada": COLOR_ENLAZADA, "No Enlazada": COLOR_NO_ENLAZADA}
+
+    st.markdown("### 📊 Tablero de Control: Rendimiento del Plan de Compras")
+
+    # =============================================================================
+    # 2. INDICADORES CLAVE (KPIs) - TAREA 1, 2 y 3
+    # =============================================================================
+    # Cálculos
+    total_ocs = len(df_filtrado)
+    monto_total = df_filtrado["TotalBruto"].sum()
+    ocs_enlazadas = df_filtrado[df_filtrado["PAC"] == "Enlazada"]
+    num_enlazadas = len(ocs_enlazadas)
+    monto_enlazado = ocs_enlazadas["TotalBruto"].sum()
+
+    # Porcentajes
+    perc_cant_enlazada = (num_enlazadas / total_ocs * 100) if total_ocs > 0 else 0
+    perc_monto_enlazado = (monto_enlazado / monto_total * 100) if monto_total > 0 else 0
+
+    # Despliegue de métricas en 4 columnas
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+
+    with kpi1:
+        st.metric("Total Órdenes", f"{total_ocs:,.0f}")
+    with kpi2:
+        st.metric("Monto Total ($)", f"${monto_total:,.0f}")
+    with kpi3:
+        st.metric("% OCs Enlazadas (Cant.)", f"{perc_cant_enlazada:.1f}%", 
+                help="Porcentaje de órdenes vinculadas al PAC respecto al conteo total")
+    with kpi4:
+        st.metric("% Monto Planificado", f"{perc_monto_enlazado:.1f}%",
+                help="Porcentaje del dinero gastado que estaba planificado en el PAC")
+
+    st.divider()
+
+    # =============================================================================
+    # 3. ANÁLISIS ESTADÍSTICO DESCRIPTIVO - TAREA 1
+    # =============================================================================
+    with st.expander("📈 Ver Estadísticas Descriptivas Detalladas"):
+        # Agrupación por Estado PAC para ver promedios y desviaciones
+        stats_pac = df_filtrado.groupby("PAC")["TotalBruto"].agg(
+            Conteo='count',
+            Total='sum',
+            Promedio='mean',
+            Mediana='median',
+            Maximo='max'
+        ).reset_index()
+        
+        st.write("Comparativa de métricas financieras entre compras planificadas (Enlazadas) y no planificadas:")
+        st.dataframe(
+            stats_pac,
+            column_config={
+                "Total": st.column_config.NumberColumn(format="$ %.2f"),
+                "Promedio": st.column_config.NumberColumn(format="$ %.2f"),
+                "Mediana": st.column_config.NumberColumn(format="$ %.2f"),
+                "Maximo": st.column_config.NumberColumn(format="$ %.2f"),
+            },
+            use_container_width=True,
+            hide_index=True
+        )
+    with st.expander("📈 Evolución y Estadísticas del Enlace PAC por Año"):
+        # --- 1. PREPARACIÓN DE LA TABLA COMPARATIVA ANUAL ---
+        # Agrupamos por Año y PAC para ver la mejora en el tiempo
+        stats_anual = df_filtrado.groupby(["Año", "PAC"])["TotalBruto"].agg(
+            Conteo='count',
+            Monto_Total='sum'
+        ).reset_index()
+
+        # Calculamos el % de enlace por año para ver la mejora real
+        total_por_año = df_filtrado.groupby("Año").size().reset_index(name="Total_OCs")
+        stats_anual = stats_anual.merge(total_por_año, on="Año")
+        stats_anual["% Presencia"] = (stats_anual["Conteo"] / stats_anual["Total_OCs"]) * 100
+
+        st.write("### Comparativa de Gestión Anual")
+        
+        # --- 2. FORMATO CONDICIONAL PARA EL DATAFRAME ---
+        # Función para aplicar colores según el estado PAC
+        def color_pac(val):
+            color = '#d4edda' if val == "Enlazada" else '#f8d7da' # Verde claro / Rojo claro
+            return f'background-color: {color}'
+
+        # Aplicamos el estilo y mostramos
+        st.dataframe(
+            stats_anual.style.applymap(color_pac, subset=['PAC']).format({
+                "Monto_Total": "${:,.0f}",
+                "% Presencia": "{:.1f}%"
+            }),
+            use_container_width=True,
+            hide_index=True
+        )
+
+        st.divider()
+
+        # --- 3. GRÁFICO DE COMPARATIVA ANUAL ---
+  
+    # =============================================================================
+    # 4. VISUALIZACIONES GRÁFICAS - TAREA 5
+    # =============================================================================
+    st.write("### 📊 Evolución de Órdenes (Enlazadas vs No Enlazadas)")
+    # Fila superior de gráficos
+    row1_col1, row1_col2, row1_col3 = st.columns([3, 2, 2])
+
+    # --- GRÁFICO 1: EVOLUCIÓN TEMPORAL (LÍNEAS) ---
+    with row1_col1:
+        
+        
+        # Agrupamos por Mes y Estado PAC
+        df_linea = df_filtrado.groupby(["Mes", "PAC"]).size().reset_index(name="Cantidad")
+        
+        fig_line = px.line(
+            df_linea, 
+            x="Mes", 
+            y="Cantidad", 
+            color="PAC",
+            color_discrete_map=COLOR_DISCRETE_MAP,
+            markers=True
+        )
+        fig_line.update_layout(
+            xaxis_title=None, 
+            yaxis_title="Nº de Órdenes",
+            legend_title=None,
+            height=350,
+            margin=dict(l=20, r=20, t=30, b=20)
+        )
+        st.plotly_chart(fig_line, use_container_width=True)
+
+    # --- GRÁFICO 2: DISTRIBUCIÓN POR UNIDAD (PIE/DONUT) ---
+    with row1_col2:
+        fig_evolucion = px.bar(
+            stats_anual, 
+            x="Año", 
+            y="Conteo", 
+            color="PAC",
+            barmode="group",
+            text_auto=True,
+            title="Cant. OCs: Enlazadas vs No Enlazadas",
+            color_discrete_map={"Enlazada": "#2ECC71", "No Enlazada": "#E74C3C"}
+        )
+
+        fig_evolucion.update_layout(
+            xaxis_type='category',
+            legend_title=None,
+            yaxis_title="Cantidad de Órdenes",
+            margin=dict(l=20, r=20, t=40, b=20),
+            height=400
+        )
+
+        st.plotly_chart(fig_evolucion, use_container_width=True)
+    
+    with row1_col3:
+        df_solo_enlazadas = stats_anual[stats_anual["PAC"] == "Enlazada"]
+        
+        if not df_solo_enlazadas.empty:
+            fig_tendencia = px.line(
+                df_solo_enlazadas, 
+                x="Año", 
+                y="% Presencia",
+                title="📈 Tendencia de Efectividad del PAC (% de Enlace)",
+                markers=True
+            )
+            fig_tendencia.update_traces(line_color='#2ECC71', line_width=4)
+            fig_tendencia.update_layout(
+                yaxis=dict(
+                    ticksuffix="%", 
+                    range=[0, 100]
+                )
+            )
+            st.plotly_chart(fig_tendencia, use_container_width=True)
+
+    # =============================================================================
+    # 6. ANÁLISIS GRÁFICO (TAREA 6)
+    # =============================================================================
+  
     st.markdown("### 📊 Análisis Gráfico")
 
     # Preparar datos mensuales
