@@ -92,7 +92,7 @@ def categorizar_ejecucion(row):
 df_planner_pac = load_pac26_data()
 
 # B. Carga de Ejecución (OCs + Maestro)
-@st.cache_data(ttl=3600, show_spinner="Cargando Compras y Planificación...") 
+@st.cache_data(ttl=3600, show_spinner="Cargando Planificación y Ejecución...") 
 def obtener_datos_ejecucion():
     df_OCres, df_OCdet = loader_oc.cargar_maestros_oc()
     df_pac_maestro = load_pac_master()
@@ -149,6 +149,17 @@ meses_es = {"January": "Enero", "February": "Febrero", "March": "Marzo", "April"
             "July": "Julio", "August": "Agosto", "September": "Septiembre", "October": "Octubre", "November": "Noviembre", "December": "Diciembre"}
 df_planner_pac["Mes_nombre"] = df_planner_pac["Mes_nombre"].replace(meses_es)
 
+# --- 🔄 TRADUCCIÓN DE MESES (NUEVO) ---
+# Mapeamos manualmente para asegurar español sin depender de la configuración del servidor
+meses_es = {
+    "January": "Enero", "February": "Febrero", "March": "Marzo",
+    "April": "Abril", "May": "Mayo", "June": "Junio",
+    "July": "Julio", "August": "Agosto", "September": "Septiembre",
+    "October": "Octubre", "November": "Noviembre", "December": "Diciembre"
+}
+df_planner_pac["Mes_nombre"] = df_planner_pac["Mes_nombre"].replace(meses_es)
+
+
 # =============================================================================
 # FILTROS (ACTÚAN SOBRE EL PLAN Y REPERCUTEN EN OCS)
 # =============================================================================
@@ -157,20 +168,28 @@ df_cascada = df_planner_pac.copy()
 
 # Filtros (simplificados para brevedad, lógica idéntica a tu original)
 with col1:
-    sub_sel = st.multiselect("🏢 Subdirección", sorted(df_cascada["Subdirección"].dropna().unique()))
+    sub_sel = st.multiselect("🏢 Subdirección", sorted(df_cascada["Subdirección"].dropna().unique()),placeholder="Seleccione")
 if sub_sel: df_cascada = df_cascada[df_cascada["Subdirección"].isin(sub_sel)]
 
 with col2:
-    dep_sel = st.multiselect("📊 Depto.", sorted(df_cascada["Departamento_SHORT"].dropna().unique()))
+    dep_sel = st.multiselect("📊 Depto.", sorted(df_cascada["Departamento_SHORT"].dropna().unique()),placeholder="Seleccione")
 if dep_sel: df_cascada = df_cascada[df_cascada["Departamento_SHORT"].isin(dep_sel)]
 
 with col3:
-    resp_sel = st.multiselect("👤 Resp.", sorted(df_cascada["Nombre responsable"].dropna().unique()))
+    resp_sel = st.multiselect("👤 Resp.", sorted(df_cascada["Nombre responsable"].dropna().unique()),placeholder="Seleccione")
 if resp_sel: df_cascada = df_cascada[df_cascada["Nombre responsable"].isin(resp_sel)]
 
 with col4:
-    proy_sel = st.multiselect("🆔 ID Proy.", sorted(df_cascada["ID Proyecto"].dropna().unique()))
+    proy_sel = st.multiselect("🆔 ID Proy.", sorted(df_cascada["ID Proyecto"].dropna().unique()),placeholder="Seleccione")
 if proy_sel: df_cascada = df_cascada[df_cascada["ID Proyecto"].isin(proy_sel)]
+
+with col5:
+    mes_sel = st.multiselect("📅 Mes", sorted(df_cascada["Mes_nombre"].dropna().unique()),placeholder="Seleccione")
+if mes_sel: df_cascada = df_cascada[df_cascada["Mes_nombre"].isin(mes_sel)]
+
+with col6:
+    anio_sel = st.multiselect("📅 Año", sorted(df_cascada["Año"].dropna().unique()),placeholder="Seleccione")
+if anio_sel: df_cascada = df_cascada[df_cascada["Año"].isin(anio_sel)]
 
 # DataFrame FINAL del Plan
 df_plan_filtrado = df_cascada.copy()
@@ -186,8 +205,11 @@ df_oc_filtrado = df_oc_res[df_oc_res["ID Proyecto"].isin(proyectos_visibles)].co
 
 # 1. Agrupar Planificación (Meta)
 df_kpi_plan = df_plan_filtrado.groupby("ID Proyecto").agg({
+    "Nombre Proyecto": "first",
+    "Departamento_SHORT": "first",
+    "Subdirección": "first",
+    "Nombre responsable": "first",
     "Suma de Monto Total Ítem Año 2026": "sum",
-    "Departamento_SHORT": "first"
 }).reset_index().rename(columns={"Suma de Monto Total Ítem Año 2026": "Monto_Plan"})
 
 # 2. Agrupar Ejecución (Realidad)
@@ -349,6 +371,10 @@ with tab_match:
         hide_index=True,
         column_config={
             "ID Proyecto": "Proyecto",
+            "Nombre Proyecto": "Nombre Proyecto",
+            "Departamento_SHORT": "Departamento",
+            "Subdirección": "Subdirección",
+            "Nombre responsable": "Nombre responsable",
             "Monto_Plan": st.column_config.NumberColumn("Meta (Plan)", format="$ %,.0f"),
             "Monto_Ejecutado": st.column_config.NumberColumn("Gastado (Real)", format="$ %,.0f"),
             "Estado_Presupuestario": st.column_config.TextColumn("Estatus de Ejecución"),
