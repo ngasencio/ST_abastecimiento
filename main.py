@@ -54,7 +54,6 @@ pg = st.navigation(
             pagina_compradores,
             pagina_plan_pac
         ],
-       
         "🏛️ Mercado Público": [
             pagina_pac,
             pagina_pac_vs_oc,

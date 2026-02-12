@@ -23,6 +23,7 @@ def cargar_css():
         pass # Si no hay CSS, no falla
 cargar_css()
 
+
 # =============================================================================
 # 0. FUNCIONES DE APOYO (LÓGICA DE CRUCE Y LINKS)
 # =============================================================================
@@ -67,6 +68,23 @@ def generar_link_mp(codigo_oc):
     base_url = "http://www.mercadopublico.cl/PurchaseOrder/Modules/PO/DetailsPurchaseOrder.aspx?codigoOC="
     return f"{base_url}{codigo_oc}"
 
+
+def categorizar_ejecucion(row):
+    porcentaje = row["% Ejecución"]
+    ejecutado = row["Monto_Ejecutado"]
+    
+    if ejecutado == 0:
+        return "🔴 Sin Compras"
+    elif porcentaje < 50:
+        return "🟡 Subejecución crítica"
+    elif 50 <= porcentaje <= 79:
+        return "🟢 Subejecución moderada"
+    elif 80 <= porcentaje <= 100:
+        return "✅ Ejecución eficiente"
+    else: # > 100
+        return "💹 Sobreejecución"
+
+
 # =============================================================================
 # 1. CARGA DE DATOS
 # =============================================================================
@@ -92,7 +110,7 @@ try:
         df_oc_res["Link"] = df_oc_res["CodigoOC"].apply(generar_link_mp)
         
         # 3. Normalización Fechas y Tipos
-        cols_fecha = ['FechaCreacion', 'FechaAceptacion']
+        cols_fecha = ['FechaCreacion', 'FechaEnvio', 'FechaAceptacion', 'FechaCancelacion']
         for col in cols_fecha:
             df_oc_res[col] = pd.to_datetime(df_oc_res[col], errors='coerce')
             
@@ -182,7 +200,36 @@ df_comparativo = pd.merge(df_kpi_plan, df_kpi_real, on="ID Proyecto", how="left"
 df_comparativo["Monto_Ejecutado"] = df_comparativo["Monto_Ejecutado"].fillna(0)
 df_comparativo["% Ejecución"] = (df_comparativo["Monto_Ejecutado"] / df_comparativo["Monto_Plan"] * 100).fillna(0)
 df_comparativo["Estado_Ejecucion"] = df_comparativo["Monto_Ejecutado"].apply(lambda x: "🟢 En Ejecución" if x > 0 else "🔴 Sin Compras")
+df_comparativo["Comparativa_Visual"] = df_comparativo.apply(
+    lambda row: [row["Monto_Plan"], row["Monto_Ejecutado"]], axis=1
+)
 
+# Normalizamos: El Plan siempre será 1.0 y el Real será (Real/Plan)
+df_comparativo["Comparativa_Normalizada"] = df_comparativo.apply(
+    lambda row: [1.0, row["Monto_Ejecutado"] / row["Monto_Plan"] if row["Monto_Plan"] > 0 else 0], 
+    axis=1
+)
+
+# 1. Calculamos la proporción (Real / Plan)
+# Si el Plan es 100 y Real es 120, el ratio es 1.2
+df_comparativo["Ratio_Desempeño"] = (df_comparativo["Monto_Ejecutado"] / df_comparativo["Monto_Plan"]).fillna(0)
+
+# 2. Creamos la data del gráfico normalizada: [Meta_Normalizada, Real_Normalizado]
+# La Meta siempre será 1.0 (nuestra referencia fija)
+df_comparativo["Visual_Normalizado"] = df_comparativo["Ratio_Desempeño"].apply(lambda x: [1.0, x])
+
+# 3. Calculamos el límite superior del gráfico para que nada se corte
+# Buscamos el ratio más alto (por ejemplo, si alguien gastó el 200%, el max_ratio será 2.0)
+# Le sumamos un 10% de margen para que la barra no toque el borde superior
+max_ratio_global = max(1.0, df_comparativo["Ratio_Desempeño"].max()) * 1.1
+
+# 2. Aplicamos la categoría al DataFrame
+df_comparativo["Estado_Presupuestario"] = df_comparativo.apply(categorizar_ejecucion, axis=1)
+
+# 3. Mantenemos la lógica de normalización para el gráfico visual (Plan vs Real)
+df_comparativo["Ratio_Desempeño"] = (df_comparativo["Monto_Ejecutado"] / df_comparativo["Monto_Plan"]).fillna(0)
+df_comparativo["Visual_Normalizado"] = df_comparativo["Ratio_Desempeño"].apply(lambda x: [1.0, x])
+max_ratio_global = float(max(1.0, df_comparativo["Ratio_Desempeño"].max()) * 1.1)
 # =============================================================================
 # VISUALIZACIÓN DE KPIs
 # =============================================================================
@@ -289,20 +336,33 @@ with tab_oc:
     )
 
 # TAB 3: RESUMEN MATCH
+
 with tab_match:
-    st.markdown("Comparativo consolidado por Proyecto.")
+    st.markdown("### 📊 Tablero de Control Presupuestario")
+    
+    # Resumen de reglas en un info box para el usuario
+    st.caption("Leyenda: 🔴 0% | 🟡 <50% | 🟢 50-79% | ✅ 80-100% | 💹 >100%")
+
     st.dataframe(
         df_comparativo.sort_values("Monto_Plan", ascending=False),
         use_container_width=True,
         hide_index=True,
         column_config={
+            "ID Proyecto": "Proyecto",
             "Monto_Plan": st.column_config.NumberColumn("Meta (Plan)", format="$ %,.0f"),
             "Monto_Ejecutado": st.column_config.NumberColumn("Gastado (Real)", format="$ %,.0f"),
+            "Estado_Presupuestario": st.column_config.TextColumn("Estatus de Ejecución"),
+            "Visual_Normalizado": st.column_config.BarChartColumn(
+                "Plan vs Real",
+                help="Barra 1: Meta (100%). Barra 2: Gasto Real proporcional.",
+                y_min=0,
+                y_max=max_ratio_global
+            ),
             "% Ejecución": st.column_config.ProgressColumn(
-                "Avance Presupuestario", 
+                "Avance %", 
                 format="%.1f%%", 
-                min_value=0, 
-                max_value=100
-            )
+                min_value=0.0,
+                max_value=100.0
+            ),
         }
     )

@@ -53,6 +53,11 @@ def enriquecer_datos_con_pac(df_principal, df_maestro):
     
     return df
 
+def generar_link_mp(codigo_oc):
+    """Genera el link directo a la orden de compra en Mercado Público"""
+    base_url = "http://www.mercadopublico.cl/PurchaseOrder/Modules/PO/DetailsPurchaseOrder.aspx?codigoOC="
+    return f"{base_url}{codigo_oc}"
+
 # ==========================================
 # 1. CARGA DE DATOS (CACHÉ)
 # ==========================================
@@ -72,6 +77,9 @@ try:
 
     # --- PROCESAMIENTO INICIAL ---
     df_oc_res = enriquecer_datos_con_pac(df_raw_res, df_pac_maestro)
+
+    # 2. Generar LINK (Requerimiento 2)
+    df_oc_res["Link"] = df_oc_res["CodigoOC"].apply(generar_link_mp)
     
     # Normalización de Fechas
     cols_fecha = ['FechaCreacion', 'FechaEnvio', 'FechaAceptacion', 'FechaCancelacion']
@@ -88,18 +96,24 @@ except Exception as e:
     st.error(f"❌ Error al cargar datos: {e}")
     st.stop()
 
-# ==========================================================
-# 2. CONFIGURACIÓN VISUAL (CSS)
-# ==========================================================
+# =============================================================================
+# CONFIGURACIÓN INICIAL
+# =============================================================================
+st.set_page_config(page_title="Dashboard PAC vs Ejecución", layout="wide")
+
 def cargar_css():
     try:
         with open("style/style.css") as f:
-            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-    except FileNotFoundError: pass
-
+            css_content = f.read().replace("\n", "").strip()
+            st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
+    except FileNotFoundError:
+        pass # Si no hay CSS, no falla
 cargar_css()
 
-# Header
+# =============================================================================
+# HEADER
+# =============================================================================
+
 st.markdown(
     """
     <div style="padding: 1.2rem 1.5rem; margin-bottom: 1.5rem; background: linear-gradient(90deg, #138AEC, #3E9FEF); color: white; border-radius: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">
@@ -259,7 +273,6 @@ st.markdown("## 📋 Detalles de Orden de Compra")
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9  = st.tabs(["🛒 Plan de Compras", "⏳ Estado Orden de Compra","🗃️ Unidad de Compras", "💼 Gestión de Compra", "📦 Productos","🚚 Recepciones", "👥 Proveedores", "🏭 Proveedores", "📊 Métricas Lean"])
 
 with tab1:
-
     # =============================================================================
     # 1. PREPARACIÓN DE DATOS
     # =============================================================================
@@ -271,6 +284,15 @@ with tab1:
     if "PAC" not in df_filtrado.columns and "En_PAC_2026" in df_filtrado.columns:
         df_filtrado["PAC"] = df_filtrado["En_PAC_2026"].apply(lambda x: "Enlazada" if x == 1 or x == "Si" else "No Enlazada")
 
+    # Aseguramos formatos y columnas base una sola vez
+    df_filtrado["FechaCreacion"] = pd.to_datetime(df_filtrado["FechaCreacion"], errors="coerce", dayfirst=True)
+    df_filtrado["Mes"] = df_filtrado["FechaCreacion"].dt.to_period("M").dt.to_timestamp()
+    df_filtrado["Año"] = df_filtrado["FechaCreacion"].dt.year
+
+    # Mapeo de meses en español para todos los ejes X
+    meses_es = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+    def format_esp_mes(fecha):
+        return f"{meses_es[fecha.month-1]} {fecha.year}"
     # Paleta de colores corporativa/profesional
     COLOR_ENLAZADA = "#2ECC71"  # Verde
     COLOR_NO_ENLAZADA = "#E74C3C" # Rojo
@@ -305,56 +327,54 @@ with tab1:
     with kpi4:
         st.metric("% Monto Planificado", f"{perc_monto_enlazado:.1f}%",
                 help="Porcentaje del dinero gastado que estaba planificado en el PAC")
-
     st.divider()
 
     # =============================================================================
-    # 3. ANÁLISIS ESTADÍSTICO DESCRIPTIVO - TAREA 1
+    # 3. ANÁLISIS ESTADÍSTICO INTEGRAL (General + Anual)
     # =============================================================================
-    with st.expander("📈 Ver Estadísticas Descriptivas Detalladas"):
-        # Agrupación por Estado PAC para ver promedios y desviaciones
+    with st.expander("📈 Ver Estadísticas Descriptivas y Evolución Anual"):
+        
+        # --- SECCIÓN 1: RESUMEN GENERAL ---
+        st.markdown("##### 📊 Resumen General por Estado")
+        st.write("Métricas financieras totales comparando compras planificadas vs no planificadas:")
+        
+        # Agrupación por Estado PAC
         stats_pac = df_filtrado.groupby("PAC")["TotalBruto"].agg(
             Conteo='count',
             Total='sum',
-            Promedio='mean',
-            Mediana='median',
-            Maximo='max'
         ).reset_index()
         
-        st.write("Comparativa de métricas financieras entre compras planificadas (Enlazadas) y no planificadas:")
         st.dataframe(
             stats_pac,
             column_config={
                 "Total": st.column_config.NumberColumn(format="$ %.2f"),
-                "Promedio": st.column_config.NumberColumn(format="$ %.2f"),
-                "Mediana": st.column_config.NumberColumn(format="$ %.2f"),
-                "Maximo": st.column_config.NumberColumn(format="$ %.2f"),
             },
             use_container_width=True,
             hide_index=True
         )
-    with st.expander("📈 Evolución y Estadísticas del Enlace PAC por Año"):
-        # --- 1. PREPARACIÓN DE LA TABLA COMPARATIVA ANUAL ---
-        # Agrupamos por Año y PAC para ver la mejora en el tiempo
+
+        st.divider()
+
+        # --- SECCIÓN 2: EVOLUCIÓN ANUAL ---
+        st.markdown("##### 📅 Comparativa de Gestión por Año")
+        
+        # Preparación de datos anuales
         stats_anual = df_filtrado.groupby(["Año", "PAC"])["TotalBruto"].agg(
             Conteo='count',
             Monto_Total='sum'
         ).reset_index()
 
-        # Calculamos el % de enlace por año para ver la mejora real
+        # Cálculo del % de enlace
         total_por_año = df_filtrado.groupby("Año").size().reset_index(name="Total_OCs")
         stats_anual = stats_anual.merge(total_por_año, on="Año")
         stats_anual["% Presencia"] = (stats_anual["Conteo"] / stats_anual["Total_OCs"]) * 100
-
-        st.write("### Comparativa de Gestión Anual")
         
-        # --- 2. FORMATO CONDICIONAL PARA EL DATAFRAME ---
-        # Función para aplicar colores según el estado PAC
+        # Función para aplicar colores (Verde/Rojo)
         def color_pac(val):
             color = '#d4edda' if val == "Enlazada" else '#f8d7da' # Verde claro / Rojo claro
             return f'background-color: {color}'
 
-        # Aplicamos el estilo y mostramos
+        # Visualización con formato condicional
         st.dataframe(
             stats_anual.style.applymap(color_pac, subset=['PAC']).format({
                 "Monto_Total": "${:,.0f}",
@@ -363,44 +383,16 @@ with tab1:
             use_container_width=True,
             hide_index=True
         )
-
-        st.divider()
-
-        # --- 3. GRÁFICO DE COMPARATIVA ANUAL ---
-  
+    
     # =============================================================================
     # 4. VISUALIZACIONES GRÁFICAS - TAREA 5
     # =============================================================================
-    st.write("### 📊 Evolución de Órdenes (Enlazadas vs No Enlazadas)")
+    st.write("### 🏆 Rendimiento y Evolución del Plan (PAC)")
     # Fila superior de gráficos
-    row1_col1, row1_col2, row1_col3 = st.columns([3, 2, 2])
+    row1_col1, row1_col2= st.columns(2)
 
     # --- GRÁFICO 1: EVOLUCIÓN TEMPORAL (LÍNEAS) ---
     with row1_col1:
-        
-        
-        # Agrupamos por Mes y Estado PAC
-        df_linea = df_filtrado.groupby(["Mes", "PAC"]).size().reset_index(name="Cantidad")
-        
-        fig_line = px.line(
-            df_linea, 
-            x="Mes", 
-            y="Cantidad", 
-            color="PAC",
-            color_discrete_map=COLOR_DISCRETE_MAP,
-            markers=True
-        )
-        fig_line.update_layout(
-            xaxis_title=None, 
-            yaxis_title="Nº de Órdenes",
-            legend_title=None,
-            height=350,
-            margin=dict(l=20, r=20, t=30, b=20)
-        )
-        st.plotly_chart(fig_line, use_container_width=True)
-
-    # --- GRÁFICO 2: DISTRIBUCIÓN POR UNIDAD (PIE/DONUT) ---
-    with row1_col2:
         fig_evolucion = px.bar(
             stats_anual, 
             x="Año", 
@@ -411,18 +403,18 @@ with tab1:
             title="Cant. OCs: Enlazadas vs No Enlazadas",
             color_discrete_map={"Enlazada": "#2ECC71", "No Enlazada": "#E74C3C"}
         )
-
         fig_evolucion.update_layout(
             xaxis_type='category',
             legend_title=None,
             yaxis_title="Cantidad de Órdenes",
             margin=dict(l=20, r=20, t=40, b=20),
             height=400
-        )
-
+        )    
         st.plotly_chart(fig_evolucion, use_container_width=True)
-    
-    with row1_col3:
+      
+
+    # --- GRÁFICO 2: DISTRIBUCIÓN POR UNIDAD (PIE/DONUT) ---
+    with row1_col2:
         df_solo_enlazadas = stats_anual[stats_anual["PAC"] == "Enlazada"]
         
         if not df_solo_enlazadas.empty:
@@ -437,81 +429,189 @@ with tab1:
             fig_tendencia.update_layout(
                 yaxis=dict(
                     ticksuffix="%", 
-                    range=[0, 100]
+                    range=[0, 100],
                 )
             )
-            st.plotly_chart(fig_tendencia, use_container_width=True)
-
-    # =============================================================================
-    # 6. ANÁLISIS GRÁFICO (TAREA 6)
-    # =============================================================================
+            st.plotly_chart(fig_tendencia, use_container_width=True)   
   
-    st.markdown("### 📊 Análisis Gráfico")
 
-    # Preparar datos mensuales
+    # Agrupamos por Mes y Estado PAC
+    df_linea = df_filtrado.groupby(["Mes", "PAC"]).size().reset_index(name="Cantidad")
+    
+    fig_line = px.line(
+        df_linea, 
+        x="Mes", 
+        y="Cantidad", 
+        color="PAC",
+        color_discrete_map=COLOR_DISCRETE_MAP,
+        markers=True
+    )
+    fig_line.update_layout(
+        xaxis_title=None, 
+        yaxis_title="Nº de Órdenes",
+        legend_title=None,
+        height=350,
+        margin=dict(l=20, r=20, t=30, b=20)
+    )
+    st.plotly_chart(fig_line, use_container_width=True)
+
+    # =============================================================================
+    # 1. PREPARACIÓN DE DATOS (GLOBAL)
+    # =============================================================================
+    st.divider()
+
+    # Aseguramos columnas de tiempo
+    df_filtrado["FechaCreacion"] = pd.to_datetime(df_filtrado["FechaCreacion"], errors="coerce")
     df_filtrado["Mes"] = df_filtrado["FechaCreacion"].dt.to_period("M").dt.to_timestamp()
+    df_filtrado["Año"] = df_filtrado["FechaCreacion"].dt.year
+
+    # Configuración Visual
     meses_es = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+    COLOR_MAP = {"Enlazada": "#2ECC71", "No Enlazada": "#E74C3C"}
 
-    cg1, cg2 = st.columns(2)
+    # =============================================================================
+    # FILA 1: ANÁLISIS DE CANTIDAD (VOLUMEN DE ÓRDENES)
+    # Izquierda: Evolución Mensual | Derecha: % Anual
+    # =============================================================================
+    st.markdown("##### 📦 Análisis por Volumen de Órdenes")
+    r1_col1, r1_col2 = st.columns(2)
 
-    with cg1:
-        # Cantidad por Mes y PAC
+    # --- GRÁFICO 1.1 (IZQ): Evolución Mensual (Original) ---
+    with r1_col1:
         df_mes_pac = df_filtrado.groupby(["Mes", "PAC"]).size().reset_index(name="Cant")
-        fig_q = px.bar(df_mes_pac, x="Mes", y="Cant", color="PAC", 
-                    title="📝 OCs por Mes y Estado PAC",
-                    color_discrete_map={"Enlazada": "#2ECC71", "No Enlazada": "#E74C3C"})
         
-        # Ajustar etiquetas de meses a español
-        fig_q.update_layout(xaxis=dict(tickvals=df_mes_pac["Mes"].unique(),
-                            ticktext=[meses_es[m.month-1] + f" {m.year}" for m in df_mes_pac["Mes"].unique()]))
+        fig_q = px.bar(df_mes_pac, x="Mes", y="Cant", color="PAC", 
+                    title="Evolución Mensual de OCs",
+                    color_discrete_map=COLOR_MAP)
+        
+        # Formateo eje X en español
+        if not df_mes_pac.empty:
+            fig_q.update_layout(xaxis=dict(
+                tickvals=df_mes_pac["Mes"].unique(),
+                ticktext=[meses_es[m.month-1] + f" {m.year}" for m in df_mes_pac["Mes"].unique()]
+            ))
         st.plotly_chart(fig_q, use_container_width=True)
 
-    with cg2:
-        # Monto por Mes y PAC
-        df_monto_pac = df_filtrado.groupby(["Mes", "PAC"])["TotalBruto"].sum().reset_index()
-        fig_m = px.area(df_monto_pac, x="Mes", y="TotalBruto", color="PAC", 
-                        title="💰 Inversión Planificada vs No Planificada",
-                        color_discrete_map={"Enlazada": "#2ECC71", "No Enlazada": "#E74C3C"})
+    # --- GRÁFICO 1.2 (DER): Porcentaje Anual (Nuevo) ---
+    with r1_col2:
+        # Calculamos % de cantidad
+        df_anual_qty = df_filtrado.groupby(["Año", "PAC"]).size().reset_index(name="Cant")
+        # Calculamos el total por año para sacar el %
+        df_anual_qty["Total_Año"] = df_anual_qty.groupby("Año")["Cant"].transform("sum")
+        df_anual_qty["Porcentaje"] = df_anual_qty["Cant"] / df_anual_qty["Total_Año"]
+
+        fig_q_pct = px.bar(df_anual_qty, x="Año", y="Porcentaje", color="PAC",
+                        title="Distribución % Anual (Por Cantidad)",
+                        text_auto='.1%', # Formato automático de porcentaje
+                        color_discrete_map=COLOR_MAP)
         
-        fig_m.update_layout(yaxis_tickprefix="$", yaxis_tickformat=",.0f")
+        fig_q_pct.update_layout(
+            xaxis_type='category', 
+            yaxis_tickformat=".0%", 
+            yaxis_title="% del Total"
+        )
+        st.plotly_chart(fig_q_pct, use_container_width=True)
+
+
+    # =============================================================================
+    # FILA 2: ANÁLISIS FINANCIERO (MONTOS)
+    # Izquierda: Evolución Mensual | Derecha: % Anual
+    # =============================================================================
+    st.divider()
+    st.markdown("##### 💰 Análisis por Montos de Inversión")
+    r2_col1, r2_col2 = st.columns(2)
+
+    # --- GRÁFICO 2.1 (IZQ): Evolución Mensual (Original) ---
+    with r2_col1:
+        df_monto_pac = df_filtrado.groupby(["Mes", "PAC"])["TotalBruto"].sum().reset_index()
+        
+        fig_m = px.area(df_monto_pac, x="Mes", y="TotalBruto", color="PAC", 
+                        title="Inversión Mensual ($)",
+                        color_discrete_map=COLOR_MAP)
+        
+        if not df_monto_pac.empty:
+            fig_m.update_layout(
+                yaxis_tickprefix="$", yaxis_tickformat=",.0f",
+                xaxis=dict(
+                    tickvals=df_monto_pac["Mes"].unique(),
+                    ticktext=[meses_es[m.month-1] + f" {m.year}" for m in df_monto_pac["Mes"].unique()]
+                )
+            )
         st.plotly_chart(fig_m, use_container_width=True)
 
-    st.markdown("### 🛒 Órdenes de Compra Consolidadas")
-    with st.expander("📅 Ver Tabla Maestra de OCs"):
-        # Agregamos las nuevas columnas a la visualización
-        cols_to_show = ["Codigo", "En_PAC_2026", "ID_Proyecto_PAC", "EstadoOC", "TotalBruto", "FechaCreacion"]
-        # Filtramos columnas que existan
-        cols_existentes = [c for c in cols_to_show if c in df_filtrado.columns]
-        
-        st.dataframe(df_filtrado[cols_existentes].style.format({
-            "TotalBruto": "${:,.0f}".format
-        }), use_container_width=True)
+    # --- GRÁFICO 2.2 (DER): Porcentaje Anual (Nuevo) ---
+    with r2_col2:
+        # Calculamos % de montos
+        df_anual_monto = df_filtrado.groupby(["Año", "PAC"])["TotalBruto"].sum().reset_index()
+        df_anual_monto["Total_Año"] = df_anual_monto.groupby("Año")["TotalBruto"].transform("sum")
+        df_anual_monto["Porcentaje"] = df_anual_monto["TotalBruto"] / df_anual_monto["Total_Año"]
 
+        fig_m_pct = px.bar(df_anual_monto, x="Año", y="Porcentaje", color="PAC",
+                        title="Distribución % Anual (Por Montos)",
+                        text_auto='.1%',
+                        color_discrete_map=COLOR_MAP)
+        
+        fig_m_pct.update_layout(
+            xaxis_type='category', 
+            yaxis_tickformat=".0%",
+            yaxis_title="% de Inversión"
+        )
+        st.plotly_chart(fig_m_pct, use_container_width=True)
+
+    st.divider()
     # =============================================================================
     # 5. TABLA MAESTRA CON FORMATO CONDICIONAL
     # =============================================================================
-    st.markdown("### 🛒 Órdenes de Compra Consolidadas")
-
     def style_pac_rows(row):
         # Aplicamos verde si está enlazado, rojo si no.
         color = 'background-color: rgba(46, 204, 113, 0.2)' if row['PAC'] == 'Enlazada' else 'background-color: rgba(231, 76, 60, 0.2)'
         return [color] * len(row)
 
-    with st.expander("📅 Abrir Tabla de Datos Detallada"):
-        cols_to_show = ["Codigo", "PAC", "ID_Proyecto_PAC", "EstadoOC", "TotalBruto", "FechaCreacion"]
-        cols_existentes = [c for c in cols_to_show if c in df_filtrado.columns]
-        
-        # Aplicamos el estilo y el formato de moneda
+    st.markdown("### 🛒 Órdenes de Compra Consolidadas")
+    st.markdown("Listado de Órdenes de Compra filtradas por los proyectos seleccionados arriba.")
+
+    # 1. Input de búsqueda
+    texto_busqueda = st.text_input(
+        "🔍 Buscar en Órdenes de Compra:", 
+        placeholder="Escribe código, nombre, proyecto o estado...",
+        help="Filtra automáticamente las filas que coincidan con el texto en cualquier columna."
+    )
+
+    cols_oc_view = ["Link", "PAC", "CodigoOC", "EstadoOC", "NombreOC", "FechaAceptacion", "TotalBruto", "ID Proyecto","CodigoLicitacion"]
+       # Verificamos que existan las columnas antes de mostrar
+    cols_existentes = [c for c in cols_oc_view if c in df_filtrado.columns]
+    # Creamos una copia para no alterar el dataframe original
+    df_display = df_filtrado[cols_existentes].copy()
+
+    # 3. Lógica del Filtro
+    if texto_busqueda:
+        # Filtramos sobre el dataframe de visualización
+        mascara = df_display.astype(str).apply(
+            lambda x: x.str.contains(texto_busqueda, case=False, na=False)
+        ).any(axis=1)
+        df_display = df_display[mascara]
+
+    # 4. Mostrar Tabla (Solo si hay datos tras la búsqueda) 
+    if df_display.empty:
+        st.warning(f"No se encontraron resultados para '{texto_busqueda}'")
+    else:
+        st.markdown(f"Mostrando **{len(df_display)}** registros encontrados.")
         st.dataframe(
-            df_filtrado[cols_existentes].style.apply(style_pac_rows, axis=1).format({
-                "TotalBruto": "${:,.0f}"
-            }), 
+            df_display.style.apply(style_pac_rows, axis=1).format({
+                    "TotalBruto": "${:,.0f}",
+                }),
             use_container_width=True,
-            hide_index=True
+            hide_index=True,
+            column_config={
+                "FechaAceptacion": st.column_config.DateColumn(format="DD-MM-YYYY"),
+                "Link": st.column_config.LinkColumn(
+                    "Link MercadoPúblico", 
+                    display_text="🔗 Abrir OC"
+                )
+            }
         )
-
-
-
+    st.divider()
+    
 with tab2:
     # ================================== GRAFICOS ===============================================
     # ##### GRAFICOS OC CON MESES EN ESPAÑOL ####

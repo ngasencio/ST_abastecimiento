@@ -352,7 +352,6 @@ with tab2:
 # =============================================================================
 # 🔄 LÓGICA DE EXPORTACIÓN (USANDO pyhtml2pdf - EL QUE TE FUNCIONA)
 # =============================================================================
-st.divider()
 st.subheader("📄 Exportar Reporte")
 
 # 1. Definir función para cargar plantilla
