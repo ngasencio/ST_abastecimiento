@@ -27,9 +27,8 @@ pagina_compradores = st.Page("pages/dash_compradores.py", title="Compradores", i
 
 # Grupo: Mercado Público
 pagina_licitaciones = st.Page("pages/dash_licitaciones.py", title="Licitaciones", icon="📄")
-pagina_pac = st.Page("pages/dash_pac.py", title="Planificación PAC", icon="🛒")
 pagina_plan_pac = st.Page("pages/dash_plan_pac.py", title="Planificación PAC", icon="🛒")
-pagina_pac_vs_oc = st.Page("pages/dash_ejecucionpac.py", title="Ejecución PAC", icon="🛒")
+pagina_ejecucionpac = st.Page("pages/dash_ejecucionpac.py", title="Ejecución PAC", icon="🛒")
 pagina_ordenes = st.Page("pages/dash_ordencompra.py", title="Ordenes de Compra", icon="🧾")
 pagina_compraagil = st.Page("pages/dash_compraagil.py", title="Compra Ágil", icon="⚡")
 
@@ -55,8 +54,7 @@ pg = st.navigation(
             pagina_plan_pac
         ],
         "🏛️ Mercado Público": [
-            pagina_pac,
-            pagina_pac_vs_oc,
+            pagina_ejecucionpac,
             pagina_ordenes,
             pagina_licitaciones,
             pagina_compraagil
