@@ -24,13 +24,13 @@ pagina_inicio = st.Page("pages/home.py", title="Inicio", icon="🏠", default=Tr
 pagina_fsc = st.Page("pages/dash_fsc.py", title="Formularios de Compra", icon="📄" )
 pagina_convenios = st.Page("pages/dash_convenios.py", title=" Cartera de Convenios", icon="📂")
 pagina_compradores = st.Page("pages/dash_compradores.py", title="Compradores", icon="👥")
+pagina_plan_pac = st.Page("pages/dash_plan_pac.py", title="Planificación PAC", icon="🛒")
 
 # Grupo: Mercado Público
-pagina_licitaciones = st.Page("pages/dash_licitaciones.py", title="Licitaciones", icon="📄")
-pagina_plan_pac = st.Page("pages/dash_plan_pac.py", title="Planificación PAC", icon="🛒")
 pagina_ejecucionpac = st.Page("pages/dash_ejecucionpac.py", title="Ejecución PAC", icon="🛒")
 pagina_ordenes = st.Page("pages/dash_ordencompra.py", title="Ordenes de Compra", icon="🧾")
 pagina_compraagil = st.Page("pages/dash_compraagil.py", title="Compra Ágil", icon="⚡")
+pagina_licitaciones = st.Page("pages/dash_licitaciones.py", title="Licitaciones", icon="📄")
 
 #Grupo Facturas
 pagina_facturas = st.Page("pages/dash_facturas.py", title="Facturas", icon="📥")

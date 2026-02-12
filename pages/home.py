@@ -108,7 +108,7 @@ with col_side:
         st.markdown("### 🚀 Accesos Rápidos")
         st.write("Navegue a los módulos principales:")
         
-        st.page_link("pages/dash_pac.py", label="Planificación PAC 2026", icon="📅")
+        st.page_link("pages/dash_plan_pac.py", label="Planificación PAC 2026", icon="📅")
         st.page_link("pages/dash_ordencompra.py", label="Seguimiento de Órdenes", icon="🛒")
         st.page_link("pages/dash_documentos.py", label="Repositorio Documental", icon="📚")
         
