@@ -256,7 +256,7 @@ texto_busqueda = st.text_input(
     help="Filtra automáticamente las filas que coincidan con el texto en cualquier columna."
 )
 
-cols_oc_view = ["Link", "PAC", "CodigoOC", "EstadoOC", "NombreOC", "FechaAceptacion", "TotalBruto", "ID Proyecto","CodigoLicitacion"]
+cols_oc_view = ["Link", "PAC", "CodigoOC", "EstadoOC", "NombreOC","FechaCreacion","FechaEnvio", "FechaAceptacion", "TotalBruto", "ID Proyecto","CodigoLicitacion"]
     # Verificamos que existan las columnas antes de mostrar
 cols_existentes = [c for c in cols_oc_view if c in df_filtrado.columns]
 # Creamos una copia para no alterar el dataframe original
@@ -280,6 +280,8 @@ else:
         use_container_width=True,
         hide_index=True,
         column_config={
+            "FechaCreacion": st.column_config.DateColumn(format="DD-MM-YYYY"),
+            "FechaEnvio": st.column_config.DateColumn(format="DD-MM-YYYY"),
             "FechaAceptacion": st.column_config.DateColumn(format="DD-MM-YYYY"),
             "Link": st.column_config.LinkColumn(
                 "Link MercadoPúblico", 

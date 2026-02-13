@@ -36,7 +36,7 @@ pagina_licitaciones = st.Page("pages/dash_licitaciones.py", title="Licitaciones"
 pagina_documentos = st.Page("pages/dash_documentos.py", title="Documentos", icon="📋")
 
 #Grupo: Herramientas
-pagina_api_sso = st.Page("pages/dash_extractor_sso_oc.py", title="API SSO", icon="📊")
+pagina_api_sso = st.Page("pages/dash_extractor_sso_oc.py", title="API SSO", icon="🔗")
 pagina_buscadorOC = st.Page("pages/tools_buscadorOC.py", title="Buscador OC", icon="🔍")
 
 
@@ -62,7 +62,7 @@ pg = st.navigation(
         "📚 Biblioteca Normativa": [
             pagina_documentos
         ],
-        "📊 Herramientas SSO": [
+        "🛠 Herramientas SSO": [
             pagina_api_sso,
             pagina_buscadorOC
         ]
