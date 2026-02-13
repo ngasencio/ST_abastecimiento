@@ -15,3 +15,5 @@ plotly
 pandas 
 streamlit
 pyhtml2pdf
+pdfkit
+openpyxl
