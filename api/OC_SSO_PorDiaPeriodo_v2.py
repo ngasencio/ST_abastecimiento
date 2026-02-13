@@ -1,12 +1,16 @@
-import urllib.request
-import urllib.parse
-import json
-import datetime as dt
-import pathlib
 import csv
+import datetime as dt
+import json
+import os
+import pathlib
 import ssl
 import time
-import os
+import urllib.parse
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+
 import pandas as pd  # Necesario para la unificación y refresco
 
 # =========================
@@ -30,133 +34,134 @@ CARPETA_MAESTROS.mkdir(parents=True, exist_ok=True)
 MAX_REINTENTOS = 5
 ESPERA_ENTRE_INTENTOS = 4.0
 
-# =========================
-# FUNCIONES DE APOYO API
-# =========================
+# Límite de concurrencia: demasiados hilos puede gatillar rate-limit en la API.
+MAX_WORKERS_DETALLE = 6
 
-def llamada_api(url, params):
-    ctx = ssl._create_unverified_context()
-    url_completa = url + "?" + urllib.parse.urlencode(params)
-    for intento in range(1, MAX_REINTENTOS + 1):
-        try:
-            with urllib.request.urlopen(url_completa, context=ctx, timeout=30) as resp:
-                return json.load(resp)
-        except:
-            time.sleep(ESPERA_ENTRE_INTENTOS)
-    return None
+# Throttle suave entre peticiones de detalle (en segundos). Se aplica por tarea/hilo.
+ESPERA_ENTRE_DETALLES = 0.05
 
-def obtener_detalle_oc(codigo_oc):
-    params = {"codigo": codigo_oc, "ticket": TICKET}
-    url = "https://api.mercadopublico.cl/servicios/v1/publico/ordenesdecompra.json"
-    data = llamada_api(url, params)
-    return data["Listado"][0] if data and data.get("Listado") else None
+URL_OC = "https://api.mercadopublico.cl/servicios/v1/publico/ordenesdecompra.json"
+
+@dataclass(frozen=True)
+class ApiConfig:
+    """Configuración de acceso a API y resiliencia."""
+
+    codigo_organismo: str
+    ticket: str
+    max_reintentos: int = MAX_REINTENTOS
+    espera_base: float = ESPERA_ENTRE_INTENTOS
+    timeout: int = 30
+    url_oc: str = URL_OC
+
+class MercadoPublicoClient:
+    """Cliente mínimo para la API (urllib) con backoff y manejo de errores."""
+
+    def __init__(self, cfg: ApiConfig):
+        self.cfg = cfg
+        self._ctx = ssl._create_unverified_context()
+
+    def get_json(self, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        url_completa = self.cfg.url_oc + "?" + urllib.parse.urlencode(params)
+        last_err: Optional[Exception] = None
+
+        for intento in range(1, self.cfg.max_reintentos + 1):
+            try:
+                with urllib.request.urlopen(url_completa, context=self._ctx, timeout=self.cfg.timeout) as resp:
+                    return json.load(resp)
+            except Exception as e:
+                last_err = e
+                # Backoff lineal (simple y predecible). Si necesitas más agresividad: exponencial.
+                time.sleep(self.cfg.espera_base * intento)
+
+        print(f"⚠️  API sin respuesta tras {self.cfg.max_reintentos} intentos: {last_err}")
+        return None
+
+    def obtener_listado_dia(self, fecha_dt: dt.date) -> List[Dict[str, Any]]:
+        params = {
+            "fecha": fecha_dt.strftime("%d%m%Y"),
+            "CodigoOrganismo": self.cfg.codigo_organismo,
+            "ticket": self.cfg.ticket,
+        }
+        data = self.get_json(params)
+        if not data or not data.get("Listado"):
+            return []
+        return data["Listado"]
+
+    def obtener_detalle_oc(self, codigo_oc: str) -> Optional[Dict[str, Any]]:
+        params = {"codigo": codigo_oc, "ticket": self.cfg.ticket}
+        data = self.get_json(params)
+        return data["Listado"][0] if data and data.get("Listado") else None
 
 def limpiar(texto):
     if texto is None: return ""
     return str(texto).replace("\n", " ").replace(";", ",").replace("\r", " ").strip()
 
-# =========================
-# PROCESAMIENTO DIARIO (EXTRACCIÓN)
-# =========================
+def _write_csv_dicts(path: pathlib.Path, rows: List[Dict[str, Any]], delimiter: str = ";") -> None:
+    """Escritura CSV consistente y relativamente rápida para lista de dicts."""
+    if not rows:
+        return
+    with open(path, "w", newline="", encoding="utf-8-sig") as csvfile:
+        w = csv.DictWriter(csvfile, fieldnames=rows[0].keys(), delimiter=delimiter)
+        w.writeheader()
+        w.writerows(rows)
 
-def procesar_dia(fecha_dt, modo_actualizar=False):
-    """
-    Descarga las OCs de un día específico y las guarda en la carpeta DIARIO.
-    Retorna True si descargó datos, False si no encontró nada.
-    """
-    fecha_consulta = fecha_dt.strftime("%d/%m/%Y")
-    f_str = fecha_dt.strftime("%Y%m%d")
-    
-    # Definimos las rutas
-    ruta_resumen = CARPETA_DIARIO / f"SSO_{f_str}_RESUMEN.csv"
-    ruta_detalles = CARPETA_DIARIO / f"SSO_{f_str}_DETALLES.csv"
+def _extraer_resumen_y_detalles(codigo: str, oc: Dict[str, Any]) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+    """Normaliza un JSON de OC en fila resumen + filas detalle."""
+    comp = oc.get("Comprador") or {}
+    prov = oc.get("Proveedor") or {}
+    fech = oc.get("Fechas") or {}
 
-    # Lógica de Actualización: Borrar previo a la descarga si existe
-    if modo_actualizar:
-        if ruta_resumen.exists(): ruta_resumen.unlink()
-        if ruta_detalles.exists(): ruta_detalles.unlink()
+    resumen = {
+        "CodigoOC": codigo,
+        "NombreOC": limpiar(oc.get("Nombre")),
+        "CodigoEstado": oc.get("CodigoEstado"),
+        "EstadoOC": oc.get("Estado"),
+        "CodigoLicitacion": oc.get("CodigoLicitacion"),
+        "TipoOC": oc.get("Tipo"),
+        "TipoMoneda": oc.get("TipoMoneda"),
+        "Financiamiento": oc.get("Financiamiento"),
+        "FormaPago": oc.get("FormaPago"),
+        "TipoDespacho": oc.get("TipoDespacho"),
+        "Pais": oc.get("Pais"),
+        "FechaCreacion": fech.get("FechaCreacion"),
+        "FechaEnvio": fech.get("FechaEnvio"),
+        "FechaAceptacion": fech.get("FechaAceptacion"),
+        "FechaCancelacion": fech.get("FechaCancelacion"),
+        "FechaUltimaModificacion": fech.get("FechaUltimaModificacion"),
+        "PromedioCalificacion": oc.get("PromedioCalificacion"),
+        "CantidadEvaluacion": oc.get("CantidadEvaluacion"),
+        "TotalNeto": oc.get("TotalNeto"),
+        "PorcentajeIva": oc.get("PorcentajeIva"),
+        "Impuestos": oc.get("Impuestos"),
+        "TotalBruto": oc.get("Total"),
+        "C_CodigoUnidad": comp.get("CodigoUnidad"),
+        "C_Unidad": comp.get("NombreUnidad"),
+        "C_RutUnidad": comp.get("RutUnidad"),
+        "C_Actividad": comp.get("Actividad"),
+        "C_Direccion": comp.get("DireccionUnidad"),
+        "C_Comuna": comp.get("ComunaUnidad"),
+        "C_Region": comp.get("RegionUnidad"),
+        "C_Contacto": comp.get("NombreContacto"),
+        "C_Cargo": comp.get("CargoContacto"),
+        "C_Email": comp.get("MailContacto"),
+        "P_Codigo": prov.get("Codigo"),
+        "P_Nombre": prov.get("Nombre"),
+        "P_Rut": prov.get("RutSucursal"),
+        "P_Actividad": limpiar(prov.get("Actividad")),
+        "P_Direccion": limpiar(prov.get("Direccion")),
+        "P_Comuna": prov.get("Comuna"),
+        "P_Region": prov.get("Region"),
+        "P_Contacto": prov.get("NombreContacto"),
+        "P_Cargo": prov.get("CargoContacto"),
+        "P_Email": prov.get("MailContacto"),
+        "DescripcionOC": limpiar(oc.get("Descripcion")),
+    }
 
-    print(f"\n>>> EXTRACCIÓN SSO: {fecha_consulta}")
-    
-    params = {"fecha": fecha_dt.strftime("%d%m%Y"), "CodigoOrganismo": CODIGO_ORGANISMO, "ticket": TICKET}
-    url_listado = "https://api.mercadopublico.cl/servicios/v1/publico/ordenesdecompra.json"
-    
-    data_listado = llamada_api(url_listado, params)
-    if not data_listado or not data_listado.get("Listado"):
-        print("    ⚠ Sin datos en API para esta fecha.")
-        return False
-
-    ocs_basicas = data_listado["Listado"]
-    db_resumen = []
-    db_detalles = []
-
-    for i, item_b in enumerate(ocs_basicas, 1):
-        codigo = item_b.get("Codigo")
-        print(f"    [{i}/{len(ocs_basicas)}] Procesando: {codigo}", end="\r")
-        
-        oc = obtener_detalle_oc(codigo)
-        if not oc: continue
-
-        comp = oc.get("Comprador") or {}
-        prov = oc.get("Proveedor") or {}
-        fech = oc.get("Fechas") or {}
-
-        # 1. TABLA RESUMEN (Estructura completa solicitada)
-        db_resumen.append({
-            "CodigoOC": codigo,
-            "NombreOC": limpiar(oc.get("Nombre")),
-            "CodigoEstado": oc.get("CodigoEstado"),
-            "EstadoOC": oc.get("Estado"),
-            "CodigoLicitacion": oc.get("CodigoLicitacion"),
-            "TipoOC": oc.get("Tipo"),
-            "TipoMoneda": oc.get("TipoMoneda"),
-            "Financiamiento": oc.get("Financiamiento"),
-            "FormaPago": oc.get("FormaPago"),
-            "TipoDespacho": oc.get("TipoDespacho"),
-            "Pais": oc.get("Pais"),
-            # Fechas Detalladas
-            "FechaCreacion": fech.get("FechaCreacion"),
-            "FechaEnvio": fech.get("FechaEnvio"),
-            "FechaAceptacion": fech.get("FechaAceptacion"),
-            "FechaCancelacion": fech.get("FechaCancelacion"),
-            "FechaUltimaModificacion": fech.get("FechaUltimaModificacion"),
-            # Métricas y Totales
-            "PromedioCalificacion": oc.get("PromedioCalificacion"),
-            "CantidadEvaluacion": oc.get("CantidadEvaluacion"),
-            "TotalNeto": oc.get("TotalNeto"),
-            "PorcentajeIva": oc.get("PorcentajeIva"),
-            "Impuestos": oc.get("Impuestos"),
-            "TotalBruto": oc.get("Total"),
-            # Datos Comprador (SSO)
-            "C_CodigoUnidad": comp.get("CodigoUnidad"),
-            "C_Unidad": comp.get("NombreUnidad"),
-            "C_RutUnidad": comp.get("RutUnidad"),
-            "C_Actividad": comp.get("Actividad"),
-            "C_Direccion": comp.get("DireccionUnidad"),
-            "C_Comuna": comp.get("ComunaUnidad"),
-            "C_Region": comp.get("RegionUnidad"),
-            "C_Contacto": comp.get("NombreContacto"),
-            "C_Cargo": comp.get("CargoContacto"),
-            "C_Email": comp.get("MailContacto"),
-            # Datos Proveedor
-            "P_Codigo": prov.get("Codigo"),
-            "P_Nombre": prov.get("Nombre"),
-            "P_Rut": prov.get("RutSucursal"),
-            "P_Actividad": limpiar(prov.get("Actividad")),
-            "P_Direccion": limpiar(prov.get("Direccion")),
-            "P_Comuna": prov.get("Comuna"),
-            "P_Region": prov.get("Region"),
-            "P_Contacto": prov.get("NombreContacto"),
-            "P_Cargo": prov.get("CargoContacto"),
-            "P_Email": prov.get("MailContacto"),
-            # Otros
-            "DescripcionOC": limpiar(oc.get("Descripcion"))
-        })
-
-        # 2. TABLA DETALLES
-        items_list = oc.get("Items", {}).get("Listado", []) if oc.get("Items") else []
-        for it in items_list:
-            db_detalles.append({
+    detalles: List[Dict[str, Any]] = []
+    items_list = oc.get("Items", {}).get("Listado", []) if oc.get("Items") else []
+    for it in items_list:
+        detalles.append(
+            {
                 "CodigoOC": codigo,
                 "Correlativo": it.get("Correlativo"),
                 "CodigoCategoria": it.get("CodigoCategoria"),
@@ -169,23 +174,102 @@ def procesar_dia(fecha_dt, modo_actualizar=False):
                 "Unidad": it.get("Unidad"),
                 "PrecioNeto": it.get("PrecioNeto"),
                 "TotalImpuestos": it.get("TotalImpuestos"),
-                "TotalLinea": it.get("Total")
-            })
-        time.sleep(0.1) # Breve pausa para no saturar
+                "TotalLinea": it.get("Total"),
+            }
+        )
+
+    return resumen, detalles
+
+# =========================
+# PROCESAMIENTO DIARIO (EXTRACCIÓN)
+# =========================
+
+def procesar_dia(
+    fecha_dt,
+    modo_actualizar=False,
+    codigo_organismo: str = CODIGO_ORGANISMO,
+    ticket: str = TICKET,
+    max_workers_detalle: int = MAX_WORKERS_DETALLE,
+    espera_entre_detalles: float = ESPERA_ENTRE_DETALLES,
+    progress_callback: Optional[Callable[[str, int, int], None]] = None,
+):
+    """
+    Descarga las OCs de un día específico y las guarda en la carpeta DIARIO.
+    Retorna True si descargó datos, False si no encontró nada.
+    """
+    fecha_consulta = fecha_dt.strftime("%d/%m/%Y")
+    f_str = fecha_dt.strftime("%Y%m%d")
+    
+    # Definimos las rutas
+    ruta_resumen = CARPETA_DIARIO / f"SSO_{f_str}_RESUMEN.csv"
+    ruta_detalles = CARPETA_DIARIO / f"SSO_{f_str}_DETALLES.csv"
+
+    # Cache en disco: si ya existen ambos archivos y no se fuerza actualización, se evita trabajo.
+    if (not modo_actualizar) and ruta_resumen.exists() and ruta_detalles.exists():
+        print("    ✅ Ya existe en DIARIO (cache).")
+        return True
+
+    # Lógica de Actualización: Borrar previo a la descarga si existe
+    if modo_actualizar:
+        if ruta_resumen.exists():
+            ruta_resumen.unlink()
+        if ruta_detalles.exists():
+            ruta_detalles.unlink()
+
+    print(f"\n>>> EXTRACCIÓN SSO: {fecha_consulta}")
+    
+    client = MercadoPublicoClient(ApiConfig(codigo_organismo=codigo_organismo, ticket=ticket))
+    ocs_basicas = client.obtener_listado_dia(fecha_dt)
+    if not ocs_basicas:
+        print("    ⚠ Sin datos en API para esta fecha.")
+        return False
+
+    db_resumen: List[Dict[str, Any]] = []
+    db_detalles: List[Dict[str, Any]] = []
+
+    codigos: List[str] = [str(item.get("Codigo")) for item in ocs_basicas if item.get("Codigo")]
+    total = len(codigos)
+
+    def _fetch_one(idx_codigo: Tuple[int, str]) -> Optional[Tuple[Dict[str, Any], List[Dict[str, Any]]]]:
+        idx, codigo = idx_codigo
+        oc = client.obtener_detalle_oc(codigo)
+        time.sleep(espera_entre_detalles)
+        if not oc:
+            return None
+        return _extraer_resumen_y_detalles(codigo, oc)
+
+    # Concurrencia controlada: acelera drásticamente cuando hay muchas OCs por día.
+    with ThreadPoolExecutor(max_workers=max_workers_detalle) as ex:
+        future_to_codigo = {ex.submit(_fetch_one, (i, c)): c for i, c in enumerate(codigos, 1)}
+
+        for done_count, fut in enumerate(as_completed(future_to_codigo), 1):
+            codigo = future_to_codigo[fut]
+
+            if progress_callback:
+                try:
+                    progress_callback(codigo, done_count, total)
+                except Exception:
+                    pass
+
+            if done_count % 10 == 0 or done_count == total:
+                print(f"    Procesadas {done_count}/{total} OCs", end="\r")
+
+            res = fut.result()
+            if not res:
+                continue
+            resumen, detalles = res
+            db_resumen.append(resumen)
+            db_detalles.extend(detalles)
 
     # GUARDADO EN CSV
-    if db_resumen:
-        for nombre_archivo, data_list in [(ruta_resumen, db_resumen), (ruta_detalles, db_detalles)]:
-            with open(nombre_archivo, "w", newline="", encoding="utf-8-sig") as csvfile:
-                if data_list:
-                    w = csv.DictWriter(csvfile, fieldnames=data_list[0].keys(), delimiter=";")
-                    w.writeheader()
-                    w.writerows(data_list)
-        
-        print(f"\n✅ Guardado en DIARIO: {f_str}")
-        return True
-    else:
+    if not db_resumen:
         return False
+
+    _write_csv_dicts(ruta_resumen, db_resumen)
+    _write_csv_dicts(ruta_detalles, db_detalles)
+
+    print(f"\n✅ Guardado en DIARIO: {f_str}")
+    return True
 
 # =======================================================
 # NUEVAS FUNCIONES: UNIFICACIÓN Y REFRESH (PANDAS)
@@ -203,15 +287,19 @@ def unificar_base_datos():
     archivos_res = list(CARPETA_DIARIO.glob("*_RESUMEN.csv"))
     
     if archivos_res:
-        # Leemos todos los archivos y los concatenamos. dtype=str protege los códigos con ceros.
-        df_res = pd.concat([pd.read_csv(f, sep=";", encoding="utf-8-sig", dtype=str) for f in archivos_res], ignore_index=True)
-        
-        # Deduplicamos por CodigoOC, quedándonos con el último encontrado (asumiendo que fechas posteriores sobreescriben)
+        # Nota: si la carpeta DIARIO crece mucho, esta concatenación puede consumir RAM.
+        # Para grandes volúmenes, conviene migrar a un almacenamiento incremental (SQLite/Parquet).
+        df_res = pd.concat(
+            [pd.read_csv(f, sep=";", encoding="utf-8-sig", dtype=str) for f in archivos_res],
+            ignore_index=True,
+        )
+
         df_res.drop_duplicates(subset=["CodigoOC"], keep="last", inplace=True)
-        
+
         ruta_m_res = CARPETA_MAESTROS / "OC_Maestro_Resumen.csv"
         df_res.to_csv(ruta_m_res, sep=";", index=False, encoding="utf-8-sig")
         print(f"   ✅ Maestro Resumen creado: {len(df_res)} registros.")
+
     else:
         print("   ⚠️ No se encontraron archivos de Resumen en DIARIO.")
 
@@ -220,18 +308,29 @@ def unificar_base_datos():
     archivos_det = list(CARPETA_DIARIO.glob("*_DETALLES.csv"))
     
     if archivos_det:
-        df_det = pd.concat([pd.read_csv(f, sep=";", encoding="utf-8-sig", dtype=str) for f in archivos_det], ignore_index=True)
-        
-        # Deduplicamos por OC + Correlativo
+        df_det = pd.concat(
+            [pd.read_csv(f, sep=";", encoding="utf-8-sig", dtype=str) for f in archivos_det],
+            ignore_index=True,
+        )
+
         df_det.drop_duplicates(subset=["CodigoOC", "Correlativo"], keep="last", inplace=True)
-        
+
         ruta_m_det = CARPETA_MAESTROS / "OC_Maestro_Detalles.csv"
         df_det.to_csv(ruta_m_det, sep=";", index=False, encoding="utf-8-sig")
         print(f"   ✅ Maestro Detalles creado: {len(df_det)} registros.")
+
     else:
         print("   ⚠️ No se encontraron archivos de Detalles en DIARIO.")
 
-def refresh_base_datos(f_ini, f_fin):
+def refresh_base_datos(
+    f_ini,
+    f_fin,
+    codigo_organismo: str = CODIGO_ORGANISMO,
+    ticket: str = TICKET,
+    max_workers_detalle: int = MAX_WORKERS_DETALLE,
+    espera_entre_detalles: float = ESPERA_ENTRE_DETALLES,
+    progress_callback: Optional[Callable[[dt.date, str, int, int], None]] = None,
+):
     """
     6) Descarga rango, lee Maestros, actualiza (Upsert) y guarda.
     """
@@ -242,8 +341,20 @@ def refresh_base_datos(f_ini, f_fin):
     dias_descargados = []
     
     while d_actual <= f_fin:
-        # procesar_dia guarda en DIARIO y devuelve True si hubo datos
-        hubo_datos = procesar_dia(d_actual, modo_actualizar=True)
+        # Callback de OC para este día (se propaga desde Streamlit)
+        def _cb_oc(codigo: str, done: int, total: int) -> None:
+            if progress_callback:
+                progress_callback(d_actual, codigo, done, total)
+
+        hubo_datos = procesar_dia(
+            d_actual,
+            modo_actualizar=True,
+            codigo_organismo=codigo_organismo,
+            ticket=ticket,
+            max_workers_detalle=max_workers_detalle,
+            espera_entre_detalles=espera_entre_detalles,
+            progress_callback=_cb_oc,
+        )
         if hubo_datos:
             dias_descargados.append(d_actual)
         d_actual += dt.timedelta(days=1)
@@ -267,7 +378,10 @@ def refresh_base_datos(f_ini, f_fin):
 
     # Cargar Nuevos Archivos Diarios
     archivos_nuevos_res = [CARPETA_DIARIO / f"SSO_{d.strftime('%Y%m%d')}_RESUMEN.csv" for d in dias_descargados]
-    df_nuevos_res = pd.concat([pd.read_csv(f, sep=";", encoding="utf-8-sig", dtype=str) for f in archivos_nuevos_res if f.exists()])
+    df_nuevos_res = pd.concat(
+        [pd.read_csv(f, sep=";", encoding="utf-8-sig", dtype=str) for f in archivos_nuevos_res if f.exists()],
+        ignore_index=True,
+    )
 
     if not df_nuevos_res.empty:
         # Concatenar y deduplicar (Keep Last asegura que la versión nueva de la OC reemplace a la vieja)
@@ -284,7 +398,10 @@ def refresh_base_datos(f_ini, f_fin):
         df_master_det = pd.DataFrame()
 
     archivos_nuevos_det = [CARPETA_DIARIO / f"SSO_{d.strftime('%Y%m%d')}_DETALLES.csv" for d in dias_descargados]
-    df_nuevos_det = pd.concat([pd.read_csv(f, sep=";", encoding="utf-8-sig", dtype=str) for f in archivos_nuevos_det if f.exists()])
+    df_nuevos_det = pd.concat(
+        [pd.read_csv(f, sep=";", encoding="utf-8-sig", dtype=str) for f in archivos_nuevos_det if f.exists()],
+        ignore_index=True,
+    )
 
     if not df_nuevos_det.empty:
         # ESTRATEGIA SEGURA: 

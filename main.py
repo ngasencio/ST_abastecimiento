@@ -32,14 +32,13 @@ pagina_ordenes = st.Page("pages/dash_ordencompra.py", title="Ordenes de Compra",
 pagina_compraagil = st.Page("pages/dash_compraagil.py", title="Compra Ágil", icon="⚡")
 pagina_licitaciones = st.Page("pages/dash_licitaciones.py", title="Licitaciones", icon="📄")
 
-#Grupo Facturas
-pagina_facturas = st.Page("pages/dash_facturas.py", title="Facturas", icon="📥")
-
 #Grupo: Documentos
 pagina_documentos = st.Page("pages/dash_documentos.py", title="Documentos", icon="📋")
 
-#Grupo: Generador de Facturas
-pagina_generador_facturas = st.Page("pages/streamlitFacturaPDF/streamlitFacturaPDF.py", title="Generador de Facturas", icon="📋"    )
+#Grupo: Herramientas
+pagina_api_sso = st.Page("pages/dash_extractor_sso_oc.py", title="API SSO", icon="📊")
+pagina_buscadorOC = st.Page("pages/tools_buscadorOC.py", title="Buscador OC", icon="🔍")
+
 
 # ==========================================
 # 3. CONFIGURACIÓN DE NAVEGACIÓN
@@ -59,15 +58,14 @@ pg = st.navigation(
             pagina_licitaciones,
             pagina_compraagil
         ],
-        "📥Facturas":[
-            pagina_facturas],
 
         "📚 Biblioteca Normativa": [
             pagina_documentos
         ],
-        "📚 Generador de Facturas": [
-            pagina_generador_facturas
-        ],
+        "📊 Herramientas SSO": [
+            pagina_api_sso,
+            pagina_buscadorOC
+        ]
     }
 )
 

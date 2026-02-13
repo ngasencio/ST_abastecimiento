@@ -5,6 +5,11 @@ import plotly.express as px
 from datetime import datetime
 import os
 
+# =============================================================================
+# CONFIGURACIÓN INICIAL
+# =============================================================================
+st.set_page_config(page_title="Dashboard Orden de Compra", layout="wide")
+
 # Aumentar el límite de celdas para el Styler
 pd.set_option("styler.render.max_elements", 500000)
 
@@ -25,32 +30,28 @@ def load_pac_master():
 def enriquecer_datos_con_pac(df_principal, df_maestro):
     """Cruce vectorizado Paso A y B para identificar OCs en el plan."""
     df = df_principal.copy()
-    
-    # Normalización para asegurar el cruce (Paso A)
-    # Ajusta 'CodigoOC' al nombre real de tu columna en el maestro de compras
-    col_oc_compras = "CodigoOC" 
-    
-    # Creamos llaves limpias temporales
+
+    col_oc_compras = "CodigoOC"
     keys_compras = df[col_oc_compras].astype(str).str.strip().str.upper()
-    keys_pac = df_maestro["OC Asociada PAC"].astype(str).str.strip().str.upper()
-    
-    # Creación de columna indicadora (Paso B)
-    df["PAC"] = "No Enlazada"
-    mask = keys_compras.isin(keys_pac)
-    df.loc[mask, "PAC"] = "Enlazada"
-    
-    # Traemos el ID Proyecto del maestro
-    # Usamos merge sobre las llaves normalizadas
-    df_maestro_clean = df_maestro.copy()
-    df_maestro_clean["key_tmp"] = keys_pac
-    
+
+    if df_maestro.empty or "OC Asociada PAC" not in df_maestro.columns:
+        df["PAC"] = "No Enlazada"
+        return df
+
+    maestro = df_maestro[["OC Asociada PAC", "ID Proyecto"]].copy()
+    maestro["key_tmp"] = maestro["OC Asociada PAC"].astype(str).str.strip().str.upper()
+    maestro = maestro.drop_duplicates(subset=["key_tmp"], keep="last")
+
+    pac_set = set(maestro["key_tmp"].dropna().unique())
+    df["PAC"] = np.where(keys_compras.isin(pac_set), "Enlazada", "No Enlazada")
+
     df = df.merge(
-        df_maestro_clean[["key_tmp", "ID Proyecto"]],
+        maestro[["key_tmp", "ID Proyecto"]],
         left_on=keys_compras,
         right_on="key_tmp",
-        how="left"
+        how="left",
     ).drop(columns=["key_tmp"])
-    
+
     return df
 
 def generar_link_mp(codigo_oc):
@@ -67,6 +68,82 @@ def obtener_todo():
     df_pac = load_pac_master()
     return df_OCres, df_OCdet, df_pac
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def preprocesar_oc_resumen(df_raw_res: pd.DataFrame, df_pac_maestro: pd.DataFrame) -> pd.DataFrame:
+    df = enriquecer_datos_con_pac(df_raw_res, df_pac_maestro)
+
+    if "CodigoOC" in df.columns:
+        df["CodigoOC"] = df["CodigoOC"].astype(str).str.strip()
+        base_url = "http://www.mercadopublico.cl/PurchaseOrder/Modules/PO/DetailsPurchaseOrder.aspx?codigoOC="
+        df["Link"] = base_url + df["CodigoOC"]
+
+    cols_fecha = ["FechaCreacion", "FechaEnvio", "FechaAceptacion", "FechaCancelacion", "FechaUltimaModificacion"]
+    for col in cols_fecha:
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], errors="coerce", dayfirst=True)
+
+    if "FechaAceptacion" in df.columns and "FechaCreacion" in df.columns:
+        df["LeadTime_Dias"] = (df["FechaAceptacion"] - df["FechaCreacion"]).dt.days
+        df["LeadTime_Dias"] = df["LeadTime_Dias"].clip(lower=0)
+
+    if "TipoOC" not in df.columns:
+        df["TipoOC"] = "Desconocido"
+    else:
+        df["TipoOC"] = df["TipoOC"].fillna("Desconocido")
+
+    if "FechaCreacion" in df.columns:
+        df["Año"] = df["FechaCreacion"].dt.year
+        df["Mes"] = df["FechaCreacion"].dt.to_period("M").dt.to_timestamp()
+
+    return df
+
+def aplicar_filtros(df: pd.DataFrame, pac_sel, estado_oc_sel, unidad_sel, contacto_sel, fechas_sel, anio_sel) -> pd.DataFrame:
+    if df.empty:
+        return df
+
+    mask = pd.Series(True, index=df.index)
+
+    if pac_sel:
+        mask &= df["PAC"].isin(pac_sel)
+    if estado_oc_sel:
+        mask &= df["EstadoOC"].isin(estado_oc_sel)
+    if unidad_sel:
+        mask &= df["C_Unidad"].isin(unidad_sel)
+    if contacto_sel:
+        mask &= df["C_Contacto"].isin(contacto_sel)
+    if anio_sel:
+        mask &= df["Año"].isin(anio_sel)
+    if fechas_sel and len(fechas_sel) == 2 and "FechaCreacion" in df.columns:
+        f0 = pd.to_datetime(fechas_sel[0])
+        f1 = pd.to_datetime(fechas_sel[1]) + pd.Timedelta(days=1) - pd.Timedelta(microseconds=1)
+        mask &= df["FechaCreacion"].between(f0, f1)
+
+    return df.loc[mask]
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def agregar_productos_por_oc(df_oc_det: pd.DataFrame, ids_filtrados: tuple) -> pd.DataFrame:
+    if df_oc_det.empty or not ids_filtrados:
+        return pd.DataFrame()
+
+    df_productos_filtrados = df_oc_det[df_oc_det["CodigoOC"].isin(ids_filtrados)]
+    if df_productos_filtrados.empty:
+        return pd.DataFrame()
+
+    prod_agg = (
+        df_productos_filtrados.groupby("Producto", dropna=False)
+        .agg({
+            "Cantidad": "sum",
+            "PrecioNeto": "mean",
+            "CodigoOC": "nunique",
+        })
+        .reset_index()
+        .rename(columns={"CodigoOC": "Frecuencia_OC"})
+    )
+
+    prod_agg["Monto_Estimado"] = prod_agg["Cantidad"] * prod_agg["PrecioNeto"]
+    prod_agg = prod_agg.sort_values("Monto_Estimado", ascending=False)
+    return prod_agg
+
 # Ejecución de carga
 try:
     df_raw_res, df_oc_det, df_pac_maestro = obtener_todo()
@@ -76,30 +153,11 @@ try:
         st.stop()
 
     # --- PROCESAMIENTO INICIAL ---
-    df_oc_res = enriquecer_datos_con_pac(df_raw_res, df_pac_maestro)
-
-    # 2. Generar LINK (Requerimiento 2)
-    df_oc_res["Link"] = df_oc_res["CodigoOC"].apply(generar_link_mp)
-    
-    # Normalización de Fechas
-    cols_fecha = ['FechaCreacion', 'FechaEnvio', 'FechaAceptacion', 'FechaCancelacion']
-    for col in cols_fecha:
-        if col in df_oc_res.columns:
-            df_oc_res[col] = pd.to_datetime(df_oc_res[col], errors='coerce')
-
-    # Lead Time y Limpieza
-    df_oc_res['LeadTime_Dias'] = (df_oc_res['FechaAceptacion'] - df_oc_res['FechaCreacion']).dt.days
-    df_oc_res['LeadTime_Dias'] = df_oc_res['LeadTime_Dias'].apply(lambda x: x if x >= 0 else np.nan)
-    df_oc_res['TipoOC'] = df_oc_res.get('TipoOC', pd.Series(["Desconocido"]*len(df_oc_res))).fillna('Desconocido')
+    df_oc_res = preprocesar_oc_resumen(df_raw_res, df_pac_maestro)
 
 except Exception as e:
     st.error(f"❌ Error al cargar datos: {e}")
     st.stop()
-
-# =============================================================================
-# CONFIGURACIÓN INICIAL
-# =============================================================================
-st.set_page_config(page_title="Dashboard PAC vs Ejecución", layout="wide")
 
 def cargar_css():
     try:
@@ -125,20 +183,12 @@ st.markdown(
 # ==========================================================
 # 4. PREPARACIÓN DE DATOS
 # ==========================================================
-
-df_oc_res["FechaCreacion"] = pd.to_datetime(
-    df_oc_res["FechaCreacion"],
-    format="%d-%m-%Y",
-    errors="coerce"
-)
-df_oc_res["Año"] = df_oc_res["FechaCreacion"].dt.year
-
-opciones_anio = sorted(df_oc_res["Año"].dropna().unique())
+opciones_anio = sorted(df_oc_res["Año"].dropna().unique()) if "Año" in df_oc_res.columns else []
 # ==========================================================
 # 3. FILTROS EN CASCADA
 # ==========================================================
 # 1. Creamos una copia para la lógica de cascada (opciones dinámicas)
-df_cascada = df_oc_res.copy()
+df_cascada = df_oc_res
 
 # Creamos 5 columnas para que quepa todo el flujo
 c1, c2, c3, c4, c5, c6 = st.columns(6)
@@ -190,23 +240,15 @@ with c6:
 # ==========================================================
 # APLICACIÓN FINAL AL DATAFRAME DE TRABAJO
 # ==========================================================
-
-# Aquí generamos el df_filtrado definitivo que usarán los KPIs y Gráficos
-df_filtrado = df_oc_res.copy()
-
-if pac_sel:
-    df_filtrado = df_filtrado[df_filtrado["PAC"].isin(pac_sel)]
-if estado_oc_sel:
-    df_filtrado = df_filtrado[df_filtrado["EstadoOC"].isin(estado_oc_sel)]
-if unidad_sel:
-    df_filtrado = df_filtrado[df_filtrado["C_Unidad"].isin(unidad_sel)]
-if contacto_sel:
-    df_filtrado = df_filtrado[df_filtrado["C_Contacto"].isin(contacto_sel)]
-if len(fechas_sel) == 2:
-    df_filtrado = df_filtrado[
-        (df_filtrado['FechaCreacion'].dt.date >= fechas_sel[0]) & 
-        (df_filtrado['FechaCreacion'].dt.date <= fechas_sel[1])
-    ]
+df_filtrado = aplicar_filtros(
+    df_oc_res,
+    pac_sel,
+    estado_oc_sel,
+    unidad_sel,
+    contacto_sel,
+    fechas_sel,
+    anio_sel,
+)
 
 # ==========================================================
 # 4. KPIS LEAN Y OKRS (CON DESCRIPCIONES)
@@ -276,18 +318,12 @@ with tab1:
     # =============================================================================
     # 1. PREPARACIÓN DE DATOS
     # =============================================================================
-    # Aseguramos que existan las columnas derivadas necesarias
-    if "Mes" not in df_filtrado.columns:
-        df_filtrado["Mes"] = df_filtrado["FechaCreacion"].dt.to_period("M").dt.to_timestamp()
-
-    # Mapeo para asegurar que la columna PAC tenga nombres amigables si viene como booleano o código
     if "PAC" not in df_filtrado.columns and "En_PAC_2026" in df_filtrado.columns:
-        df_filtrado["PAC"] = df_filtrado["En_PAC_2026"].apply(lambda x: "Enlazada" if x == 1 or x == "Si" else "No Enlazada")
-
-    # Aseguramos formatos y columnas base una sola vez
-    df_filtrado["FechaCreacion"] = pd.to_datetime(df_filtrado["FechaCreacion"], errors="coerce", dayfirst=True)
-    df_filtrado["Mes"] = df_filtrado["FechaCreacion"].dt.to_period("M").dt.to_timestamp()
-    df_filtrado["Año"] = df_filtrado["FechaCreacion"].dt.year
+        df_filtrado["PAC"] = np.where(
+            df_filtrado["En_PAC_2026"].isin([1, "1", "Si", "SI", "si", True]),
+            "Enlazada",
+            "No Enlazada",
+        )
 
     # Mapeo de meses en español para todos los ejes X
     meses_es = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
@@ -460,10 +496,7 @@ with tab1:
     # =============================================================================
     st.divider()
 
-    # Aseguramos columnas de tiempo
-    df_filtrado["FechaCreacion"] = pd.to_datetime(df_filtrado["FechaCreacion"], errors="coerce")
-    df_filtrado["Mes"] = df_filtrado["FechaCreacion"].dt.to_period("M").dt.to_timestamp()
-    df_filtrado["Año"] = df_filtrado["FechaCreacion"].dt.year
+    # Columnas de tiempo ya vienen preparadas en preprocesar_oc_resumen
 
     # Configuración Visual
     meses_es = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
@@ -585,11 +618,9 @@ with tab1:
 
     # 3. Lógica del Filtro
     if texto_busqueda:
-        # Filtramos sobre el dataframe de visualización
-        mascara = df_display.astype(str).apply(
-            lambda x: x.str.contains(texto_busqueda, case=False, na=False)
-        ).any(axis=1)
-        df_display = df_display[mascara]
+        cols_busqueda = [c for c in df_display.columns if c != "Link"]
+        search_blob = df_display[cols_busqueda].astype(str).agg(" | ".join, axis=1)
+        df_display = df_display[search_blob.str.contains(texto_busqueda, case=False, na=False, regex=False)]
 
     # 4. Mostrar Tabla (Solo si hay datos tras la búsqueda) 
     if df_display.empty:
@@ -617,15 +648,7 @@ with tab2:
     # ##### GRAFICOS OC CON MESES EN ESPAÑOL ####
     st.markdown("### 📊 Análisis Gráfico de Órdenes de Compra")
 
-    # 1. Asegurar que FechaCreacion sea datetime
-    df_filtrado["FechaCreacion"] = pd.to_datetime(
-        df_filtrado["FechaCreacion"],
-        errors="coerce",
-        dayfirst=True
-    )
-
-    # 2. Crear columna mensual
-    df_filtrado["Mes"] = df_filtrado["FechaCreacion"].dt.to_period("M").dt.to_timestamp()
+    # Columnas de tiempo ya vienen preparadas en preprocesar_oc_resumen
 
     # Diccionario para traducir (Opcional, pero para el eje X usaremos tickformat y ticklabel)
     meses_es = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
@@ -638,14 +661,6 @@ with tab2:
     with col1:
         conteo_mes_oc = (
             df_filtrado
-            .copy()
-        )
-
-        # Asegurar que Mes es datetime
-        conteo_mes_oc["Mes"] = pd.to_datetime(conteo_mes_oc["Mes"])
-
-        conteo_mes_oc = (
-            conteo_mes_oc
             .groupby(["Mes", "EstadoOC"])
             .size()
             .reset_index(name="Cantidad OC")
@@ -684,12 +699,8 @@ with tab2:
     # 💰 B) Monto Total Bruto por Mes
     # ======================================
     with col2:
-        monto_mes_oc = df_filtrado.copy()
-
-        monto_mes_oc["Mes"] = pd.to_datetime(monto_mes_oc["Mes"])
-
         monto_mes_oc = (
-            monto_mes_oc
+            df_filtrado
             .groupby(["Mes", "EstadoOC"])["TotalBruto"]
             .sum()
             .reset_index(name="Monto Total Bruto")
@@ -744,8 +755,13 @@ with tab4:
     with col_g1:
         # 1. EVOLUCIÓN TEMPORAL (Estabilidad del Flujo)
         # Agrupamos por mes para ver tendencias
-        df_filtrado['Periodo'] = df_filtrado['FechaCreacion'].dt.strftime('%Y-%m')
-        evo_mensual = df_filtrado.groupby(['Periodo', 'TipoOC'])['TotalBruto'].count().reset_index(name='Cantidad')
+        periodo = df_filtrado["FechaCreacion"].dt.strftime("%Y-%m")
+        evo_mensual = (
+            df_filtrado.assign(Periodo=periodo)
+            .groupby(["Periodo", "TipoOC"])["TotalBruto"]
+            .count()
+            .reset_index(name="Cantidad")
+        )
         
         fig_evo = px.bar(
             evo_mensual, x='Periodo', y='Cantidad', color='TipoOC',
@@ -773,20 +789,10 @@ with tab5:
     st.markdown("### 🔍 Detalle de Productos (Gemba)")
 
     # Filtramos la tabla de detalle usando los IDs de las OCs filtradas
-    ids_filtrados = df_filtrado['CodigoOC'].unique()
-    df_productos_filtrados = df_oc_det[df_oc_det['CodigoOC'].isin(ids_filtrados)]
+    ids_filtrados = tuple(sorted(df_filtrado["CodigoOC"].dropna().astype(str).unique()))
+    prod_agg = agregar_productos_por_oc(df_oc_det, ids_filtrados)
 
-    if not df_productos_filtrados.empty:
-        # Agregación por producto para ver qué es lo que más se compra en este filtro
-        prod_agg = df_productos_filtrados.groupby('Producto').agg({
-            'Cantidad': 'sum',
-            'PrecioNeto': 'mean', # Precio promedio
-            'CodigoOC': 'nunique' # En cuántas OCs aparece
-        }).reset_index().rename(columns={'CodigoOC': 'Frecuencia_OC'})
-        
-        prod_agg['Monto_Estimado'] = prod_agg['Cantidad'] * prod_agg['PrecioNeto']
-        prod_agg = prod_agg.sort_values('Monto_Estimado', ascending=False)
-
+    if not prod_agg.empty:
         col_tbl1, col_tbl2 = st.columns([2, 1])
         
         with col_tbl1:
@@ -834,12 +840,6 @@ with tab9:
     # 1. Preparación de Datos de Tiempos
     df_tiempos = df_filtrado.copy()
 
-    # Conversión de fechas a datetime (aseguramos formato)
-    cols_fechas = ['FechaCreacion', 'FechaEnvio', 'FechaAceptacion', 'FechaUltimaModificacion']
-    for col in cols_fechas:
-        if col in df_tiempos.columns:
-            df_tiempos[col] = pd.to_datetime(df_tiempos[col], errors='coerce')
-
     # 2. Cálculo de Deltas (Tiempos entre etapas)
     # Etapa 1: Gestión Interna (Creación -> Envío)
     df_tiempos['T_Gestion'] = (df_tiempos['FechaEnvio'] - df_tiempos['FechaCreacion']).dt.days
@@ -860,8 +860,7 @@ with tab9:
 
     # Limpieza de valores negativos o errores lógicos
     cols_tiempos = ['T_Gestion', 'T_Proveedor', 'T_Entrega', 'LeadTime_Total']
-    for col in cols_tiempos:
-        df_tiempos[col] = df_tiempos[col].apply(lambda x: x if x >= 0 else np.nan)
+    df_tiempos[cols_tiempos] = df_tiempos[cols_tiempos].mask(df_tiempos[cols_tiempos] < 0)
 
     # Filtramos solo los registros que tienen el ciclo completo para el análisis de "Recepción Conforme"
     df_ciclo_completo = df_tiempos.dropna(subset=['LeadTime_Total'])
