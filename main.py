@@ -39,6 +39,7 @@ pagina_documentos = st.Page("pages/dash_documentos.py", title="Documentos", icon
 pagina_api_sso = st.Page("pages/dash_extractor_sso_oc.py", title="API SSO", icon="🔗")
 pagina_buscadorOC = st.Page("pages/tools_buscadorOC.py", title="Buscador OC", icon="🔍")
 pagina_okr = st.Page("pages/page_okr.py", title="OKR", icon="🎯")
+pagina_okr2 = st.Page("pages/page_okr2.py", title="OKR2", icon="🎯")
 
 # ==========================================
 # 3. CONFIGURACIÓN DE NAVEGACIÓN
@@ -65,7 +66,8 @@ pg = st.navigation(
         "🛠 Herramientas SSO": [
             pagina_api_sso,
             pagina_buscadorOC,
-            pagina_okr
+            pagina_okr,
+            pagina_okr2
         ]
     }
 )
