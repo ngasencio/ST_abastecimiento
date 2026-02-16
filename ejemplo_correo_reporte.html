@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #138AEC 0%, #3E9FEF 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            flex: 1;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #138AEC;
+        }
+        .stat-card h3 {
+            margin: 0 0 10px 0;
+            color: #138AEC;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section h2 {
+            color: #138AEC;
+            font-size: 20px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th {
+            background: #138AEC;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 13px;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #e9ecef;
+            text-align: center;
+            color: #6c757d;
+            font-size: 12px;
+        }
+        .no-data {
+            padding: 20px;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 4px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📄 Reporte Semanal de Licitaciones</h1>
+        <p>Red de Salud - Dirección de Abastecimiento</p>
+        <p>Generado el 16/02/2026 18:30</p>
+    </div>
+    
+    <p>Estimado/a <strong>Rubén Uribe</strong>,</p>
+    <p>A continuación se presenta el resumen de licitaciones para esta semana y la próxima:</p>
+    
+    <div class="stats">
+        <div class="stat-card">
+            <h3>Esta Semana</h3>
+            <div class="value">12</div>
+            <p style="margin: 5px 0 0 0; font-size: 12px; color: #6c757d;">Licitaciones activas</p>
+        </div>
+        <div class="stat-card">
+            <h3>Próxima Semana</h3>
+            <div class="value">8</div>
+            <p style="margin: 5px 0 0 0; font-size: 12px; color: #6c757d;">Licitaciones programadas</p>
+        </div>
+        <div class="stat-card">
+            <h3>Monto Total</h3>
+            <div class="value">$45,680,000</div>
+            <p style="margin: 5px 0 0 0; font-size: 12px; color: #6c757d;">Estimado combinado</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>📅 Esta Semana</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Nombre</th>
+                    <th>Estado</th>
+                    <th>Monto Estimado</th>
+                    <th>Fecha Clave</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>2026-LI-001</td>
+                    <td>Adquisición de Equipamiento Médico para UCI...</td>
+                    <td>Publicada</td>
+                    <td>$12,500,000</td>
+                    <td>18/02/2026</td>
+                </tr>
+                <tr>
+                    <td>2026-LI-002</td>
+                    <td>Suministro de Medicamentos Oncológicos Trim...</td>
+                    <td>En Evaluación</td>
+                    <td>$8,750,000</td>
+                    <td>19/02/2026</td>
+                </tr>
+                <tr>
+                    <td>2026-LI-003</td>
+                    <td>Servicio de Mantenimiento Equipos Radiología...</td>
+                    <td>Publicada</td>
+                    <td>$3,200,000</td>
+                    <td>20/02/2026</td>
+                </tr>
+                <tr>
+                    <td>2026-LI-004</td>
+                    <td>Insumos Quirúrgicos Descartables Semestre 1...</td>
+                    <td>Cierre Próximo</td>
+                    <td>$6,890,000</td>
+                    <td>21/02/2026</td>
+                </tr>
+                <tr>
+                    <td>2026-LI-005</td>
+                    <td>Reactivos de Laboratorio Clínico Trimestral...</td>
+                    <td>Publicada</td>
+                    <td>$4,560,000</td>
+                    <td>22/02/2026</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>📅 Próxima Semana</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Nombre</th>
+                    <th>Estado</th>
+                    <th>Monto Estimado</th>
+                    <th>Fecha Clave</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>2026-LI-006</td>
+                    <td>Mobiliario Clínico para Área de Emergencia...</td>
+                    <td>Programada</td>
+                    <td>$2,340,000</td>
+                    <td>24/02/2026</td>
+                </tr>
+                <tr>
+                    <td>2026-LI-007</td>
+                    <td>Sistema de Gestión Hospitalaria Módulo Farm...</td>
+                    <td>Programada</td>
+                    <td>$5,670,000</td>
+                    <td>25/02/2026</td>
+                </tr>
+                <tr>
+                    <td>2026-LI-008</td>
+                    <td>Equipamiento de Esterilización Central...</td>
+                    <td>Programada</td>
+                    <td>$1,770,000</td>
+                    <td>27/02/2026</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="footer">
+        <p><strong>Dirección de Abastecimiento - Red de Salud</strong></p>
+        <p>Este es un correo automático. Por favor no responder.</p>
+    </div>
+</body>
+</html>

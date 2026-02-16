@@ -3,122 +3,445 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from datetime import datetime
+from datetime import datetime, timedelta
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
-# 1. Importación Correcta (basada en tu estructura de carpetas)###
+# Importación de datos
 import api.LI_data_loader as loader
 
-# Carga de datos (Usando caché de Streamlit para no recargar a cada clic)
-@st.cache_data
-def obtener_datos():
-    df_res, df_det = loader.cargar_maestros()
-    return df_res, df_det
-
-# Ejecución
-try:
-    df_MaestroLI_Resumen, df_MaestroLI_Detalle = obtener_datos()
-
-    if df_MaestroLI_Resumen.empty:
-        st.error("No se encontraron datos. Ejecuta el actualizador primero.")
-    else:
-        st.success(f"Datos cargados: {len(df_MaestroLI_Resumen)} licitaciones disponibles.")
-        
-        # Aquí empieza tu lógica de filtros
-        # df_filtrado = ...
-
-except Exception as e:
-    st.error(f"Ocurrió un error en la carga: {e}")
-
-# ============== Definir DF ===================
-df_res = df_MaestroLI_Resumen
-df_det = df_MaestroLI_Detalle
+# ============== CONFIGURACIÓN DE PÁGINA ===================
+st.set_page_config(
+    page_title="Dashboard Licitaciones 2026",
+    page_icon="📄",
+    layout="wide"
+)
 
 # ============== CARGAR CSS ===================
 def cargar_css():
     try:
         with open("style/style.css") as f:
-            # Usamos una sola línea y eliminamos espacios innecesarios con .strip()
             css_content = f.read().replace("\n", "").strip()
-            st.markdown(
-                f"<style>{css_content}</style>", 
-                unsafe_allow_html=True
-            )
+            st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
     except FileNotFoundError:
-        st.error("⚠️ No se encontró el archivo style.css")
+        st.warning("⚠️ No se encontró el archivo style.css")
 
-# Llama a la función al principio de todo, justo después de st.set_page_config
 cargar_css()
-#linea tiempo
-#from streamlit_timeline import st_timeline
 
-# ============== INYECCIÓN DE CSS ===================
+# ============== CARGA DE DATOS ===================
+@st.cache_data
+def obtener_datos():
+    df_res, df_det = loader.cargar_maestros()
+    return df_res, df_det
 
-st.markdown(
-    """
-    <div style="
-        padding: 1.2rem 1.5rem;
-        margin-bottom: 1.5rem;
-        background: linear-gradient(90deg, #138AEC, #3E9FEF);
-        color: white;
-        border-radius: 14px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-    ">
-        <div style="font-size: 28px; font-weight: 800;">
-            📄 Licitaciones DSSO
+try:
+    df_MaestroLI_Resumen, df_MaestroLI_Detalle = obtener_datos()
+    
+    if df_MaestroLI_Resumen.empty:
+        st.error("No se encontraron datos. Ejecuta el actualizador primero.")
+        st.stop()
+    else:
+        st.success(f"Datos cargados: {len(df_MaestroLI_Resumen)} licitaciones disponibles.")
+        
+except Exception as e:
+    st.error(f"Ocurrió un error en la carga: {e}")
+    st.stop()
+
+# ============== DEFINIR DF ===================
+df_res = df_MaestroLI_Resumen.copy()
+df_det = df_MaestroLI_Detalle.copy()
+
+# ============== LISTA DE USUARIOS Y CORREOS ===================
+USUARIOS_CORREOS = {
+    "Rubén Uribe": "ruben.uribe@redsalud.gob.cl",
+    "Lesly Andrea Díaz Aburto": "lesly.diaz@redsalud.gob.cl",
+    "JACQUELINE OYARZUN ALVAREZ": "jacqueline.oyarzuna@redsalud.gob.cl",
+    "Cecilia Garay Lemuy": "cecilia.garay@redsalud.gob.cl",
+    "Alicia Vidal Paredes": "alicia.vidal@redsalud.gob.cl",
+    "JUAN FELIPE ROJEL HUENTRO": "juan.rojel@redsalud.gob.cl",
+    "Ivan Vargas Ojeda": "ivan.vargas@redsalud.gob.cl",
+    "PAULINA NICOLE LONCOPAN CARRILLO": "paulina.loncopan@redsalud.gob.cl",
+    "Ariela Acevedo": "ariela.ariela@redsalud.gob.cl",
+    "Jonathan Salvo Currin": "jonathan.salvo@redsalud.gob.cl",
+    "ALEJANDRA NICOLE ALMONACID LEVINIERE": "alejandra.almonacid@redsalud.gob.cl",
+    "RODRIGO ALEJANDRO LABRIN ESCALONA": "rodrigo.labrin@redsalud.gob.cl",
+    "Bastian Miranda Coronado": "bastian.miranda@redsalud.gob.cl",
+    "NICOLAS ASENCIO MOREIRA": "nicolas.asencio@redsalud.gob.cl",
+    "Verónica Aracely Márquez Aguila": "verónica.márqueza@redsalud.gob.cl",
+    "Rosa Vasquez": "rosa.vasquez@redsalud.gob.cl"
+}
+
+# ============== FUNCIONES AUXILIARES ===================
+
+def obtener_semana_actual():
+    """Retorna el inicio y fin de la semana actual (lunes a domingo)"""
+    hoy = pd.Timestamp.now().normalize()
+    inicio_semana = hoy - pd.Timedelta(days=hoy.weekday())  # Lunes
+    fin_semana = inicio_semana + pd.Timedelta(days=6)  # Domingo
+    return inicio_semana, fin_semana
+
+def obtener_proxima_semana():
+    """Retorna el inicio y fin de la próxima semana"""
+    inicio_actual, _ = obtener_semana_actual()
+    inicio_proxima = inicio_actual + pd.Timedelta(days=7)
+    fin_proxima = inicio_proxima + pd.Timedelta(days=6)
+    return inicio_proxima, fin_proxima
+
+def generar_html_reporte(df_semana_actual, df_proxima_semana, nombre_destinatario):
+    """Genera HTML profesional para el reporte semanal"""
+    
+    # Estadísticas
+    total_actual = len(df_semana_actual)
+    total_proxima = len(df_proxima_semana)
+    monto_actual = df_semana_actual['MontoEstimado'].sum() if total_actual > 0 else 0
+    monto_proxima = df_proxima_semana['MontoEstimado'].sum() if total_proxima > 0 else 0
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            body {{
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                color: #333;
+                line-height: 1.6;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+            }}
+            .header {{
+                background: linear-gradient(135deg, #138AEC 0%, #3E9FEF 100%);
+                color: white;
+                padding: 30px;
+                border-radius: 10px;
+                margin-bottom: 30px;
+                text-align: center;
+            }}
+            .header h1 {{
+                margin: 0;
+                font-size: 28px;
+                font-weight: 700;
+            }}
+            .header p {{
+                margin: 10px 0 0 0;
+                opacity: 0.9;
+                font-size: 14px;
+            }}
+            .stats {{
+                display: flex;
+                gap: 20px;
+                margin-bottom: 30px;
+            }}
+            .stat-card {{
+                flex: 1;
+                background: #f8f9fa;
+                padding: 20px;
+                border-radius: 8px;
+                border-left: 4px solid #138AEC;
+            }}
+            .stat-card h3 {{
+                margin: 0 0 10px 0;
+                color: #138AEC;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }}
+            .stat-card .value {{
+                font-size: 24px;
+                font-weight: 700;
+                color: #333;
+            }}
+            .section {{
+                margin-bottom: 30px;
+            }}
+            .section h2 {{
+                color: #138AEC;
+                font-size: 20px;
+                margin-bottom: 15px;
+                padding-bottom: 10px;
+                border-bottom: 2px solid #e9ecef;
+            }}
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 15px;
+                background: white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }}
+            th {{
+                background: #138AEC;
+                color: white;
+                padding: 12px;
+                text-align: left;
+                font-weight: 600;
+                font-size: 13px;
+            }}
+            td {{
+                padding: 12px;
+                border-bottom: 1px solid #e9ecef;
+                font-size: 13px;
+            }}
+            tr:hover {{
+                background: #f8f9fa;
+            }}
+            .footer {{
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 2px solid #e9ecef;
+                text-align: center;
+                color: #6c757d;
+                font-size: 12px;
+            }}
+            .no-data {{
+                padding: 20px;
+                background: #fff3cd;
+                border-left: 4px solid #ffc107;
+                border-radius: 4px;
+                color: #856404;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>📄 Reporte Semanal de Licitaciones</h1>
+            <p>Red de Salud - Dirección de Abastecimiento</p>
+            <p>Generado el {pd.Timestamp.now().strftime('%d/%m/%Y %H:%M')}</p>
         </div>
-        <div style="font-size: 15px; opacity: 0.9; margin-top: 4px;">
-            Este módulo entrega la cantidad y detalle de licitaciones en curso.
+        
+        <p>Estimado/a <strong>{nombre_destinatario}</strong>,</p>
+        <p>A continuación se presenta el resumen de licitaciones para esta semana y la próxima:</p>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Esta Semana</h3>
+                <div class="value">{total_actual}</div>
+                <p style="margin: 5px 0 0 0; font-size: 12px; color: #6c757d;">Licitaciones activas</p>
+            </div>
+            <div class="stat-card">
+                <h3>Próxima Semana</h3>
+                <div class="value">{total_proxima}</div>
+                <p style="margin: 5px 0 0 0; font-size: 12px; color: #6c757d;">Licitaciones programadas</p>
+            </div>
+            <div class="stat-card">
+                <h3>Monto Total</h3>
+                <div class="value">${(monto_actual + monto_proxima):,.0f}</div>
+                <p style="margin: 5px 0 0 0; font-size: 12px; color: #6c757d;">Estimado combinado</p>
+            </div>
+        </div>
+    """
+    
+    # Sección: Esta Semana
+    html += """
+        <div class="section">
+            <h2>📅 Esta Semana</h2>
+    """
+    
+    if total_actual > 0:
+        html += """
+            <table>
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Nombre</th>
+                        <th>Estado</th>
+                        <th>Monto Estimado</th>
+                        <th>Fecha Clave</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+        for _, row in df_semana_actual.iterrows():
+            nombre_corto = row['Nombre'][:50] + "..." if len(str(row['Nombre'])) > 50 else row['Nombre']
+            fecha_clave = row.get('FechaClave', 'N/A')
+            if pd.notna(fecha_clave) and isinstance(fecha_clave, pd.Timestamp):
+                fecha_str = fecha_clave.strftime('%d/%m/%Y')
+            else:
+                fecha_str = 'N/A'
+            
+            html += f"""
+                    <tr>
+                        <td>{row['CodigoLicitacion']}</td>
+                        <td>{nombre_corto}</td>
+                        <td>{row.get('Estado', 'N/A')}</td>
+                        <td>${row['MontoEstimado']:,.0f}</td>
+                        <td>{fecha_str}</td>
+                    </tr>
+            """
+        html += """
+                </tbody>
+            </table>
+        """
+    else:
+        html += '<div class="no-data">No hay licitaciones programadas para esta semana.</div>'
+    
+    html += "</div>"
+    
+    # Sección: Próxima Semana
+    html += """
+        <div class="section">
+            <h2>📅 Próxima Semana</h2>
+    """
+    
+    if total_proxima > 0:
+        html += """
+            <table>
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Nombre</th>
+                        <th>Estado</th>
+                        <th>Monto Estimado</th>
+                        <th>Fecha Clave</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+        for _, row in df_proxima_semana.iterrows():
+            nombre_corto = row['Nombre'][:50] + "..." if len(str(row['Nombre'])) > 50 else row['Nombre']
+            fecha_clave = row.get('FechaClave', 'N/A')
+            if pd.notna(fecha_clave) and isinstance(fecha_clave, pd.Timestamp):
+                fecha_str = fecha_clave.strftime('%d/%m/%Y')
+            else:
+                fecha_str = 'N/A'
+            
+            html += f"""
+                    <tr>
+                        <td>{row['CodigoLicitacion']}</td>
+                        <td>{nombre_corto}</td>
+                        <td>{row.get('Estado', 'N/A')}</td>
+                        <td>${row['MontoEstimado']:,.0f}</td>
+                        <td>{fecha_str}</td>
+                    </tr>
+            """
+        html += """
+                </tbody>
+            </table>
+        """
+    else:
+        html += '<div class="no-data">No hay licitaciones programadas para la próxima semana.</div>'
+    
+    html += """
+        </div>
+        
+        <div class="footer">
+            <p><strong>Dirección de Abastecimiento - Red de Salud</strong></p>
+            <p>Este es un correo automático. Por favor no responder.</p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    return html
+
+def enviar_correo_outlook(destinatario, nombre_destinatario, asunto, cuerpo_html, credenciales):
+    """Envía correo HTML a través de Outlook"""
+    msg = MIMEMultipart()
+    msg['From'] = credenciales['user']
+    msg['To'] = destinatario
+    msg['Subject'] = asunto
+    msg.attach(MIMEText(cuerpo_html, 'html'))
+
+    try:
+        server = smtplib.SMTP('smtp.office365.com', 587)
+        server.starttls()
+        server.login(credenciales['user'], credenciales['password'])
+        server.sendmail(credenciales['user'], destinatario, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        return str(e)
+
+# ============== NORMALIZACIÓN DE DATOS ===================
+for col in ["Estado", "C_Usuario", "C_Unidad"]:
+    if col in df_res.columns:
+        df_res[col] = df_res[col].astype(str).str.strip()
+
+# Normalización de fechas
+columnas_fechas = [
+    "FechaCreacion", "FechaPublicacion", "FechaCierre", 
+    "FechaAdjudicacion", "FechaEstimadaFirma", "FechaInicioContrato"
+]
+
+for col in columnas_fechas:
+    if col in df_res.columns:
+        df_res[col] = pd.to_datetime(df_res[col], errors='coerce', dayfirst=True)
+
+# ============== HEADER ===================
+st.markdown("""
+    <div style="
+        padding: 1.5rem 2rem;
+        margin-bottom: 2rem;
+        background: linear-gradient(135deg, #138AEC 0%, #3E9FEF 100%);
+        color: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(19, 138, 236, 0.3);
+    ">
+        <div style="font-size: 32px; font-weight: 800; margin-bottom: 8px;">
+            📄 Dashboard de Licitaciones 2026
+        </div>
+        <div style="font-size: 16px; opacity: 0.95;">
+            Gestión y seguimiento semanal de licitaciones - Red de Salud
         </div>
     </div>
-    """,
-    unsafe_allow_html=True
-)
+    """, unsafe_allow_html=True)
 
-# ======================== Filtros ========================
-# 1. Normalización de datos (Siguiendo tu patrón)
-for col in ["Estado", "C_Usuario", "C_Unidad"]:
-    df_res[col] = df_res[col].astype(str).str.strip()
+# ============== FILTRO DE VISTA SEMANAL ===================
+st.markdown("## 📅 Filtro de Vista Semanal")
 
-# =============================== FILTROS ================================================================
+col_filtro1, col_filtro2, col_filtro3 = st.columns([2, 2, 1])
 
-# Definimos 4 columnas para los widgets
+with col_filtro1:
+    vista_semanal = st.selectbox(
+        "Seleccionar Vista",
+        ["Todas las Licitaciones", "Esta Semana", "Próxima Semana", "Esta Semana + Próxima Semana"],
+        index=0
+    )
+
+with col_filtro2:
+    inicio_actual, fin_actual = obtener_semana_actual()
+    inicio_proxima, fin_proxima = obtener_proxima_semana()
+    
+    if vista_semanal == "Esta Semana":
+        st.info(f"📆 {inicio_actual.strftime('%d/%m/%Y')} - {fin_actual.strftime('%d/%m/%Y')}")
+    elif vista_semanal == "Próxima Semana":
+        st.info(f"📆 {inicio_proxima.strftime('%d/%m/%Y')} - {fin_proxima.strftime('%d/%m/%Y')}")
+    elif vista_semanal == "Esta Semana + Próxima Semana":
+        st.info(f"📆 {inicio_actual.strftime('%d/%m/%Y')} - {fin_proxima.strftime('%d/%m/%Y')}")
+
+# ============== FILTROS ADICIONALES ===================
+st.markdown("### 🔍 Filtros Adicionales")
+
 col1, col2, col3, col4 = st.columns(4)
 
-# --- LÓGICA DE CASCADA (Dataframe temporal para opciones) ---
 df_cascada = df_res.copy()
 
-# ---- 1. ESTADO ----
-opciones_estado = sorted(df_cascada["Estado"].dropna().unique())
+# Filtro Estado
 with col1:
-    estado_sel = st.multiselect("📌 Estado", opciones_estado, placeholder="Seleccione")
+    opciones_estado = sorted(df_cascada["Estado"].dropna().unique())
+    estado_sel = st.multiselect("📌 Estado", opciones_estado, placeholder="Todos")
 
 if estado_sel:
     df_cascada = df_cascada[df_cascada["Estado"].isin(estado_sel)]
 
-# ---- 2. USUARIO ----
-opciones_usuario = sorted(df_cascada["C_Usuario"].dropna().unique())
+# Filtro Usuario
 with col2:
-    usuario_sel = st.multiselect("👤 Usuario", opciones_usuario, placeholder="Seleccione")
+    opciones_usuario = sorted(df_cascada["C_Usuario"].dropna().unique())
+    usuario_sel = st.multiselect("👤 Usuario", opciones_usuario, placeholder="Todos")
 
 if usuario_sel:
     df_cascada = df_cascada[df_cascada["C_Usuario"].isin(usuario_sel)]
 
-# ---- 3. UNIDAD ----
-opciones_unidad = sorted(df_cascada["C_Unidad"].dropna().unique())
+# Filtro Unidad
 with col3:
-    unidad_sel = st.multiselect("🏢 Unidad", opciones_unidad, placeholder="Seleccione")
+    opciones_unidad = sorted(df_cascada["C_Unidad"].dropna().unique())
+    unidad_sel = st.multiselect("🏢 Unidad", opciones_unidad, placeholder="Todos")
 
 if unidad_sel:
     df_cascada = df_cascada[df_cascada["C_Unidad"].isin(unidad_sel)]
 
-# ---- 4. ESPACIO (Pass) ----
-with col4:
-    st.info("Filtro adicional") # Placeholder o espacio vacío
-    pass
-
-# =============================== APLICAR FILTROS FINAL =================================================
-
-# Filtramos df_res (Resumen)
+# ============== APLICAR FILTROS ===================
 df_res_filtrado = df_res.copy()
 
 if estado_sel:
@@ -128,28 +451,46 @@ if usuario_sel:
 if unidad_sel:
     df_res_filtrado = df_res_filtrado[df_res_filtrado["C_Unidad"].isin(unidad_sel)]
 
-# Sincronizamos con df_det (Detalles) usando CodigoLicitacion
-# Solo incluimos en detalles lo que sobrevivió al filtro en resumen
+# Función para obtener fecha más cercana
+def obtener_fecha_mas_cercana(row):
+    fechas_validas = []
+    for col in columnas_fechas:
+        if col in row.index and pd.notna(row[col]):
+            fechas_validas.append(row[col])
+    return min(fechas_validas) if fechas_validas else pd.NaT
+
+df_res_filtrado['FechaClave'] = df_res_filtrado.apply(obtener_fecha_mas_cercana, axis=1)
+
+# Aplicar filtro semanal
+if vista_semanal == "Esta Semana":
+    df_res_filtrado = df_res_filtrado[
+        (df_res_filtrado['FechaClave'] >= inicio_actual) & 
+        (df_res_filtrado['FechaClave'] <= fin_actual)
+    ]
+elif vista_semanal == "Próxima Semana":
+    df_res_filtrado = df_res_filtrado[
+        (df_res_filtrado['FechaClave'] >= inicio_proxima) & 
+        (df_res_filtrado['FechaClave'] <= fin_proxima)
+    ]
+elif vista_semanal == "Esta Semana + Próxima Semana":
+    df_res_filtrado = df_res_filtrado[
+        (df_res_filtrado['FechaClave'] >= inicio_actual) & 
+        (df_res_filtrado['FechaClave'] <= fin_proxima)
+    ]
+
+# Sincronizar con detalle
 df_det_filtrado = df_det[df_det["CodigoLicitacion"].isin(df_res_filtrado["CodigoLicitacion"])]
 
-# Alias para tu uso estándar
-df_filtrado = df_res_filtrado.copy()
+# ============== KPIs ===================
+st.markdown("## 📈 Resumen Ejecutivo")
 
-# ##### KPIS ####
-st.markdown("## 📈 Resumen de Licitaciones")
 c_kpi1, c_kpi2, c_kpi3, c_kpi4 = st.columns(4)
 
 with c_kpi1:
-    # --- TOTAL LICITACIONES ---
-    # Contamos IDs únicos de licitación
     total_lic_general = df_res["CodigoLicitacion"].nunique()
-    total_lic_filtrado = df_filtrado["CodigoLicitacion"].nunique()
-
-    porcentaje_lic = (
-        (total_lic_filtrado / total_lic_general) * 100
-        if total_lic_general > 0 else 0
-    )
-
+    total_lic_filtrado = df_res_filtrado["CodigoLicitacion"].nunique()
+    porcentaje_lic = (total_lic_filtrado / total_lic_general) * 100 if total_lic_general > 0 else 0
+    
     st.metric(
         "📋 Total Licitaciones",
         f"{total_lic_filtrado:,}",
@@ -157,320 +498,288 @@ with c_kpi1:
     )
 
 with c_kpi2:
-    # --- TOTAL MONTO TRANSADO ---
-    # Nota: Ajusta "MontoTotal" al nombre real de tu columna de dinero
-    monto_col = "MontoEstimado" 
+    monto_total_gral = df_res["MontoEstimado"].sum()
+    monto_total_filt = df_res_filtrado["MontoEstimado"].sum()
+    porcentaje_monto = (monto_total_filt / monto_total_gral) * 100 if monto_total_gral > 0 else 0
     
-    monto_total_gral = df_res[monto_col].sum()
-    monto_total_filt = df_filtrado[monto_col].sum()
-
-    porcentaje_monto = (
-        (monto_total_filt / monto_total_gral) * 100
-        if monto_total_gral > 0 else 0
-    )
-
     st.metric(
-        "💰 Monto Transado",
+        "💰 Monto Estimado",
         f"${monto_total_filt:,.0f}",
-        f"{porcentaje_monto:.1f}% del monto total"
+        f"{porcentaje_monto:.1f}% del total"
     )
 
 with c_kpi3:
-    # Espacio para futura métrica (ej. Tiempo promedio o Eficiencia)
-    pass
+    total_items = df_det_filtrado['Cantidad'].sum() if 'Cantidad' in df_det_filtrado.columns else 0
+    st.metric(
+        "📦 Total Items",
+        f"{int(total_items):,}"
+    )
 
 with c_kpi4:
-    # Espacio para futura métrica
-    pass
+    estados_criticos = df_res_filtrado[df_res_filtrado['Estado'].str.contains('Publicada|Cierre', case=False, na=False)]
+    st.metric(
+        "⚠️ Estados Críticos",
+        f"{len(estados_criticos)}"
+    )
 
-# ===================== GRAFICOS ============================================
+# ============== COMPARATIVA SEMANAL ===================
+st.markdown("---")
+st.markdown("## 📊 Comparativa Semanal")
 
-# 1. Preparación de datos (Manteniendo tus reglas de 35 caracteres)
-df_filtrado["CodigoLicitacion"] = df_filtrado["CodigoLicitacion"].astype(str)
-df_filtrado["Nombre"] = df_filtrado["Nombre"].astype(str)
+col_comp1, col_comp2 = st.columns(2)
 
-def acortar_nombre(texto):
-    if len(texto) > 35:
-        return texto[:32] + "..."
-    return texto
-
-df_filtrado["Nombre_Corto"] = df_filtrado["Nombre"].apply(acortar_nombre)
-df_filtrado["Etiqueta_Y"] = df_filtrado["CodigoLicitacion"] + " | " + df_filtrado["Nombre_Corto"]
-
-# Normalización de fechas
-columnas_fechas = [
-    "FechaCreacion", "FechaPublicacion", "FechaCierre", 
-    "FechaAdjudicacion", "FechaEstimadaFirma", "FechaInicioContrato"
-]
-for col in columnas_fechas:
-    df_filtrado[col] = pd.to_datetime(df_filtrado[col], errors='coerce', dayfirst=True)
-
-# 2. Reestructuración para segmentos
-segmentos = [
-    ("1. Preparación", "FechaCreacion", "FechaPublicacion"),
-    ("2. Publicación", "FechaPublicacion", "FechaCierre"),
-    ("3. Evaluación", "FechaCierre", "FechaAdjudicacion"),
-    ("4. Adjudicación", "FechaAdjudicacion", "FechaEstimadaFirma"),
-    ("5. Firma y Contrato", "FechaEstimadaFirma", "FechaInicioContrato")
+# Esta Semana
+df_esta_semana = df_res[
+    (df_res['FechaClave'] >= inicio_actual) & 
+    (df_res['FechaClave'] <= fin_actual)
 ]
 
-gantt_data = []
-for _, row in df_filtrado.iterrows():
-    for etapa, inicio, fin in segmentos:
-        if pd.notnull(row[inicio]) and pd.notnull(row[fin]):
-            duracion = (row[fin] - row[inicio]).days
-            gantt_data.append({
-                "Identificador": row["Etiqueta_Y"],
-                "Etapa": etapa,
-                "Inicio": row[inicio],
-                "Fin": row[fin],
-                "Días": max(0, duracion), # Evitamos días negativos
-                "Texto_Etiqueta": f"{max(0, duracion)} d", # Texto que se verá en la barra
-                "Nombre_Completo": row["Nombre"]
-            })
+# Próxima Semana
+df_proxima_semana = df_res[
+    (df_res['FechaClave'] >= inicio_proxima) & 
+    (df_res['FechaClave'] <= fin_proxima)
+]
 
-df_gantt = pd.DataFrame(gantt_data)
-
-# 3. Renderizado del Gráfico
-#st.markdown("### 📅 Cronograma con Duración por Etapa")
-
-#if not df_gantt.empty:
- #   fig = px.timeline(
-  #      df_gantt, 
-   #     x_start="Inicio", 
-    #    x_end="Fin", 
-     #   y="Identificador", 
-      #  color="Etapa",
-       # text="Texto_Etiqueta", # <--- AQUÍ AGREGAMOS LA ETIQUETA
-        #hover_data={"Identificador": False, "Nombre_Completo": True, "Días": True, "Texto_Etiqueta": False},
-        #color_discrete_sequence=px.colors.qualitative.Prism
-    #)
-
-    # --- A) AJUSTE DE POSICIÓN DE TEXTO ---
-    #fig.update_traces(
-    #    textposition='inside', # Pone el texto dentro de la barra
-    #    insidetextanchor='middle', # Lo centra
-    #    textfont_size=12
-    #)
-
-    # --- B) LÍNEA VERTICAL DE HOY ---
-    #hoy = datetime(2026, 1, 17)
-    #fig.add_vline(
-    #    x=hoy.timestamp() * 1000, 
-    #    line_width=3, 
-    #    line_dash="dash", 
-    #    line_color="red",
-    #    annotation_text="HOY", 
-    #    annotation_position="top right"
-    #)
-
-    # --- C) AJUSTES FINALES ---
-    #fig.update_yaxes(autorange="reversed", title="Licitación (ID | Nombre)")
+with col_comp1:
+    st.markdown("### 📅 Esta Semana")
+    st.metric("Licitaciones", len(df_esta_semana))
+    st.metric("Monto Total", f"${df_esta_semana['MontoEstimado'].sum():,.0f}")
     
-    #cantidad_filas = int(len(df_filtrado["Etiqueta_Y"].unique()))
-    #alto_grafico = 400 + (cantidad_filas * 35) # Un poco más de espacio por fila para las etiquetas
+    if len(df_esta_semana) > 0:
+        fig_esta = px.pie(
+            df_esta_semana,
+            names='Estado',
+            title='Distribución por Estado',
+            hole=0.4
+        )
+        fig_esta.update_layout(height=300)
+        st.plotly_chart(fig_esta, use_container_width=True)
 
-    #fig.update_layout(
-    #    height=alto_grafico,
-    #    legend_title="Etapas",
-    #    margin=dict(l=10, r=10, t=50, b=10)
-    #)
+with col_comp2:
+    st.markdown("### 📅 Próxima Semana")
+    st.metric("Licitaciones", len(df_proxima_semana))
+    st.metric("Monto Total", f"${df_proxima_semana['MontoEstimado'].sum():,.0f}")
+    
+    if len(df_proxima_semana) > 0:
+        fig_proxima = px.pie(
+            df_proxima_semana,
+            names='Estado',
+            title='Distribución por Estado',
+            hole=0.4
+        )
+        fig_proxima.update_layout(height=300)
+        st.plotly_chart(fig_proxima, use_container_width=True)
 
-    #st.plotly_chart(fig, use_container_width=True)
-#else:
-#   st.info("No hay datos suficientes para mostrar el cronograma.")
-# ========================================================================  
+# ============== TABLA DE DATOS ===================
+st.markdown("---")
+st.markdown("## 📋 Detalle de Licitaciones")
 
+# Ordenar por fecha clave
+df_res_filtrado_sorted = df_res_filtrado.sort_values(by='FechaClave', ascending=True, na_position='last')
 
+# Preparar columnas para mostrar
+columnas_mostrar = ['CodigoLicitacion', 'Nombre', 'Estado', 'MontoEstimado', 'C_Usuario', 'C_Unidad', 'FechaClave']
+columnas_disponibles = [col for col in columnas_mostrar if col in df_res_filtrado_sorted.columns]
 
+with st.expander("🔍 Ver Tabla Completa", expanded=True):
+    st.dataframe(
+        df_res_filtrado_sorted[columnas_disponibles].style.format({
+            "MontoEstimado": "${:,.0f}",
+            "FechaClave": lambda t: t.strftime("%d/%m/%Y") if pd.notna(t) else "-"
+        }, na_rep="-"),
+        height=400,
+        use_container_width=True
+    )
 
+# ============== MÓDULO DE ENVÍO DE CORREOS ===================
+st.markdown("---")
+st.markdown("## 📧 Distribución de Reportes por Correo")
 
-st.markdown("## 📅 Resumen General de Licitaciones")
-with st.expander("🔍 Ver Datos Maestros (Resumen)", expanded=True):
-        # Aplicamos formato solo a las columnas que existen
-        st.dataframe(
-            df_res.style.format({
-                "MontoEstimado": "${:,.0f}".format,
-                "CodigoLicitacion": str,
-                "Estado": str
-            }, na_rep="-"), 
-            height=400, 
-            use_container_width=True
+col_email1, col_email2 = st.columns([2, 1])
+
+with col_email1:
+    st.markdown("""
+    **Funcionalidad de Envío Masivo:**
+    - Genera reportes semanales consolidados en formato HTML profesional
+    - Envía automáticamente a todos los usuarios de la red de salud
+    - Incluye comparativa entre semana actual y próxima semana
+    - Utiliza Outlook para el envío directo
+    """)
+
+with col_email2:
+    st.info(f"👥 {len(USUARIOS_CORREOS)} destinatarios configurados")
+
+# Credenciales
+with st.expander("⚙️ Configuración de Correo", expanded=False):
+    col_cred1, col_cred2 = st.columns(2)
+    
+    with col_cred1:
+        email_sender = st.text_input(
+            "Correo Outlook Remitente",
+            placeholder="tu.correo@redsalud.gob.cl",
+            help="Correo corporativo de Outlook"
+        )
+    
+    with col_cred2:
+        email_password = st.text_input(
+            "Contraseña de Aplicación",
+            type="password",
+            help="Contraseña de aplicación de Outlook (no tu contraseña normal)"
         )
 
+# Botón de envío
+if st.button("📧 Enviar Reporte Semanal a Todos los Usuarios", type="primary", use_container_width=True):
+    
+    if not email_sender or not email_password:
+        st.error("⚠️ Por favor ingresa las credenciales de correo en la sección de configuración.")
+        st.stop()
+    
+    credenciales = {
+        "user": email_sender,
+        "password": email_password
+    }
+    
+    # Preparar datos para el reporte
+    df_reporte_actual = df_res[
+        (df_res['FechaClave'] >= inicio_actual) & 
+        (df_res['FechaClave'] <= fin_actual)
+    ].copy()
+    
+    df_reporte_proxima = df_res[
+        (df_res['FechaClave'] >= inicio_proxima) & 
+        (df_res['FechaClave'] <= fin_proxima)
+    ].copy()
+    
+    # Barra de progreso
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
+    enviados = 0
+    fallidos = 0
+    
+    total_usuarios = len(USUARIOS_CORREOS)
+    
+    for idx, (nombre, email) in enumerate(USUARIOS_CORREOS.items()):
+        status_text.text(f"Enviando a {nombre} ({idx + 1}/{total_usuarios})...")
+        
+        # Generar HTML personalizado
+        html_reporte = generar_html_reporte(df_reporte_actual, df_reporte_proxima, nombre)
+        
+        # Enviar correo
+        asunto = f"📄 Reporte Semanal de Licitaciones - {inicio_actual.strftime('%d/%m/%Y')}"
+        resultado = enviar_correo_outlook(email, nombre, asunto, html_reporte, credenciales)
+        
+        if resultado is True:
+            enviados += 1
+        else:
+            fallidos += 1
+            st.warning(f"❌ Error enviando a {nombre} ({email}): {resultado}")
+        
+        # Actualizar progreso
+        progress_bar.progress((idx + 1) / total_usuarios)
+    
+    status_text.empty()
+    progress_bar.empty()
+    
+    # Resumen final
+    if fallidos == 0:
+        st.success(f"✅ ¡Proceso completado! Se enviaron {enviados} correos exitosamente.")
+    else:
+        st.warning(f"⚠️ Proceso finalizado: {enviados} enviados, {fallidos} fallidos.")
 
-# ==============================================================================
-# 🚀 MÓDULO LEAN & OKR: ANÁLISIS DE RENDIMIENTO DE LICITACIONES
-# ==============================================================================
-
+# ============== ANÁLISIS LEAN & OKR ===================
 st.markdown("---")
-st.markdown("## ⏱️ Análisis de Flujo de Valor (Lean VSM) y OKRs")
+st.markdown("## ⏱️ Análisis de Flujo de Valor (Lean VSM)")
 
-# 1. PREPARACIÓN DE DATOS DE TIEMPOS (Data Wrangling)
-# Usamos df_filtrado para respetar los filtros del usuario
-df_lean = df_filtrado.copy()
+df_lean = df_res_filtrado.copy()
 
-# Definición de las columnas de fecha clave según tu base de datos
-cols_fechas = [
-    'FechaCreacion', 'FechaPublicacion', 'FechaCierre', 
-    'FechaAdjudicacion', 'FechaInicioContrato'
-]
-
-# Conversión robusta a datetime
-for col in cols_fechas:
-    if col in df_lean.columns:
-        df_lean[col] = pd.to_datetime(df_lean[col], errors='coerce')
-
-# --- CÁLCULO DE LEAD TIMES (Días) ---
-# LT Total: Desde que nace la necesidad (Creación) hasta que inicia el contrato (Valor entregado)
+# Cálculo de Lead Times
 df_lean['LT_Total'] = (df_lean['FechaInicioContrato'] - df_lean['FechaCreacion']).dt.days
-
-# Desglose por Etapas (Value Stream Breakdown)
-# 1. Burocracia Interna Previa: Creación -> Publicación
 df_lean['T_Prep'] = (df_lean['FechaPublicacion'] - df_lean['FechaCreacion']).dt.days
-# 2. Tiempo de Mercado: Publicación -> Cierre
 df_lean['T_Mercado'] = (df_lean['FechaCierre'] - df_lean['FechaPublicacion']).dt.days
-# 3. Tiempo de Evaluación: Cierre -> Adjudicación
 df_lean['T_Evaluacion'] = (df_lean['FechaAdjudicacion'] - df_lean['FechaCierre']).dt.days
-# 4. Formalización: Adjudicación -> Contrato
 df_lean['T_Formalizacion'] = (df_lean['FechaInicioContrato'] - df_lean['FechaAdjudicacion']).dt.days
 
-# Limpieza de inconsistencias (fechas negativas o nulas)
+# Limpieza
 cols_tiempos = ['LT_Total', 'T_Prep', 'T_Mercado', 'T_Evaluacion', 'T_Formalizacion']
 for col in cols_tiempos:
-    df_lean[col] = df_lean[col].apply(lambda x: x if x >= 0 else np.nan)
+    if col in df_lean.columns:
+        df_lean[col] = df_lean[col].apply(lambda x: x if x >= 0 else np.nan)
 
-# ==============================================================================
-# 🎯 SECCIÓN 1: OKRs OPERACIONALES (Objectives & Key Results)
-# ==============================================================================
+# OKRs
 st.subheader("🎯 Estado de OKRs Operacionales")
 
-# Cálculo de métricas para OKRs
 licitaciones_cerradas = df_lean.dropna(subset=['LT_Total'])
+lt_promedio = licitaciones_cerradas['LT_Total'].mean() if not licitaciones_cerradas.empty else 0
+
 tasa_adjudicacion = 0
 if len(df_lean) > 0:
-    # Asumiendo que el estado 'Adjudicada' existe o similar
     adjudicadas = df_lean[df_lean['Estado'].str.contains('Adjudicada', case=False, na=False)].shape[0]
     tasa_adjudicacion = (adjudicadas / len(df_lean)) * 100
 
-lt_promedio = licitaciones_cerradas['LT_Total'].mean() if not licitaciones_cerradas.empty else 0
-
-# Visualización de Tarjetas OKR
 okr1, okr2, okr3 = st.columns(3)
 
 with okr1:
     st.markdown("**O1: Agilidad del Proceso**")
     st.metric(
-        label="KR: Lead Time Promedio",
+        label="Lead Time Promedio",
         value=f"{lt_promedio:.1f} días",
         delta="-5 días (Meta)" if lt_promedio > 0 else None,
-        delta_color="inverse", # Menos es mejor
-        help="Tiempo promedio desde Creación hasta Inicio Contrato"
+        delta_color="inverse"
     )
 
 with okr2:
     st.markdown("**O2: Eficacia de Licitación**")
     st.metric(
-        label="KR: Tasa de Adjudicación",
+        label="Tasa de Adjudicación",
         value=f"{tasa_adjudicacion:.1f}%",
-        delta="vs 85% (Meta)",
-        help="Porcentaje de procesos que terminan adjudicados vs desiertos/revocados"
+        delta="vs 85% (Meta)"
     )
 
 with okr3:
     st.markdown("**O3: Eficiencia Administrativa**")
-    # Ratio: Cuánto dinero movemos por cada producto gestionado
-    # Si gestionas muchos productos baratos, el ratio baja (posible ineficiencia administrativa)
-    total_items = df_det_filtrado['Cantidad'].sum()
-    monto_total = df_filtrado['MontoEstimado'].sum()
-    ratio_valor = monto_total / total_items if total_items > 0 else 0
+    total_items_lean = df_det_filtrado['Cantidad'].sum() if 'Cantidad' in df_det_filtrado.columns else 1
+    monto_total_lean = df_res_filtrado['MontoEstimado'].sum()
+    ratio_valor = monto_total_lean / total_items_lean if total_items_lean > 0 else 0
     
     st.metric(
-        label="KR: Valor por Item Gestionado",
-        value=f"${ratio_valor:,.0f}",
-        help="Monto total estimado / Cantidad total de productos. Busca identificar carga operativa de bajo valor."
+        label="Valor por Item",
+        value=f"${ratio_valor:,.0f}"
     )
 
-# ==============================================================================
-# 📊 SECCIÓN 2: VISUALIZACIÓN DE FLUJO (Lead Time Breakdown)
-# ==============================================================================
-c_chart1, c_chart2 = st.columns([2, 1])
-
-with c_chart1:
-    st.markdown("#### ⏳ Desglose de Tiempos por Tipo de Licitación")
-    if not licitaciones_cerradas.empty:
-        # Preparamos datos para gráfico apilado (Stacked Bar)
-        df_melt = licitaciones_cerradas.groupby('Tipo')[['T_Prep', 'T_Mercado', 'T_Evaluacion', 'T_Formalizacion']].mean().reset_index()
-        df_melt = df_melt.melt(id_vars='Tipo', var_name='Etapa', value_name='Días')
-        
-        # Mapeo de nombres para que sean legibles
-        nombres_etapa = {
-            'T_Prep': '1. Prep. Interna',
-            'T_Mercado': '2. Mercado (Publicado)',
-            'T_Evaluacion': '3. Evaluación',
-            'T_Formalizacion': '4. Formalización'
-        }
-        df_melt['Etapa'] = df_melt['Etapa'].map(nombres_etapa)
-        
-        fig_lt = px.bar(
-            df_melt, 
-            x='Tipo', 
-            y='Días', 
-            color='Etapa',
-            title="¿Dónde se pierde el tiempo? (Lead Time por Etapas)",
-            text_auto='.1f',
-            color_discrete_sequence=px.colors.qualitative.Prism
-        )
-        fig_lt.update_layout(template="plotly_white", xaxis_title=None)
-        st.plotly_chart(fig_lt, use_container_width=True)
-    else:
-        st.info("No hay suficientes datos con ciclo completo para mostrar el desglose de tiempos.")
-
-with c_chart2:
-    st.markdown("#### 🐢 vs 🐇 Ranking Velocidad")
-    if not licitaciones_cerradas.empty:
-        # Top Compradores más ágiles (menor Lead Time)
-        top_agiles = licitaciones_cerradas.groupby('C_Usuario')['LT_Total'].mean().sort_values().head(5).reset_index()
-        
-        fig_rank = px.bar(
-            top_agiles,
-            x='LT_Total',
-            y='C_Usuario',
-            orientation='h',
-            title="Usuarios con menor Lead Time (Top 5)",
-            color='LT_Total',
-            color_continuous_scale='Bluered_r' # Azul es rápido, Rojo es lento
-        )
-        fig_rank.update_layout(template="plotly_white", yaxis={'categoryorder':'total descending'}, showlegend=False)
-        st.plotly_chart(fig_rank, use_container_width=True)
-
-# ==============================================================================
-# 🔍 SECCIÓN 3: MATRIZ DE EFICIENCIA (Monto vs Cantidad)
-# ==============================================================================
-with st.expander("🔎 Ver Matriz de Eficiencia (Detectar 'Grasa' Administrativa)"):
-    st.markdown("""
-    **Interpretación Lean:**
-    * **Cuadrante Inferior Derecho (Muchos productos, Poco Monto):** Alta carga administrativa, bajo impacto financiero. Candidatos a automatizar o consolidar (Convenio Marco).
-    * **Cuadrante Superior Izquierdo (Pocos productos, Alto Monto):** Licitaciones estratégicas. Requieren atención detallada.
-    """)
+# Visualizaciones Lean
+if not licitaciones_cerradas.empty and 'Tipo' in licitaciones_cerradas.columns:
+    st.markdown("### ⏳ Desglose de Tiempos por Tipo")
     
-    # Unir resumen con detalle agrupado para tener cantidad de items por licitación
-    items_por_lic = df_det_filtrado.groupby('CodigoLicitacion')['Cantidad'].sum().reset_index()
-    df_matrix = df_filtrado.merge(items_por_lic, on='CodigoLicitacion', how='inner')
+    df_melt = licitaciones_cerradas.groupby('Tipo')[['T_Prep', 'T_Mercado', 'T_Evaluacion', 'T_Formalizacion']].mean().reset_index()
+    df_melt = df_melt.melt(id_vars='Tipo', var_name='Etapa', value_name='Días')
     
-    if not df_matrix.empty:
-        fig_scatter = px.scatter(
-            df_matrix,
-            x='Cantidad',
-            y='MontoEstimado',
-            color='Tipo',
-            hover_data=['CodigoLicitacion', 'Nombre', 'C_Usuario'],
-            log_x=True, # Escala logarítmica ayuda a ver mejor si hay mucha dispersión
-            log_y=True,
-            title="Matriz de Impacto: Esfuerzo (Items) vs Valor (Monto)",
-            labels={'Cantidad': 'Cantidad de Productos (Log)', 'MontoEstimado': 'Monto Estimado $ (Log)'}
-        )
-        fig_scatter.update_layout(template="plotly_white")
-        st.plotly_chart(fig_scatter, use_container_width=True)
-    else:
-        st.warning("No hay datos cruzados entre Resumen y Detalle para generar la matriz.")
+    nombres_etapa = {
+        'T_Prep': '1. Preparación',
+        'T_Mercado': '2. Mercado',
+        'T_Evaluacion': '3. Evaluación',
+        'T_Formalizacion': '4. Formalización'
+    }
+    df_melt['Etapa'] = df_melt['Etapa'].map(nombres_etapa)
+    
+    fig_lt = px.bar(
+        df_melt,
+        x='Tipo',
+        y='Días',
+        color='Etapa',
+        title="Lead Time por Etapas",
+        text_auto='.1f',
+        color_discrete_sequence=px.colors.qualitative.Set3
+    )
+    fig_lt.update_layout(template="plotly_white", height=400)
+    st.plotly_chart(fig_lt, use_container_width=True)
+
+# Footer
+st.markdown("---")
+st.markdown("""
+    <div style="text-align: center; color: #6c757d; padding: 20px;">
+        <p><strong>Dashboard de Licitaciones 2026</strong></p>
+        <p>Dirección de Abastecimiento - Red de Salud</p>
+        <p style="font-size: 12px;">Desarrollado con Streamlit | Última actualización: {}</p>
+    </div>
+""".format(pd.Timestamp.now().strftime('%d/%m/%Y %H:%M')), unsafe_allow_html=True)
