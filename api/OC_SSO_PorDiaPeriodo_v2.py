@@ -143,7 +143,7 @@ def _extraer_resumen_y_detalles(codigo: str, oc: Dict[str, Any]) -> Tuple[Dict[s
         "C_Region": comp.get("RegionUnidad"),
         "C_Contacto": comp.get("NombreContacto"),
         "C_Cargo": comp.get("CargoContacto"),
-        "C_Email": comp.get("MailContacto"),
+        "C_Email": comp.get("MailContacto"), #Duplicado
         "P_Codigo": prov.get("Codigo"),
         "P_Nombre": prov.get("Nombre"),
         "P_Rut": prov.get("RutSucursal"),
@@ -153,7 +153,7 @@ def _extraer_resumen_y_detalles(codigo: str, oc: Dict[str, Any]) -> Tuple[Dict[s
         "P_Region": prov.get("Region"),
         "P_Contacto": prov.get("NombreContacto"),
         "P_Cargo": prov.get("CargoContacto"),
-        "P_Email": prov.get("MailContacto"),
+        "P_Email": prov.get("MailContacto"), #Duplicado
         "DescripcionOC": limpiar(oc.get("Descripcion")),
     }
 
