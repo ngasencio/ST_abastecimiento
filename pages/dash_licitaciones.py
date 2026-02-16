@@ -368,6 +368,16 @@ for col in columnas_fechas:
     if col in df_res.columns:
         df_res[col] = pd.to_datetime(df_res[col], errors='coerce', dayfirst=True)
 
+# Crear columna FechaClave (fecha más cercana) para df_res
+def obtener_fecha_mas_cercana(row):
+    fechas_validas = []
+    for col in columnas_fechas:
+        if col in row.index and pd.notna(row[col]):
+            fechas_validas.append(row[col])
+    return min(fechas_validas) if fechas_validas else pd.NaT
+
+df_res['FechaClave'] = df_res.apply(obtener_fecha_mas_cercana, axis=1)
+
 # ============== HEADER ===================
 st.markdown("""
     <div style="
@@ -451,15 +461,8 @@ if usuario_sel:
 if unidad_sel:
     df_res_filtrado = df_res_filtrado[df_res_filtrado["C_Unidad"].isin(unidad_sel)]
 
-# Función para obtener fecha más cercana
-def obtener_fecha_mas_cercana(row):
-    fechas_validas = []
-    for col in columnas_fechas:
-        if col in row.index and pd.notna(row[col]):
-            fechas_validas.append(row[col])
-    return min(fechas_validas) if fechas_validas else pd.NaT
-
-df_res_filtrado['FechaClave'] = df_res_filtrado.apply(obtener_fecha_mas_cercana, axis=1)
+# La columna FechaClave ya existe en df_res, solo copiamos el dataframe filtrado
+# (ya incluye la columna FechaClave porque se copia de df_res)
 
 # Aplicar filtro semanal
 if vista_semanal == "Esta Semana":
