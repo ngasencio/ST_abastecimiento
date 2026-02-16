@@ -18,3 +18,5 @@ pyhtml2pdf
 pdfkit
 openpyxl
 matplotlib
+selenium
+webdriver-manager

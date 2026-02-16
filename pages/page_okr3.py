@@ -12,6 +12,22 @@ import time
 # 2. Asegurarse de tener las librerías instaladas: pip install plotly pandas streamlit
 # 3. El sistema asumirá el estilo global del main.py si existe.
 
+# =============================================================================
+# CONFIGURACIÓN INICIAL
+# =============================================================================
+
+def cargar_css():
+    try:
+        with open("style/style.css") as f:
+            css_content = f.read().replace("\n", "").strip()
+            st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
+    except FileNotFoundError:
+        st.error("⚠️ No se encontró el archivo style.css")
+cargar_css()
+
+
+
+
 def app():
     st.markdown("## 🎯 Centro de Comando OKR: Plan Anual de Compras")
     st.markdown("Monitor de Adherencia, Ejecución y Valor Estratégico.")

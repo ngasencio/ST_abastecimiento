@@ -3,6 +3,22 @@ import pandas as pd
 import plotly.express as px
 import numpy as np
 
+
+
+
+# =============================================================================
+# CONFIGURACIÓN INICIAL
+# =============================================================================
+
+def cargar_css():
+    try:
+        with open("style/style.css") as f:
+            css_content = f.read().replace("\n", "").strip()
+            st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
+    except FileNotFoundError:
+        st.error("⚠️ No se encontró el archivo style.css")
+cargar_css()
+
 # Configuración de página
 st.set_page_config(page_title="OKR Center - PAC 2026", layout="wide")
 

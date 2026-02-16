@@ -41,6 +41,8 @@ pagina_buscadorOC = st.Page("pages/tools_buscadorOC.py", title="Buscador OC", ic
 pagina_okr = st.Page("pages/page_okr.py", title="OKR", icon="🎯")
 pagina_okr2 = st.Page("pages/page_okr2.py", title="OKR2", icon="🎯")
 pagina_okr3 = st.Page("pages/page_okr3.py", title="OKR3", icon="🎯")
+pagina_correos = st.Page("pages/page_correos.py", title="Correos", icon="📧")
+pagina_data_panel = st.Page("pages/page_data_panel.py", title="Data Panel", icon="📊")
 
 # ==========================================
 # 3. CONFIGURACIÓN DE NAVEGACIÓN
@@ -69,7 +71,9 @@ pg = st.navigation(
             pagina_buscadorOC,
             pagina_okr,
             pagina_okr2,
-            pagina_okr3
+            pagina_okr3,
+            pagina_correos,
+            pagina_data_panel
         ]
     }
 )

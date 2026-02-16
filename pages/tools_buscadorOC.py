@@ -120,7 +120,7 @@ def aplicar_filtros(df: pd.DataFrame, pac_sel, estado_oc_sel, unidad_sel, contac
 
     return df.loc[mask]
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=1, show_spinner=False)
 def agregar_productos_por_oc(df_oc_det: pd.DataFrame, ids_filtrados: tuple) -> pd.DataFrame:
     if df_oc_det.empty or not ids_filtrados:
         return pd.DataFrame()
@@ -262,6 +262,20 @@ cols_existentes = [c for c in cols_oc_view if c in df_filtrado.columns]
 # Creamos una copia para no alterar el dataframe original
 df_display = df_filtrado[cols_existentes].copy()
 
+# =============================================================================
+# Agregar íconos a EstadoOC
+# =============================================================================
+iconos_estado = {
+    "Enviada a proveedor": "📤 Enviada a proveedor",
+    "Aceptada": "🤝 Aceptada",
+    "Recepción Conforme": "✅ Recepción Conforme",
+    "Cancelada": "❌ Cancelada"
+}
+
+if "EstadoOC" in df_display.columns:
+    df_display["EstadoOC"] = df_display["EstadoOC"].map(iconos_estado).fillna(df_display["EstadoOC"])
+
+
 # 3. Lógica del Filtro
 if texto_busqueda:
     cols_busqueda = [c for c in df_display.columns if c != "Link"]
@@ -273,6 +287,7 @@ if df_display.empty:
     st.warning(f"No se encontraron resultados para '{texto_busqueda}'")
 else:
     st.markdown(f"Mostrando **{len(df_display)}** registros encontrados.")
+    df_display = df_display.sort_values(by="FechaCreacion", ascending=False)
     st.dataframe(
         df_display.style.apply(style_pac_rows, axis=1).format({
                 "TotalBruto": "${:,.0f}",
