@@ -314,37 +314,11 @@ tab_plan, tab_oc, tab_match = st.tabs(["📅 Planificación Original", "🛒 Ór
 
 # TAB 1: EL PLAN (Lo que ya tenías)
 with tab_plan:
-    st.dataframe(
-        df_plan_filtrado[[
-            "ID Proyecto", "Nombre Proyecto", "Nombre ítem", 
-            "Nombre responsable", "Fecha de Inicio Compra", "Suma de Monto Total Ítem Año 2026"
-        ]],
-        use_container_width=True,
-        hide_index=True,
-        column_config={"Suma de Monto Total Ítem Año 2026": st.column_config.NumberColumn(format="$ %,.0f")}
-    )
+    pass
 
 # TAB 2: LAS OCS (Con Link)
 with tab_oc:
-    st.markdown("Listado de Órdenes de Compra filtradas por los proyectos seleccionados arriba.")
-    cols_oc_view = ["CodigoOC", "EstadoOC", "TotalBruto", "NombreOC", "FechaAceptacion", "ID Proyecto", "Link"]
-    
-    # Verificamos que existan las columnas antes de mostrar
-    cols_existentes = [c for c in cols_oc_view if c in df_oc_filtrado.columns]
-    
-    st.dataframe(
-        df_oc_filtrado[cols_existentes],
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "TotalBruto": st.column_config.NumberColumn(format="$ %,.0f"),
-            "FechaAceptacion": st.column_config.DateColumn(format="DD-MM-YYYY"),
-            "Link": st.column_config.LinkColumn(
-                "Ver en MercadoPúblico", 
-                display_text="🔗 Abrir OC"
-            )
-        }
-    )
+    pass
 
 # TAB 3: RESUMEN MATCH
 
