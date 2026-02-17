@@ -32,6 +32,7 @@ pagina_ordenes = st.Page("pages/dash_ordencompra.py", title="Ordenes de Compra",
 pagina_compraagil = st.Page("pages/dash_compraagil.py", title="Compra Ágil", icon="⚡")
 pagina_licitaciones = st.Page("pages/dash_licitaciones.py", title="Licitaciones", icon="📄")
 pagina_licitaciones2 = st.Page("pages/dash_licitaciones2.py", title="Licitaciones2", icon="📄")
+pagina_licitaciones3 = st.Page("pages/dash_licitaciones3.py", title="Licitaciones3", icon="📄")
 
 #Grupo: Documentos
 pagina_documentos = st.Page("pages/dash_documentos.py", title="Documentos", icon="📋")
@@ -63,6 +64,7 @@ pg = st.navigation(
             pagina_ordenes,
             pagina_licitaciones,
             pagina_licitaciones2,
+            pagina_licitaciones3,
             pagina_compraagil
         ],
 
