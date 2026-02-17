@@ -31,12 +31,14 @@ pagina_ejecucionpac = st.Page("pages/dash_ejecucionpac.py", title="Ejecución PA
 pagina_ordenes = st.Page("pages/dash_ordencompra.py", title="Ordenes de Compra", icon="🧾")
 pagina_compraagil = st.Page("pages/dash_compraagil.py", title="Compra Ágil", icon="⚡")
 pagina_licitaciones = st.Page("pages/dash_licitaciones.py", title="Licitaciones", icon="📄")
+pagina_licitaciones2 = st.Page("pages/dash_licitaciones2.py", title="Licitaciones2", icon="📄")
 
 #Grupo: Documentos
 pagina_documentos = st.Page("pages/dash_documentos.py", title="Documentos", icon="📋")
 
 #Grupo: Herramientas
-pagina_api_sso = st.Page("pages/dash_extractor_sso_oc.py", title="API SSO", icon="🔗")
+pagina_api_sso = st.Page("pages/dash_extractor_sso_oc.py", title="API OC SSO", icon="🔗")
+pagina_api_licitaciones = st.Page("pages/dash_extractor_sso_licitaciones.py", title="API LI SSO", icon="🔗")
 pagina_buscadorOC = st.Page("pages/tools_buscadorOC.py", title="Buscador OC", icon="🔍")
 pagina_okr = st.Page("pages/page_okr.py", title="OKR", icon="🎯")
 pagina_okr2 = st.Page("pages/page_okr2.py", title="OKR2", icon="🎯")
@@ -60,6 +62,7 @@ pg = st.navigation(
             pagina_ejecucionpac,
             pagina_ordenes,
             pagina_licitaciones,
+            pagina_licitaciones2,
             pagina_compraagil
         ],
 
@@ -68,6 +71,7 @@ pg = st.navigation(
         ],
         "🛠 Herramientas SSO": [
             pagina_api_sso,
+            pagina_api_licitaciones,
             pagina_buscadorOC,
             pagina_okr,
             pagina_okr2,
