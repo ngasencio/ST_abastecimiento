@@ -8,14 +8,10 @@ st.set_page_config(
     page_icon="resources/logosso.jpg",
     layout="wide"
 )
-
 # ==========================================
 # 1. EL LOGO SUPERIOR (ESTO VA PRIMERO)
 # ==========================================
-# st.logo coloca la imagen automáticamente ENCIMA del menú de navegación.
-# No acepta 'width' manual, se ajusta automáticamente al ancho de la barra.
 st.logo("resources/logosso2.jpg")
-
 # ==========================================
 # 2. DEFINICIÓN DE PÁGINAS
 # ==========================================
@@ -28,6 +24,8 @@ pagina_plan_pac = st.Page("pages/dash_plan_pac.py", title="Planificación PAC", 
 
 # Grupo: Mercado Público
 pagina_ejecucionpac = st.Page("pages/dash_ejecucionpac.py", title="Ejecución PAC", icon="🛒")
+pagina_ejecucionpac2 = st.Page("pages/dash_ejecucionpac2.py", title="Ejecución PAC2", icon="🛒")
+pagina_ejecucionpac3 = st.Page("pages/dash_ejecucionpac3.py", title="Ejecución PAC3", icon="🛒")
 pagina_ordenes = st.Page("pages/dash_ordencompra.py", title="Ordenes de Compra", icon="🧾")
 pagina_compraagil = st.Page("pages/dash_compraagil.py", title="Compra Ágil", icon="⚡")
 pagina_licitaciones = st.Page("pages/dash_licitaciones.py", title="Licitaciones", icon="📄")
@@ -61,6 +59,8 @@ pg = st.navigation(
         ],
         "🏛️ Mercado Público": [
             pagina_ejecucionpac,
+            pagina_ejecucionpac2,
+            pagina_ejecucionpac3,
             pagina_ordenes,
             pagina_licitaciones,
             pagina_licitaciones2,
