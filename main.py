@@ -67,10 +67,6 @@ pg = st.navigation(
             pagina_licitaciones3,
             pagina_compraagil
         ],
-
-        "📚 Biblioteca Normativa": [
-            pagina_documentos
-        ],
         "🛠 Herramientas SSO": [
             pagina_api_sso,
             pagina_api_licitaciones,
@@ -80,6 +76,9 @@ pg = st.navigation(
             pagina_okr3,
             pagina_correos,
             pagina_data_panel
+        ],
+        "📚 Biblioteca Normativa": [
+            pagina_documentos
         ]
     }
 )
