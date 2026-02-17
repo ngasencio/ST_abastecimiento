@@ -4,6 +4,8 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
+from style.ui import cargar_css
+
 
 # ==========================================================
 # 1. CARGA DE DATOS
@@ -11,18 +13,6 @@ from datetime import datetime
 
 from data.data_loader import load_fsc_data
 df_fsc = load_fsc_data()
-
-# ==========================================================
-# 2. CARGAR CSS
-# ==========================================================
-
-def cargar_css():
-    try:
-        with open("style/style.css") as f:
-            css_content = f.read().replace("\n", "").strip()
-            st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
-    except FileNotFoundError:
-        st.error("⚠️ No se encontró el archivo style.css")
 cargar_css()
 
 # Definición de colores institucionales/Lean para consistencia visual

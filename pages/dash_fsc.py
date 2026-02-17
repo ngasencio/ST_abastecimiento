@@ -8,11 +8,7 @@ import sys
 import os
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-# ===== CARGAR CSS =====
-def cargar_css():
-    with open("style/style.css", encoding="utf-8") as f:
-      st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+from style.ui import cargar_css
 
 cargar_css()
 

@@ -3,22 +3,10 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime, timedelta
 import os
+from style.ui import cargar_css
 
 from data.data_loader import load_pac26_data
 import api.OC_data_loader as loader_oc
-
-# =============================================================================
-# 1. CONFIGURACIÓN Y ESTILOS
-# =============================================================================
-# Nota: st.set_page_config se maneja en main.py
-
-# Función para cargar CSS local
-def cargar_css():
-    try:
-        with open("style/style.css", encoding="utf-8") as f:
-            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-    except FileNotFoundError:
-        pass # Si no encuentra el estilo, sigue sin él
 
 cargar_css()
 

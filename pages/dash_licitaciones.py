@@ -7,9 +7,11 @@ from datetime import datetime, timedelta
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from style.ui import cargar_css
 
 # Importación de datos
 import api.LI_data_loader as loader
+cargar_css()
 
 # ============== CONFIGURACIÓN DE PÁGINA ===================
 st.set_page_config(
@@ -18,16 +20,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ============== CARGAR CSS ===================
-def cargar_css():
-    try:
-        with open("style/style.css") as f:
-            css_content = f.read().replace("\n", "").strip()
-            st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
-    except FileNotFoundError:
-        st.warning("⚠️ No se encontró el archivo style.css")
 
-cargar_css()
 
 # ============== CARGA DE DATOS ===================
 @st.cache_data

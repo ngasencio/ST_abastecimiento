@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 from datetime import datetime
-
+from style.ui import cargar_css
 
 st.markdown(
     """

@@ -1,28 +1,16 @@
 import contextlib
 import io
 from datetime import date
-
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from style.ui import cargar_css
 
 # Importamos la versión optimizada V3 creada anteriormente
 import api.LI_SSO_PorDiaPeriodo_v3 as sso
 
 st.set_page_config(page_title="Extractor SSO (Licitaciones)", layout="wide")
-
-
-def cargar_css():
-    try:
-        with open("style/style.css") as f:
-            css_content = f.read().replace("\n", "").strip()
-            st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
-    except FileNotFoundError:
-        pass
-
-
 cargar_css()
-
 
 @st.cache_data(ttl=60, show_spinner=False)
 def _listar_archivos_diario():

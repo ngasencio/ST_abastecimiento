@@ -8,7 +8,7 @@ import os
 import base64
 import pdfkit 
 from pyhtml2pdf import converter
-
+from style.ui import cargar_css
 
 # =============================================================================
 # CARGA DE DATOS
@@ -16,18 +16,6 @@ from pyhtml2pdf import converter
 
 from utils.pdf_generador_pac import generar_pdf_pac
 from data.data_loader import load_pac26_data
-
-# =============================================================================
-# CONFIGURACIÓN INICIAL
-# =============================================================================
-
-def cargar_css():
-    try:
-        with open("style/style.css") as f:
-            css_content = f.read().replace("\n", "").strip()
-            st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
-    except FileNotFoundError:
-        st.error("⚠️ No se encontró el archivo style.css")
 cargar_css()
 
 # =============================================================================

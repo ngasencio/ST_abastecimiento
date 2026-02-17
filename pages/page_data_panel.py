@@ -8,6 +8,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import time
 import os
+from style.ui import cargar_css
+
+cargar_css()
 
 def app():
     st.markdown("## 🤖 Automatización de Descargas - Panel SS Osorno")

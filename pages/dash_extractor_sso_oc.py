@@ -1,24 +1,12 @@
 import contextlib
 import io
 from datetime import date
-
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
 import api.OC_SSO_PorDiaPeriodo_v2 as sso
-
-
-st.set_page_config(page_title="Extractor SSO (OC)", layout="wide")
-
-
-def cargar_css():
-    try:
-        with open("style/style.css") as f:
-            css_content = f.read().replace("\n", "").strip()
-            st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
-    except FileNotFoundError:
-        pass
+from style.ui import cargar_css
 
 
 cargar_css()

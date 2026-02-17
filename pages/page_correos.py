@@ -6,6 +6,9 @@ from email.mime.base import MIMEBase
 from email import encoders
 import pandas as pd
 import time
+from style.ui import cargar_css
+
+cargar_css()
 
 # --- Configuración de la Página ---
 st.set_page_config(page_title="Email Pro Sender", page_icon="📧")

@@ -5,18 +5,7 @@ import plotly.express as px
 from datetime import datetime
 
 import api.LI_data_loader as loader
-
-
-def cargar_css():
-    try:
-        with open("style/style.css", encoding="utf-8") as f:
-            css_content = f.read().replace("\n", "").strip()
-            st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
-    except FileNotFoundError:
-        pass
-
-
-st.set_page_config(page_title="Dashboard Licitaciones", page_icon="📄", layout="wide")
+from style.ui import cargar_css
 
 cargar_css()
 

@@ -2,18 +2,7 @@ import streamlit as st
 import os
 import pandas as pd
 
-# ===== CARGAR CSS =====
-def cargar_css():
-    try:
-        with open("style/style.css") as f:
-            # Usamos una sola línea y eliminamos espacios innecesarios con .strip()
-            css_content = f.read().replace("\n", "").strip()
-            st.markdown(
-                f"<style>{css_content}</style>", 
-                unsafe_allow_html=True
-            )
-    except FileNotFoundError:
-        st.error("⚠️ No se encontró el archivo style.css")
+from style.ui import cargar_css
 
 # Llama a la función al principio de todo, justo después de st.set_page_config
 cargar_css()

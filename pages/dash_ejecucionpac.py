@@ -4,23 +4,12 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
 import os
+from style.ui import cargar_css
 
 # Importamos tus cargadores
 from data.data_loader import load_pac26_data
 import api.OC_data_loader as loader_oc
 
-# =============================================================================
-# CONFIGURACIÓN INICIAL
-# =============================================================================
-st.set_page_config(page_title="Dashboard PAC vs Ejecución", layout="wide")
-
-def cargar_css():
-    try:
-        with open("style/style.css") as f:
-            css_content = f.read().replace("\n", "").strip()
-            st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
-    except FileNotFoundError:
-        pass # Si no hay CSS, no falla
 cargar_css()
 
 
