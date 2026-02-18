@@ -20,3 +20,4 @@ openpyxl
 matplotlib
 selenium
 webdriver-manager
+kaleido
