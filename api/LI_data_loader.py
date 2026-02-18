@@ -19,8 +19,14 @@ FILE_DETALLE = RUTA_MAESTROS / "Maestro_Detalle.csv"
 # ==========================================
 # Definimos qué columnas son fechas para convertirlas automáticamente
 COLS_FECHA = [
-    "FechaCreacion", "FechaPublicacion", "FechaCierre", 
-    "FechaAdjudicacion", "FechaEstimadaFirma", "FechaInicioContrato"
+    "FechaCreacion", "FechaPublicacion", "FechaInicio", # Etapa 1
+    "FechaVisitaTerreno", "FechaEntregaAntecedentes", "FechaPubRespuestas", # Etapa 2
+    "FechaCierre", # Etapa 3
+    "FechaActoAperturaTecnica", "FechaActoAperturaEconomica", # Etapa 4
+    "FechaTiempoEvaluacion", # Etapa 5
+    "FechaEstimadaAdjudicacion", "FechaAdjudicacion", # Etapa 6
+    "FechaEstimadaFirma", # Etapa 7
+    "FechaInicioContrato", "FechaFinal" # Etapa 8
 ]
 
 # Definimos columnas numéricas clave para evitar errores de cálculo

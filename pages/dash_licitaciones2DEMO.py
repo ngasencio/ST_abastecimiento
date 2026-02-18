@@ -69,27 +69,6 @@ def obtener_fecha_mas_cercana(row):
 
 df_res['FechaClave'] = df_res.apply(obtener_fecha_mas_cercana, axis=1)
 
-# ============== HEADER ===================
-st.markdown("""
-    <div style="
-        padding: 1.5rem 2rem;
-        margin-bottom: 2rem;
-        background: linear-gradient(135deg, #138AEC 0%, #3E9FEF 100%);
-        color: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(19, 138, 236, 0.3);
-    ">
-        <div style="font-size: 32px; font-weight: 800; margin-bottom: 8px;">
-            📄 Dashboard de Licitaciones 2026
-        </div>
-        <div style="font-size: 16px; opacity: 0.95;">
-            Gestión y seguimiento semanal de licitaciones - Red de Salud
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# ============== FILTROS ADICIONALES ===================
-
 
 st.markdown("### 🔍 Filtros Adicionales")
 
@@ -182,6 +161,67 @@ def obtener_fecha_clave(row):
 df_res_filtrado[['FechaClave', 'EstadoFlujo']] = df_res_filtrado.apply(
     lambda row: pd.Series(obtener_fecha_clave(row)), axis=1
 )
+
+import pandas as pd
+import numpy as np
+
+def procesar_estados_licitacion(df):
+    if df.empty:
+        return df
+        
+    now = pd.Timestamp.now()
+
+    def calcular_hito_y_gestion(row):
+        estado_oficial = str(row.get('Estado', '')).upper()
+        
+        # --- 1. SEGUIMIENTO DE JEFATURAS (REGLAS PRIORITARIAS) ---
+        
+        # Caso A: Publicadas -> Interesa el Cierre
+        if "PUBLICADA" in estado_oficial:
+            return row.get('FechaCierre'), "⏳ Por Cerrar", None
+            
+        # Caso B: Cerradas/En Evaluación -> Interesa la Adjudicación
+        if any(x in estado_oficial for x in ["CERRADA", "EVALUACION", "APERTURA"]):
+            # Priorizamos fecha real, si no, la estimada
+            fecha_adj = row.get('FechaAdjudicacion') if pd.notna(row.get('FechaAdjudicacion')) else row.get('FechaEstimadaAdjudicacion')
+            return fecha_adj, "⚖️ Por Adjudicar", None
+
+        # Caso C: Adjudicadas -> Analizar Desempeño
+        if "ADJUDICADA" in estado_oficial:
+            f_real = row.get('FechaAdjudicacion')
+            f_est = row.get('FechaEstimadaAdjudicacion')
+            desempeno = "⚪ Sin dato origen"
+            
+            if pd.notna(f_real) and pd.notna(f_est):
+                # Normalizamos a solo fecha para comparar días
+                diff = (f_real.date() - f_est.date()).days
+                if diff < 0: desempeno = f"🚀 Adelantado ({abs(diff)} d)"
+                elif diff == 0: desempeno = "✅ En Fecha"
+                else: desempeno = f"⚠️ Retrasado ({diff} d)"
+            
+            # Para las adjudicadas, el siguiente hito suele ser la Firma
+            return row.get('FechaEstimadaFirma'), "✍️ Por Firmar", desempeno
+
+        # --- 2. FALLBACK: LOGICA POR FECHAS (Para estados no mapeados) ---
+        # (Sin FechaFinal, como solicitaste)
+        if pd.notna(row.get('FechaInicioContrato')) and row['FechaInicioContrato'] >= now:
+            return row['FechaInicioContrato'], "🚀 Inicio Contrato", None
+        if pd.notna(row.get('FechaPubRespuestas')) and row['FechaPubRespuestas'] >= now:
+            return row['FechaPubRespuestas'], "💬 Respuestas", None
+        if pd.notna(row.get('FechaVisitaTerreno')) and row['FechaVisitaTerreno'] >= now:
+            return row['FechaVisitaTerreno'], "👷 Visita Terreno", None
+
+        return pd.NaT, "🏁 Histórico / Finalizado", None
+
+    # Aplicamos la lógica expandida
+    res = df.apply(lambda row: pd.Series(calcular_hito_y_gestion(row)), axis=1)
+    df[['FechaClave', 'EstadoFlujo', 'Desempeno_Adj']] = res
+    
+    return df
+
+# Procesamos los datos antes de mostrar la tabla
+df_res_filtrado = procesar_estados_licitacion(df_res_filtrado)
+
 
 # ==============================================================================
 # 2. INDICADORES LEAN (LEAD TIMES & FLUJO)
@@ -329,3 +369,40 @@ with st.expander("📘 Referencia Metodológica Lean"):
     * **Control Visual[cite: 968]:** El uso de semáforos (🔴🟡🟢) permite identificar desviaciones del estándar de manera inmediata.
     * **Heijunka (Nivelación)[cite: 797]:** El gráfico de carga por comprador ayuda a nivelar el trabajo y evitar cuellos de botella en personas específicas.
     """)
+
+
+
+
+st.markdown("## 📋 Panel de Control de Procesos (Gemba)")
+
+# Procesar datos
+df_filtrado = procesar_estados_licitacion(df_res_filtrado)
+
+# Filtro de Jefatura
+filtro_jefatura = st.multiselect(
+    "Ver procesos en etapa:",
+    options=sorted(df_filtrado['EstadoFlujo'].unique()),
+    default=["⏳ Por Cerrar", "⚖️ Por Adjudicar", "✍️ Por Firmar"]
+)
+
+df_gemba = df_filtrado[df_filtrado['EstadoFlujo'].isin(filtro_jefatura)]
+df_gemba = df_gemba.sort_values(by='FechaClave', ascending=True)
+
+st.dataframe(
+    df_gemba,
+    column_order=[
+        "EstadoFlujo", "Desempeno_Adj", "FechaClave", "CodigoLicitacion", 
+        "Nombre", "C_Usuario", "Estado"
+    ],
+    column_config={
+        "EstadoFlujo": "Estado Operativo",
+        "Desempeno_Adj": st.column_config.TextColumn(
+            "Desempeño Adjudicación",
+            help="Comparación entre Fecha Real vs Fecha Estimada de Adjudicación"
+        ),
+        "FechaClave": st.column_config.DateColumn("Fecha Hito", format="DD/MM/YYYY"),
+        "Estado": "Estado Portal"
+    },
+    use_container_width=True,
+    hide_index=True
+)
