@@ -37,9 +37,23 @@ for col in ["Estado", "C_Usuario", "C_Unidad"]:
 
 # Normalización de fechas
 columnas_fechas = [
-    "FechaCreacion", "FechaPublicacion", "FechaCierre", 
-    "FechaAdjudicacion", "FechaEstimadaFirma", "FechaInicioContrato"
-]
+    "FechaCreacion",
+    "FechaCierre",
+    "FechaInicio",
+    "FechaFinal",
+    "FechaPubRespuestas",
+    "FechaActoAperturaTecnica",
+    "FechaActoAperturaEconomica",
+    "FechaPublicacion",
+    "FechaAdjudicacion",
+    "FechaEstimadaAdjudicacion",
+    "FechaSoporteFisico",
+    "FechaTiempoEvaluacion",
+    "FechaEstimadaFirma",
+    "FechaVisitaTerreno",
+    "FechaEntregaAntecedentes",
+    "FechaInicioContrato"
+    ]
 
 for col in columnas_fechas:
     if col in df_res.columns:
