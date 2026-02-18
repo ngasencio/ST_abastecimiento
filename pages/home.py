@@ -394,6 +394,19 @@ with col_acc:
 # =============================================================================
 # 5. PIE DE PÁGINA
 # =============================================================================
+
+
+# Footer
+st.markdown("---")
+st.markdown("""
+    <div style="text-align: center; color: #6c757d; padding: 20px;">
+        <p><strong>Dashboard de Licitaciones 2026</strong></p>
+        <p>Dirección de Abastecimiento - Red de Salud</p>
+        <p style="font-size: 12px;">Desarrollado con Streamlit | Última actualización: {}</p>
+    </div>
+""".format(pd.Timestamp.now().strftime('%d/%m/%Y %H:%M')), unsafe_allow_html=True)
+
+
 st.markdown("---")
 col_footer_l, col_footer_r = st.columns(2)
 

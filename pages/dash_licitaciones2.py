@@ -89,6 +89,8 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # ============== FILTROS ADICIONALES ===================
+
+
 st.markdown("### 🔍 Filtros Adicionales")
 
 col1, col2, col3, col4 = st.columns(4)
@@ -135,11 +137,11 @@ if unidad_sel:
 # Sincronizar con detalle
 df_det_filtrado = df_det[df_det["CodigoLicitacion"].isin(df_res_filtrado["CodigoLicitacion"])]
 
+
 # ==============================================================================
 # 1. CONFIGURACIÓN Y CARGA DE DATOS
 # ==============================================================================
 st.markdown("## 📊 Tablero de Control de Licitaciones (Enfoque Lean)")
-st.markdown("Monitorización del flujo de valor, lead times y próximos hitos críticos.")
 
 # --- A. PREPROCESAMIENTO DE DATOS ---
 # 1. Normalización de Fechas (ISO a Datetime)
