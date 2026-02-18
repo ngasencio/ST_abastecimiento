@@ -429,7 +429,7 @@ if st.button("📥 Generar PDF", type="primary"):
         # 2. Convertimos a imagen con alta resolución (scale=3 para nitidez total)
         # Importante: No usar fondo transparente para evitar que el PDF lo interprete mal
         img_bytes = pio.to_image(
-            fig_PAC, 
+            #fig_PAC, 
             format="png", 
             width=1000, 
             height=500, 

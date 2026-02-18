@@ -20,4 +20,4 @@ openpyxl
 matplotlib
 selenium
 webdriver-manager
-kaleido
+kaleido==0.2.1
