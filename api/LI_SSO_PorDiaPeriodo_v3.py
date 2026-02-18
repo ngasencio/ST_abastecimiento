@@ -127,35 +127,113 @@ def _extraer_resumen_y_detalles(codigo: str, lic: Dict[str, Any]) -> Tuple[Dict[
     """Normaliza un JSON de licitación en fila resumen + filas detalle."""
     comp = lic.get("Comprador") or {}
     fech = lic.get("Fechas") or {}
+    adj_global = lic.get("Adjudicacion") or {}
 
     # TABLA 1: RESUMEN
     resumen = {
+        # Identificación
         "CodigoLicitacion": codigo,
+        "Numero": lic.get("Numero"),  # A veces viene o es útil
         "Nombre": limpiar(lic.get("Nombre")),
+        "CodigoEstado": lic.get("CodigoEstado"),
         "Estado": lic.get("Estado"),
         "Descripcion": limpiar(lic.get("Descripcion")),
+        
+        # Clasificación y Tipo
         "Tipo": lic.get("Tipo"),
+        "CodigoTipo": lic.get("CodigoTipo"),
+        "TipoConvocatoria": lic.get("TipoConvocatoria"),
         "Moneda": lic.get("Moneda"),
-        "MontoEstimado": to_float(lic.get("MontoEstimado")),
-        "FuenteFinanciamiento": lic.get("FuenteFinanciamiento"),
-        "VisibilidadMonto": lic.get("VisibilidadMonto"),
-        "JustificacionMonto": limpiar(lic.get("JustificacionMontoEstimado")),
-        "FechaCreacion": fech.get("FechaCreacion"),
-        "FechaPublicacion": fech.get("FechaPublicacion"),
-        "FechaCierre": fech.get("FechaCierre"),
-        "FechaAdjudicacion": fech.get("FechaAdjudicacion"),
-        "FechaEstimadaFirma": fech.get("FechaEstimadaFirma"),
-        "FechaInicioContrato": fech.get("FechaInicio"),
-        "C_Unidad": comp.get("NombreUnidad"),
+        "Etapas": lic.get("Etapas"),
+        "EstadoEtapas": lic.get("EstadoEtapas"),
+        
+        # Comprador
+        "C_CodigoOrganismo": comp.get("CodigoOrganismo"),
+        "C_NombreOrganismo": comp.get("NombreOrganismo"), 
         "C_RutUnidad": comp.get("RutUnidad"),
+        "C_CodigoUnidad": comp.get("CodigoUnidad"),
+        "C_Unidad": comp.get("NombreUnidad"),
+        "C_DireccionUnidad": limpiar(comp.get("DireccionUnidad")),
+        "C_ComunaUnidad": comp.get("ComunaUnidad"),
+        "C_RegionUnidad": comp.get("RegionUnidad"),
+        "C_RutUsuario": comp.get("RutUsuario"),
+        "C_CodigoUsuario": comp.get("CodigoUsuario"),
         "C_Usuario": comp.get("NombreUsuario"),
         "C_Cargo": comp.get("CargoUsuario"),
+
+        # Fechas
+        "FechaCreacion": fech.get("FechaCreacion"),
+        "FechaCierre": fech.get("FechaCierre"),
+        "FechaInicio": fech.get("FechaInicio"),
+        "FechaFinal": fech.get("FechaFinal"),
+        "FechaPubRespuestas": fech.get("FechaPubRespuestas"),
+        "FechaActoAperturaTecnica": fech.get("FechaActoAperturaTecnica"),
+        "FechaActoAperturaEconomica": fech.get("FechaActoAperturaEconomica"),
+        "FechaPublicacion": fech.get("FechaPublicacion"),
+        "FechaAdjudicacion": fech.get("FechaAdjudicacion"),
+        "FechaEstimadaAdjudicacion": fech.get("FechaEstimadaAdjudicacion"),
+        "FechaSoporteFisico": fech.get("FechaSoporteFisico"),
+        "FechaTiempoEvaluacion": fech.get("FechaTiempoEvaluacion"),
+        "FechaEstimadaFirma": fech.get("FechaEstimadaFirma"),
+        "FechaVisitaTerreno": fech.get("FechaVisitaTerreno"),
+        "FechaEntregaAntecedentes": fech.get("FechaEntregaAntecedentes"),
+        
+        # Fechas legacy (mantener compatibilidad si se usa 'FechaInicioContrato')
+        # En la versión anterior 'FechaInicioContrato' mapeaba a fech.get("FechaInicio")
+        "FechaInicioContrato": fech.get("FechaInicio"),
+
+        # Detalles del Proceso
+        "DiasCierreLicitacion": lic.get("DiasCierreLicitacion"),
+        "Informada": lic.get("Informada"),
+        "TomaRazon": lic.get("TomaRazon"),
+        "EstadoPublicidadOfertas": lic.get("EstadoPublicidadOfertas"),
+        "JustificacionPublicidad": limpiar(lic.get("JustificacionPublicidad")),
+        "Contrato": lic.get("Contrato"),
+        "Obras": lic.get("Obras"),
+        "CantidadReclamos": lic.get("CantidadReclamos"),
+        
+        # Montos y Tiempos
+        "UnidadTiempoEvaluacion": lic.get("UnidadTiempoEvaluacion"),
+        "DireccionVisita": limpiar(lic.get("DireccionVisita")),
+        "DireccionEntrega": limpiar(lic.get("DireccionEntrega")),
+        "Estimacion": lic.get("Estimacion"),
+        "FuenteFinanciamiento": lic.get("FuenteFinanciamiento"),
+        "VisibilidadMonto": lic.get("VisibilidadMonto"),
+        "MontoEstimado": to_float(lic.get("MontoEstimado")),
+        "JustificacionMonto": limpiar(lic.get("JustificacionMontoEstimado")),
+        "Tiempo": lic.get("Tiempo"),
+        "UnidadTiempo": lic.get("UnidadTiempo"),
+        "Modalidad": lic.get("Modalidad"),
+        "TipoPago": lic.get("TipoPago"),
+
+        # Responsables
+        "Resp_Pago": lic.get("NombreResponsablePago"),
+        "Resp_Email_Pago": lic.get("EmailResponsablePago"),
         "Resp_Contrato": lic.get("NombreResponsableContrato"),
         "Resp_Email": lic.get("EmailResponsableContrato"),
-        "Resp_Pago": lic.get("NombreResponsablePago"),
-        "TiempoDuracionContrato": lic.get("TiempoDuracionContrato"),
+        "Resp_Fono": lic.get("FonoResponsableContrato"),
+
+        # Condiciones Contratación
+        "ProhibicionContratacion": lic.get("ProhibicionContratacion"),
+        "SubContratacion": lic.get("SubContratacion"),
         "UnidadTiempoDuracion": lic.get("UnidadTiempoDuracionContrato"),
-        "EsRenovable": lic.get("EsRenovable")
+        "TiempoDuracionContrato": lic.get("TiempoDuracionContrato"),
+        "TipoDuracionContrato": lic.get("TipoDuracionContrato"),
+        "ObservacionContract": limpiar(lic.get("ObservacionContract")),
+        "ExtensionPlazo": lic.get("ExtensionPlazo"),
+        "EsBaseTipo": lic.get("EsBaseTipo"),
+        "UnidadTiempoContratoLicitacion": lic.get("UnidadTiempoContratoLicitacion"),
+        "ValorTiempoRenovacion": lic.get("ValorTiempoRenovacion"),
+        "PeriodoTiempoRenovacion": lic.get("PeriodoTiempoRenovacion"),
+        "EsRenovable": lic.get("EsRenovable"),
+        "CodigoBIP": lic.get("CodigoBIP"),
+
+        # Adjudicación Global
+        "Adj_Tipo": adj_global.get("Tipo"),
+        "Adj_Fecha": adj_global.get("Fecha"),
+        "Adj_Numero": adj_global.get("Numero"),
+        "Adj_NumeroOferentes": adj_global.get("NumeroOferentes"),
+        "Adj_UrlActa": adj_global.get("UrlActa"),
     }
 
     # TABLA 2: DETALLES
@@ -170,8 +248,9 @@ def _extraer_resumen_y_detalles(codigo: str, lic: Dict[str, Any]) -> Tuple[Dict[
         detalles.append({
             "CodigoLicitacion": codigo,
             "Correlativo": it.get("Correlativo"),
-            "Categoria": it.get("Categoria"),
             "CodigoProducto": it.get("CodigoProducto"),
+            "CodigoCategoria": it.get("CodigoCategoria"),
+            "Categoria": it.get("Categoria"),
             "NombreProducto": limpiar(it.get("NombreProducto")),
             "DescripcionItem": limpiar(it.get("Descripcion")),
             "UnidadMedida": it.get("UnidadMedida"),
