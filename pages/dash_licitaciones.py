@@ -470,12 +470,81 @@ def _render_detalle_licitacion(codigo_licitacion: str) -> None:
     st.dataframe(dg_df, use_container_width=True, hide_index=True)
 
     st.markdown("#### b) Fechas")
-    cols_fechas_det = [c for c in columnas_fechas if c in row.columns]
+    orden_fechas = [
+        "FechaCreacion",
+        "FechaInicio",
+        "FechaPublicacion",
+        "FechaPubRespuestas",
+        "FechaSoporteFisico",
+        "FechaVisitaTerreno",
+        "FechaEntregaAntecedentes",
+        "FechaActoAperturaTecnica",
+        "FechaActoAperturaEconomica",
+        "FechaCierre",
+        "FechaAdjudicacion",
+        "FechaTiempoEvaluacion",
+        "FechaEstimadaAdjudicacion",
+        "FechaEstimadaFirma",
+        "FechaInicioContrato",
+        "FechaFinal",
+    ]
+    iconos_fechas = {
+        "FechaCreacion": "🆕",
+        "FechaInicio": "🚀",
+        "FechaPublicacion": "📢",
+        "FechaPubRespuestas": "💬",
+        "FechaSoporteFisico": "📎",
+        "FechaVisitaTerreno": "👷",
+        "FechaEntregaAntecedentes": "📂",
+        "FechaActoAperturaTecnica": "🛠️",
+        "FechaActoAperturaEconomica": "💰",
+        "FechaCierre": "⏳",
+        "FechaAdjudicacion": "🏆",
+        "FechaTiempoEvaluacion": "🧮",
+        "FechaEstimadaAdjudicacion": "📅",
+        "FechaEstimadaFirma": "✍️",
+        "FechaInicioContrato": "📄",
+        "FechaFinal": "🏁",
+    }
+    nombres_fechas = {
+        "FechaCreacion": "Creación",
+        "FechaInicio": "Inicio",
+        "FechaPublicacion": "Publicación",
+        "FechaPubRespuestas": "Publicación Respuestas",
+        "FechaSoporteFisico": "Soporte Físico",
+        "FechaVisitaTerreno": "Visita Terreno",
+        "FechaEntregaAntecedentes": "Entrega Antecedentes",
+        "FechaActoAperturaTecnica": "Apertura Técnica",
+        "FechaActoAperturaEconomica": "Apertura Económica",
+        "FechaCierre": "Cierre",
+        "FechaAdjudicacion": "Adjudicación",
+        "FechaTiempoEvaluacion": "Tiempo Evaluación",
+        "FechaEstimadaAdjudicacion": "Adj. Estimada",
+        "FechaEstimadaFirma": "Firma Estimada",
+        "FechaInicioContrato": "Inicio Contrato",
+        "FechaFinal": "Final",
+    }
+
+    cols_fechas_det = [c for c in orden_fechas if c in row.columns]
     if cols_fechas_det:
         fechas_df = pd.DataFrame(
-            [{"Hito": c, "Fecha": _fmt_fecha(r.get(c))} for c in cols_fechas_det]
+            [
+                {
+                    "Hito": f"{iconos_fechas.get(c, '📅')} {nombres_fechas.get(c, c)}",
+                    "Fecha": _fmt_fecha(r.get(c)),
+                }
+                for c in cols_fechas_det
+            ]
         )
-        st.dataframe(fechas_df, use_container_width=True, hide_index=True)
+        st.dataframe(
+            fechas_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Hito": st.column_config.TextColumn("Hito"),
+                "Fecha": st.column_config.TextColumn("Fecha (dd-mm-aaaa hh:mm:ss)"),
+            },
+        )
     else:
         st.info("No hay columnas de fechas disponibles para esta licitación.")
 
