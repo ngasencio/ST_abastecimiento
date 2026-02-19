@@ -374,8 +374,20 @@ if filtro_estado:
     df_sorted = df_sorted[df_sorted['EstadoFlujo'].isin(filtro_estado)]
 
 # Renderizado de la Tabla
+df_view = df_sorted[cols_view].copy()
+if "MontoEstimado" in df_view.columns:
+    def _fmt_clp(v):
+        if pd.isna(v):
+            return ""
+        try:
+            return f"$ {float(v):,.0f}".replace(",", ".")
+        except Exception:
+            return str(v)
+
+    df_view["MontoEstimado"] = df_view["MontoEstimado"].apply(_fmt_clp)
+
 st.dataframe(
-    df_sorted[cols_view],
+    df_view,
     use_container_width=True,
     hide_index=True,
     column_config={
@@ -388,10 +400,7 @@ st.dataframe(
             format="DD/MM/YYYY",
             help="Fecha del evento mostrado en la etapa"
         ),
-        "MontoEstimado": st.column_config.NumberColumn(
-            "Monto Est.", 
-            format="$ %,.0f"
-        ),
+        "MontoEstimado": st.column_config.TextColumn("Monto Est. (CLP)"),
         "CodigoLicitacion": "ID Licitación",
         "C_Usuario": "Comprador Responsable",
         "Nombre": st.column_config.TextColumn("Nombre del Proceso", width="large"),
