@@ -4,6 +4,7 @@ import plotly.express as px
 from datetime import datetime, timedelta
 import numpy as np
 from style.ui import cargar_css
+from api import LI_data_loader as loader
 
 cargar_css()
 
@@ -28,21 +29,8 @@ except Exception as e:
 
 
 # ============== EJECUCIÓN DE CARGA ===================
-try:
-    # Usamos la función cacheada
-    df_res, df_det = obtener_datos()
-    
-    if df_res.empty:
-        st.error("No se encontraron datos en Maestro_Resumen.csv")
-        st.stop()
-    else:
-        # Usamos df_filtrado como solicitaste en tus instrucciones personales
-        df_filtrado = df_res.copy() 
-        st.success(f"Conexión exitosa: {len(df_filtrado)} licitaciones cargadas.")
-        
-except Exception as e:
-    st.error(f"Error en la conexión con LI_data_loader: {e}")
-    st.stop()
+df_res, df_det = df_MaestroLI_Resumen, df_MaestroLI_Detalle
+df_filtrado = df_res.copy()
 
 
 # ============== DEFINIR DF ===================
