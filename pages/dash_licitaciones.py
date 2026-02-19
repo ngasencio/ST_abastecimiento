@@ -373,10 +373,6 @@ filtro_estado = st.multiselect(
 if filtro_estado:
     df_sorted = df_sorted[df_sorted['EstadoFlujo'].isin(filtro_estado)]
 
-df_sorted["MontoEstimado"] = df_sorted["MontoEstimado"].apply(
-    lambda x: f"${x:,.0f}".replace(",", ".") if pd.notna(x) else ""
-)
-
 # Renderizado de la Tabla
 st.dataframe(
     df_sorted[cols_view],
@@ -414,33 +410,50 @@ acc1, acc2, acc3 = st.columns(3)
 
 with acc1:
     st.markdown("### 🔴 Por cerrar (<= 7 días)")
-    if "Dias_a_Cierre" in df_res_filtrado.columns:
-        urg = df_res_filtrado[pd.to_numeric(df_res_filtrado["Dias_a_Cierre"], errors="coerce").between(0, 7)].copy()
+    if "Estado" not in df_res_filtrado.columns or "FechaCierre" not in df_res_filtrado.columns:
+        st.info("No están disponibles las columnas necesarias (Estado, FechaCierre).")
+    else:
+        hoy = pd.Timestamp.now().normalize()
+        urg = df_res_filtrado.copy()
+        urg["Dias_a_Cierre"] = (urg["FechaCierre"] - hoy).dt.days
+
+        urg = urg[
+            (urg["Estado"].astype(str).str.strip().str.lower() == "publicada")
+            & (urg["Dias_a_Cierre"].between(0, 7, inclusive="both"))
+        ].copy()
         urg = urg.sort_values("Dias_a_Cierre")
+
         if urg.empty:
-            st.success("Sin cierres críticos en los próximos 7 días.")
+            st.success("Sin licitaciones 'Publicada' con cierre en los próximos 7 días.")
         else:
             cols_u = [c for c in ["CodigoLicitacion", "Nombre", "C_Usuario", "FechaCierre", "Dias_a_Cierre"] if c in urg.columns]
             st.dataframe(
-                urg[cols_u].head(15),
+                urg[cols_u].head(20),
                 use_container_width=True,
                 hide_index=True,
                 column_config={
                     "FechaCierre": st.column_config.DateColumn(format="DD-MM-YYYY"),
+                    "Dias_a_Cierre": st.column_config.NumberColumn(format="%d"),
                 },
             )
 
 with acc2:
     st.markdown("### 🟡 Cerradas sin adjudicar")
-    if "Estado" in df_res_filtrado.columns and "FechaAdjudicacion" in df_res_filtrado.columns:
-        cerr = df_res_filtrado[df_res_filtrado["Estado"].astype(str).str.contains("Cerrad", case=False, na=False)].copy()
+    if "Estado" not in df_res_filtrado.columns or "FechaAdjudicacion" not in df_res_filtrado.columns:
+        st.info("No están disponibles las columnas necesarias (Estado, FechaAdjudicacion).")
+    else:
+        cerr = df_res_filtrado[
+            df_res_filtrado["Estado"].astype(str).str.strip().str.lower().eq("cerrada")
+        ].copy()
         sin_adj = cerr[cerr["FechaAdjudicacion"].isna()].copy()
         if sin_adj.empty:
-            st.success("Sin licitaciones cerradas pendientes de adjudicación.")
+            st.success("Sin licitaciones 'Cerrada' pendientes de adjudicación.")
         else:
             cols_s = [c for c in ["CodigoLicitacion", "Nombre", "C_Usuario", "FechaCierre"] if c in sin_adj.columns]
+            if "FechaCierre" in sin_adj.columns:
+                sin_adj = sin_adj.sort_values("FechaCierre", ascending=False)
             st.dataframe(
-                sin_adj.sort_values("FechaCierre", ascending=False)[cols_s].head(15),
+                sin_adj[cols_s].head(15),
                 use_container_width=True,
                 hide_index=True,
                 column_config={
