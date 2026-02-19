@@ -6,9 +6,20 @@ import os
 from style.ui import cargar_css
 
 from data.data_loader import load_pac26_data
+from data.data_loader import load_fsc_data
 import api.OC_data_loader as loader_oc
+from api import LI_data_loader as loader_li
 
 cargar_css()
+
+@st.cache_data(ttl=900, show_spinner=False)
+def _load_licitaciones_maestros():
+    df_res, df_det = loader_li.cargar_maestros()
+    return df_res, df_det
+
+@st.cache_data(ttl=900, show_spinner=False)
+def _load_fsc_maestro():
+    return load_fsc_data()
 
 # CSS Adicional específico para modificaciones en caliente
 st.markdown("""
@@ -193,90 +204,73 @@ st.write("") # Espacio vertical
 # =============================================================================
 col_main, col_side = st.columns([2.5, 1])
 
-# --- COLUMNA IZQUIERDA: GRÁFICOS Y ANÁLISIS ---
+# --- COLUMNA IZQUIERDA: OPERACIÓN CRÍTICA (TABLAS) ---
 with col_main:
-    st.subheader("📈 Tendencias y Comparativas")
+    st.subheader("🎯 Operación crítica")
 
-    c_g1, c_g2 = st.columns([1.3, 1])
+    c_op1, c_op2 = st.columns([1.4, 1])
 
-    with c_g1:
-        if "FechaCreacion" in df_oc_res.columns and not df_oc_res.empty:
-            df_ts = df_oc_res.dropna(subset=["FechaCreacion"]).copy()
-            df_ts = df_ts[df_ts["FechaCreacion"] >= (f_fin - timedelta(days=180))]
-            df_ts["Dia"] = df_ts["FechaCreacion"].dt.date
-            df_dia = df_ts.groupby("Dia", as_index=False).agg(
-                OCs=("CodigoOC", "count"),
-                Monto=("TotalBruto", "sum"),
-            )
-            fig_line = px.line(
-                df_dia,
-                x="Dia",
-                y="Monto",
-                markers=True,
-                title="Monto transado por día (últimos 180 días)",
-                labels={"Dia": "Día", "Monto": "Monto ($)"},
-            )
-            fig_line.update_layout(height=350, yaxis_tickformat="$,.0f")
-            st.plotly_chart(fig_line, use_container_width=True)
+    with c_op1:
+        st.markdown("#### 🔴 Licitaciones por cerrar (<= 7 días)")
+        df_li_res, _df_li_det = _load_licitaciones_maestros()
+        if df_li_res is None or df_li_res.empty:
+            st.info("Sin datos de licitaciones para mostrar.")
         else:
-            st.info("No hay datos suficientes para mostrar tendencia temporal.")
+            df_li = df_li_res.copy()
 
-    with c_g2:
-        if "Mes" in df_oc_res.columns and not df_oc_res.empty:
-            df_m = df_oc_res.dropna(subset=["Mes"]).copy()
-            df_m = df_m[df_m["Mes"] >= (f_fin - timedelta(days=365))]
-            df_mes = df_m.groupby("Mes", as_index=False).agg(Monto=("TotalBruto", "sum"))
-            fig_mes = px.bar(
-                df_mes,
-                x="Mes",
-                y="Monto",
-                title="Monto transado por mes (últimos 12 meses)",
-                labels={"Mes": "Mes", "Monto": "Monto ($)"},
-            )
-            fig_mes.update_layout(height=350, yaxis_tickformat="$,.0f")
-            st.plotly_chart(fig_mes, use_container_width=True)
+            if "FechaCierre" in df_li.columns:
+                df_li["FechaCierre"] = pd.to_datetime(df_li["FechaCierre"], errors="coerce", dayfirst=True)
+            hoy = pd.Timestamp.now().normalize()
+
+            if "Estado" in df_li.columns and "FechaCierre" in df_li.columns:
+                df_li["Dias_a_Cierre"] = (df_li["FechaCierre"] - hoy).dt.days
+                df_urg = df_li[
+                    (df_li["Estado"].astype(str).str.strip().str.lower() == "publicada")
+                    & (df_li["Dias_a_Cierre"].between(0, 7, inclusive="both"))
+                ].copy()
+                df_urg = df_urg.sort_values("Dias_a_Cierre")
+                cols_li = [c for c in ["CodigoLicitacion", "Nombre", "C_Usuario", "FechaCierre", "Dias_a_Cierre", "MontoEstimado"] if c in df_urg.columns]
+                st.dataframe(
+                    df_urg[cols_li].head(20),
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "FechaCierre": st.column_config.DateColumn(format="DD-MM-YYYY"),
+                        "MontoEstimado": st.column_config.NumberColumn(format="$ %,.0f"),
+                    },
+                )
+            else:
+                st.info("No están disponibles las columnas necesarias (Estado, FechaCierre).")
+
+    with c_op2:
+        st.markdown("#### 🟡 FSC pendientes")
+        df_fsc = _load_fsc_maestro()
+        if df_fsc is None or df_fsc.empty:
+            st.info("Sin datos de FSC para mostrar.")
         else:
-            st.info("No hay datos mensuales disponibles.")
+            df_f = df_fsc.copy()
 
-    c_g3, c_g4 = st.columns([1, 1])
+            if "fecha derivado" in df_f.columns:
+                df_f["fecha derivado"] = pd.to_datetime(df_f["fecha derivado"], errors="coerce", dayfirst=True)
+                pend = df_f[df_f["fecha derivado"].isna()].copy()
+            else:
+                pend = pd.DataFrame()
 
-    with c_g3:
-        col_unidad = "C_Unidad" if "C_Unidad" in df_oc_res.columns else None
-        if col_unidad and not df_oc_res.empty:
-            df_u = df_30.copy() if not df_30.empty else df_oc_res.copy()
-            df_u = df_u.groupby(col_unidad, as_index=False).agg(Monto=("TotalBruto", "sum"))
-            df_u = df_u.sort_values("Monto", ascending=False).head(12)
-            fig_u = px.bar(
-                df_u,
-                x="Monto",
-                y=col_unidad,
-                orientation="h",
-                title="Top unidades por monto (30d)",
-                labels={col_unidad: "Unidad", "Monto": "Monto ($)"},
-            )
-            fig_u.update_layout(height=360, xaxis_tickformat="$,.0f")
-            st.plotly_chart(fig_u, use_container_width=True)
-        else:
-            st.info("No se encontró columna de Unidad (C_Unidad) para comparativa.")
-
-    with c_g4:
-        col_prov = "P_Nombre" if "P_Nombre" in df_oc_res.columns else None
-        if col_prov and not df_oc_res.empty:
-            df_p = df_30.copy() if not df_30.empty else df_oc_res.copy()
-            df_p = df_p.groupby(col_prov, as_index=False).agg(Monto=("TotalBruto", "sum"), OCs=("CodigoOC", "count"))
-            df_p = df_p.sort_values("Monto", ascending=False).head(10)
-            fig_p = px.bar(
-                df_p,
-                x="Monto",
-                y=col_prov,
-                orientation="h",
-                title="Top proveedores por monto (30d)",
-                labels={col_prov: "Proveedor", "Monto": "Monto ($)"},
-            )
-            fig_p.update_layout(height=360, xaxis_tickformat="$,.0f")
-            st.plotly_chart(fig_p, use_container_width=True)
-        else:
-            st.info("No se encontró columna de Proveedor (P_Nombre) para comparativa.")
+            if pend.empty:
+                st.success("Sin formularios pendientes (sin fecha derivado).")
+            else:
+                cols_p = [c for c in ["newiD", "fecha_solicitud", "usuario requirente", "SUBDIRECCION", "DEPTO", "requerimiento", "monto estimado"] if c in pend.columns]
+                if "monto estimado" in pend.columns:
+                    pend["monto estimado"] = pd.to_numeric(pend["monto estimado"], errors="coerce").fillna(0)
+                st.dataframe(
+                    pend[cols_p].head(25),
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "monto estimado": st.column_config.NumberColumn(format="$ %,.0f"),
+                        "fecha_solicitud": st.column_config.DateColumn(format="DD-MM-YYYY"),
+                    },
+                )
 
 # --- COLUMNA DERECHA: ACCESOS RÁPIDOS Y ALERTAS ---
 with col_side:

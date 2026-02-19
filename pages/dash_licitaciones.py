@@ -488,3 +488,43 @@ with acc3:
     st.markdown("### 🔵 Concentración por comprador (Top)")
     top_usr = df_res_filtrado.groupby("C_Usuario", as_index=False).size().rename(columns={"size": "Licitaciones"}).sort_values("Licitaciones", ascending=False).head(10)
     st.dataframe(top_usr, use_container_width=True, hide_index=True)
+
+
+st.markdown("---")
+st.markdown("## ✅ Procesos Adjudicados")
+
+if "Estado" not in df_res_filtrado.columns:
+    st.info("No está disponible la columna 'Estado' para identificar procesos adjudicados.")
+else:
+    df_adj = df_res_filtrado[
+        df_res_filtrado["Estado"].astype(str).str.strip().str.lower().eq("adjudicada")
+    ].copy()
+
+    if df_adj.empty:
+        st.info("No hay procesos con Estado = 'Adjudicada' para los filtros actuales.")
+    else:
+        cols_adj = [
+            "CodigoLicitacion",
+            "Nombre",
+            "C_Usuario",
+            "MontoEstimado",
+            "FechaAdjudicacion",
+            "Adj_UrlActa",
+        ]
+        cols_adj = [c for c in cols_adj if c in df_adj.columns]
+        if "FechaAdjudicacion" in df_adj.columns:
+            df_adj = df_adj.sort_values("FechaAdjudicacion", ascending=False)
+
+        column_config_adj = {
+            "MontoEstimado": st.column_config.NumberColumn(format="$ %,.0f"),
+            "FechaAdjudicacion": st.column_config.DateColumn(format="DD-MM-YYYY"),
+        }
+        if "Adj_UrlActa" in df_adj.columns:
+            column_config_adj["Adj_UrlActa"] = st.column_config.LinkColumn("Acta", display_text="🔗")
+
+        st.dataframe(
+            df_adj[cols_adj].head(50),
+            use_container_width=True,
+            hide_index=True,
+            column_config=column_config_adj,
+        )
