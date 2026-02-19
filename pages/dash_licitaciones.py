@@ -80,13 +80,15 @@ df_res['FechaClave'] = df_res.apply(obtener_fecha_mas_cercana, axis=1)
 # =============================================================================
 # 2. HEADER Y FILTROS LATERALES
 # =============================================================================
-st.markdown("""
-    <div style="padding: 1rem; background-color: #f0f2f6; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #138AEC;">
-        <h2 style="margin:0; color: #0f2c4a;">🚀 Centro de Control de Licitaciones</h2>
-        <p style="margin:0; font-size: 14px; color: #555;">Seguimiento de flujo continuo, alertas y eficiencia del proceso.</p>
-    </div>
-""", unsafe_allow_html=True)
 
+st.markdown(
+    """
+    <div style="padding: 1.2rem 1.5rem; margin-bottom: 1.5rem; background: linear-gradient(90deg, #138AEC, #3E9FEF); color: white; border-radius: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">
+        <div style="font-size: 28px; font-weight: 800;">🧾 Tablero de Control de Licitaciones</div>
+        <div style="font-size: 15px; opacity: 0.9; margin-top: 4px;">Seguimiento de flujo continuo, alertas y eficiencia del proceso.</div>
+    </div>
+    """, unsafe_allow_html=True
+)
 
 
 st.markdown("### 🔍 Filtros Adicionales")
