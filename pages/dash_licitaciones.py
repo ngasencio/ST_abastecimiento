@@ -219,80 +219,6 @@ def procesar_estados_licitacion(df):
 # Procesamos los datos antes de mostrar la tabla
 df_res_filtrado = procesar_estados_licitacion(df_res_filtrado)
 
-# ============== KPIs ===================
-st.markdown("## 📈 Resumen Ejecutivo")
-
-c_kpi1, c_kpi2, c_kpi3, c_kpi4 = st.columns(4)
-
-with c_kpi1:
-    total_lic_general = df_res["CodigoLicitacion"].nunique()
-    total_lic_filtrado = df_res_filtrado["CodigoLicitacion"].nunique()
-    porcentaje_lic = (total_lic_filtrado / total_lic_general) * 100 if total_lic_general > 0 else 0
-    
-    st.metric(
-        "📋 Total Licitaciones",
-        f"{total_lic_filtrado:,}",
-        f"{porcentaje_lic:.1f}% del total"
-    )
-
-with c_kpi2:
-    monto_total_gral = df_res["MontoEstimado"].sum()
-    monto_total_filt = df_res_filtrado["MontoEstimado"].sum()
-    porcentaje_monto = (monto_total_filt / monto_total_gral) * 100 if monto_total_gral > 0 else 0
-    
-    st.metric(
-        "💰 Monto Estimado",
-        f"${monto_total_filt:,.0f}",
-        f"{porcentaje_monto:.1f}% del total"
-    )
-
-with c_kpi3:
-    total_items = df_det_filtrado['Cantidad'].sum() if 'Cantidad' in df_det_filtrado.columns else 0
-    st.metric(
-        "📦 Total Items",
-        f"{int(total_items):,}"
-    )
-
-with c_kpi4:
-    estados_criticos = df_res_filtrado[df_res_filtrado['Estado'].str.contains('Publicada|Cierre', case=False, na=False)]
-    st.metric(
-        "⚠️ Estados Críticos",
-        f"{len(estados_criticos)}"
-    )
-
-# =====================================================================
-# 2) VISUALIZACIONES
-# =====================================================================
-st.markdown("## 2) Tendencias y Comparativas")
-
-c1, c2 = st.columns([1, 1])
-
-with c1:
-    df_tipo = df_res_filtrado.groupby("Tipo", as_index=False).agg(Cantidad=("CodigoLicitacion", "nunique")) if "CodigoLicitacion" in df_res_filtrado.columns else df_res_filtrado.groupby("Tipo", as_index=False).size().rename(columns={"size": "Cantidad"})
-    df_tipo = df_tipo.sort_values("Cantidad", ascending=False).head(12)
-    fig_tipo = px.bar(
-        df_tipo,
-        x="Tipo",
-        y="Cantidad",
-        title="Distribución por Tipo",
-        labels={"Tipo": "Tipo", "Cantidad": "Licitaciones"},
-    )
-    fig_tipo.update_layout(height=360, xaxis_title=None)
-    st.plotly_chart(fig_tipo, use_container_width=True)
-
-with c2:
-    df_usr = df_res_filtrado.groupby("C_Usuario", as_index=False).agg(Cantidad=("CodigoLicitacion", "nunique")) if "CodigoLicitacion" in df_res_filtrado.columns else df_res_filtrado.groupby("C_Usuario", as_index=False).size().rename(columns={"size": "Cantidad"})
-    df_usr = df_usr.sort_values("Cantidad", ascending=False).head(15)
-    fig_usr = px.bar(
-        df_usr,
-        x="Cantidad",
-        y="C_Usuario",
-        orientation="h",
-        title="Licitaciones por Comprador",
-        labels={"C_Usuario": "Comprador", "Cantidad": "Licitaciones"},
-    )
-    fig_usr.update_layout(height=360, yaxis_title=None)
-    st.plotly_chart(fig_usr, use_container_width=True)
 
 
 # ==============================================================================
@@ -770,3 +696,77 @@ else:
             hide_index=True,
             column_config=column_config_adj,
         )
+# ============== KPIs ===================
+st.markdown("## 📈 Resumen Ejecutivo")
+
+c_kpi1, c_kpi2, c_kpi3, c_kpi4 = st.columns(4)
+
+with c_kpi1:
+    total_lic_general = df_res["CodigoLicitacion"].nunique()
+    total_lic_filtrado = df_res_filtrado["CodigoLicitacion"].nunique()
+    porcentaje_lic = (total_lic_filtrado / total_lic_general) * 100 if total_lic_general > 0 else 0
+    
+    st.metric(
+        "📋 Total Licitaciones",
+        f"{total_lic_filtrado:,}",
+        f"{porcentaje_lic:.1f}% del total"
+    )
+
+with c_kpi2:
+    monto_total_gral = df_res["MontoEstimado"].sum()
+    monto_total_filt = df_res_filtrado["MontoEstimado"].sum()
+    porcentaje_monto = (monto_total_filt / monto_total_gral) * 100 if monto_total_gral > 0 else 0
+    
+    st.metric(
+        "💰 Monto Estimado",
+        f"${monto_total_filt:,.0f}",
+        f"{porcentaje_monto:.1f}% del total"
+    )
+
+with c_kpi3:
+    total_items = df_det_filtrado['Cantidad'].sum() if 'Cantidad' in df_det_filtrado.columns else 0
+    st.metric(
+        "📦 Total Items",
+        f"{int(total_items):,}"
+    )
+
+with c_kpi4:
+    estados_criticos = df_res_filtrado[df_res_filtrado['Estado'].str.contains('Publicada|Cierre', case=False, na=False)]
+    st.metric(
+        "⚠️ Estados Críticos",
+        f"{len(estados_criticos)}"
+    )
+# =====================================================================
+# 2) VISUALIZACIONES
+# =====================================================================
+st.markdown("## 2) Tendencias y Comparativas")
+
+c1, c2 = st.columns([1, 1])
+
+with c1:
+    df_tipo = df_res_filtrado.groupby("Tipo", as_index=False).agg(Cantidad=("CodigoLicitacion", "nunique")) if "CodigoLicitacion" in df_res_filtrado.columns else df_res_filtrado.groupby("Tipo", as_index=False).size().rename(columns={"size": "Cantidad"})
+    df_tipo = df_tipo.sort_values("Cantidad", ascending=False).head(12)
+    fig_tipo = px.bar(
+        df_tipo,
+        x="Tipo",
+        y="Cantidad",
+        title="Distribución por Tipo",
+        labels={"Tipo": "Tipo", "Cantidad": "Licitaciones"},
+    )
+    fig_tipo.update_layout(height=360, xaxis_title=None)
+    st.plotly_chart(fig_tipo, use_container_width=True)
+
+with c2:
+    df_usr = df_res_filtrado.groupby("C_Usuario", as_index=False).agg(Cantidad=("CodigoLicitacion", "nunique")) if "CodigoLicitacion" in df_res_filtrado.columns else df_res_filtrado.groupby("C_Usuario", as_index=False).size().rename(columns={"size": "Cantidad"})
+    df_usr = df_usr.sort_values("Cantidad", ascending=False).head(15)
+    fig_usr = px.bar(
+        df_usr,
+        x="Cantidad",
+        y="C_Usuario",
+        orientation="h",
+        title="Licitaciones por Comprador",
+        labels={"C_Usuario": "Comprador", "Cantidad": "Licitaciones"},
+    )
+    fig_usr.update_layout(height=360, yaxis_title=None)
+    st.plotly_chart(fig_usr, use_container_width=True)
+
