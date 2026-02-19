@@ -478,9 +478,9 @@ def _render_detalle_licitacion(codigo_licitacion: str) -> None:
         "FechaSoporteFisico",
         "FechaVisitaTerreno",
         "FechaEntregaAntecedentes",
+        "FechaCierre"
         "FechaActoAperturaTecnica",
         "FechaActoAperturaEconomica",
-        "FechaCierre",
         "FechaAdjudicacion",
         "FechaTiempoEvaluacion",
         "FechaEstimadaAdjudicacion",
