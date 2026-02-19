@@ -424,6 +424,109 @@ st.dataframe(
 )
 
 
+def _fmt_fecha(v):
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return ""
+    try:
+        ts = pd.to_datetime(v, errors="coerce")
+        if pd.isna(ts):
+            return str(v)
+        return ts.strftime("%d-%m-%Y %H:%M") if ts.hour or ts.minute else ts.strftime("%d-%m-%Y")
+    except Exception:
+        return str(v)
+
+
+def _render_detalle_licitacion(codigo_licitacion: str) -> None:
+    row = df_res_filtrado[df_res_filtrado["CodigoLicitacion"].astype(str) == str(codigo_licitacion)].head(1)
+    if row.empty:
+        st.info("No se encontró la licitación seleccionada con los filtros actuales.")
+        return
+
+    r = row.iloc[0]
+
+    st.markdown(f"### 📄 Detalle de Licitación: `{codigo_licitacion}`")
+    if "Nombre" in row.columns:
+        st.markdown(f"**{r.get('Nombre', '')}**")
+
+    st.markdown("#### a) Datos Generales")
+    datos_generales = {
+        "Estado": r.get("Estado", ""),
+        "Tipo": r.get("Tipo", ""),
+        "Moneda": r.get("Moneda", ""),
+        "MontoEstimado": r.get("MontoEstimado", ""),
+        "Comprador": r.get("C_Usuario", ""),
+        "Unidad": r.get("C_Unidad", ""),
+        "Organismo": r.get("C_NombreOrganismo", ""),
+        "Región": r.get("C_RegionUnidad", ""),
+        "Comuna": r.get("C_ComunaUnidad", ""),
+    }
+    dg_df = pd.DataFrame(
+        [{"Campo": k, "Valor": ("" if v is None else str(v))} for k, v in datos_generales.items() if k is not None],
+    )
+    st.dataframe(dg_df, use_container_width=True, hide_index=True)
+
+    st.markdown("#### b) Fechas")
+    cols_fechas_det = [c for c in columnas_fechas if c in row.index]
+    if cols_fechas_det:
+        fechas_df = pd.DataFrame(
+            [{"Hito": c, "Fecha": _fmt_fecha(r.get(c))} for c in cols_fechas_det]
+        )
+        fechas_df = fechas_df[fechas_df["Fecha"].astype(str).str.len() > 0]
+        st.dataframe(fechas_df, use_container_width=True, hide_index=True)
+    else:
+        st.info("No hay columnas de fechas disponibles para esta licitación.")
+
+    st.markdown("#### c) Productos a Licitar")
+    df_prod = df_det_filtrado[df_det_filtrado["CodigoLicitacion"].astype(str) == str(codigo_licitacion)].copy()
+    if df_prod.empty:
+        st.info("No se encontraron productos/detalles para esta licitación.")
+    else:
+        cols_prod = [
+            "Correlativo",
+            "NombreProducto",
+            "DescripcionItem",
+            "UnidadMedida",
+            "Cantidad",
+            "RutGanador",
+            "NombreGanador",
+            "MontoUnitarioGanador",
+            "CantidadAdjudicada",
+        ]
+        cols_prod = [c for c in cols_prod if c in df_prod.columns]
+        st.dataframe(
+            df_prod[cols_prod].sort_values(by=[c for c in ["Correlativo"] if c in cols_prod], ascending=True),
+            use_container_width=True,
+            hide_index=True,
+            height=320,
+        )
+
+
+st.markdown("### 📄 Revisar licitación (detalle)")
+col_det_1, col_det_2 = st.columns([3, 1])
+with col_det_1:
+    codigos_disponibles = df_sorted["CodigoLicitacion"].astype(str).dropna().unique().tolist() if "CodigoLicitacion" in df_sorted.columns else []
+    codigo_sel = st.selectbox(
+        "Selecciona una licitación para revisar sus datos:",
+        options=codigos_disponibles,
+        index=0 if codigos_disponibles else None,
+    )
+
+with col_det_2:
+    abrir = st.button("📄 Ver", use_container_width=True, disabled=not bool(codigo_sel))
+
+if abrir and codigo_sel:
+    dlg = getattr(st, "dialog", None)
+    if callable(dlg):
+        @dlg("Detalle de Licitación")
+        def _dlg_detalle() -> None:
+            _render_detalle_licitacion(codigo_sel)
+
+        _dlg_detalle()
+    else:
+        with st.expander("📄 Detalle de Licitación", expanded=True):
+            _render_detalle_licitacion(codigo_sel)
+
+
 # =====================================================================
 # 6) ACCIONES PRIORITARIAS
 # =====================================================================
