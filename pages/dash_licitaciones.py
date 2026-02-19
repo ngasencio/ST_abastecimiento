@@ -453,8 +453,22 @@ def _render_detalle_licitacion(codigo_licitacion: str) -> None:
         st.markdown(f"**{r.get('Nombre', '')}**")
 
     st.markdown("#### a) Datos Generales")
+
+    estado_raw = str(r.get("Estado", "") or "").strip()
+    estado_norm = estado_raw.lower()
+    if "adjudic" in estado_norm:
+        estado_view = "🏆 Adjudicada"
+    elif "desierta" in estado_norm:
+        estado_view = "🚫 Desierta"
+    elif "publicad" in estado_norm:
+        estado_view = "📢 Publicada"
+    elif "cerrad" in estado_norm:
+        estado_view = "⏳ Cerrada"
+    else:
+        estado_view = estado_raw
+
     datos_generales = {
-        "Estado": r.get("Estado", ""),
+        "Estado": estado_view,
         "Tipo": r.get("Tipo", ""),
         "Moneda": r.get("Moneda", ""),
         "MontoEstimado": r.get("MontoEstimado", ""),
@@ -478,11 +492,11 @@ def _render_detalle_licitacion(codigo_licitacion: str) -> None:
         "FechaSoporteFisico",
         "FechaVisitaTerreno",
         "FechaEntregaAntecedentes",
-        "FechaCierre"
+        "FechaCierre",
         "FechaActoAperturaTecnica",
         "FechaActoAperturaEconomica",
-        "FechaAdjudicacion",
         "FechaTiempoEvaluacion",
+        "FechaAdjudicacion",
         "FechaEstimadaAdjudicacion",
         "FechaEstimadaFirma",
         "FechaInicioContrato",
@@ -496,11 +510,11 @@ def _render_detalle_licitacion(codigo_licitacion: str) -> None:
         "FechaSoporteFisico": "📎",
         "FechaVisitaTerreno": "👷",
         "FechaEntregaAntecedentes": "📂",
+        "FechaCierre": "⏳",
         "FechaActoAperturaTecnica": "🛠️",
         "FechaActoAperturaEconomica": "💰",
-        "FechaCierre": "⏳",
-        "FechaAdjudicacion": "🏆",
         "FechaTiempoEvaluacion": "🧮",
+        "FechaAdjudicacion": "🏆",
         "FechaEstimadaAdjudicacion": "📅",
         "FechaEstimadaFirma": "✍️",
         "FechaInicioContrato": "📄",
@@ -514,16 +528,32 @@ def _render_detalle_licitacion(codigo_licitacion: str) -> None:
         "FechaSoporteFisico": "Soporte Físico",
         "FechaVisitaTerreno": "Visita Terreno",
         "FechaEntregaAntecedentes": "Entrega Antecedentes",
+        "FechaCierre": "Cierre",
         "FechaActoAperturaTecnica": "Apertura Técnica",
         "FechaActoAperturaEconomica": "Apertura Económica",
-        "FechaCierre": "Cierre",
-        "FechaAdjudicacion": "Adjudicación",
         "FechaTiempoEvaluacion": "Tiempo Evaluación",
+        "FechaAdjudicacion": "Adjudicación",
         "FechaEstimadaAdjudicacion": "Adj. Estimada",
         "FechaEstimadaFirma": "Firma Estimada",
         "FechaInicioContrato": "Inicio Contrato",
         "FechaFinal": "Final",
     }
+
+    def _fmt_tiempo_evaluacion(val) -> str:
+        if val is None or (isinstance(val, float) and pd.isna(val)):
+            return ""
+        s = str(val).strip()
+        if not s:
+            return ""
+        try:
+            n = float(s.replace(",", "."))
+            if n.is_integer():
+                return f"{int(n)} Días"
+            return f"{n:g} Días"
+        except Exception:
+            if "dia" in s.lower():
+                return s
+            return f"{s} Días"
 
     cols_fechas_det = [c for c in orden_fechas if c in row.columns]
     if cols_fechas_det:
@@ -531,7 +561,7 @@ def _render_detalle_licitacion(codigo_licitacion: str) -> None:
             [
                 {
                     "Hito": f"{iconos_fechas.get(c, '📅')} {nombres_fechas.get(c, c)}",
-                    "Fecha": _fmt_fecha(r.get(c)),
+                    "Fecha": _fmt_tiempo_evaluacion(r.get(c)) if c == "FechaTiempoEvaluacion" else _fmt_fecha(r.get(c)),
                 }
                 for c in cols_fechas_det
             ]
@@ -565,8 +595,27 @@ def _render_detalle_licitacion(codigo_licitacion: str) -> None:
             "CantidadAdjudicada",
         ]
         cols_prod = [c for c in cols_prod if c in df_prod.columns]
+        df_show = df_prod[cols_prod].copy()
+        if "Correlativo" in df_show.columns:
+            try:
+                df_show["Correlativo"] = pd.to_numeric(df_show["Correlativo"], errors="ignore")
+            except Exception:
+                pass
+
+        def _row_style_adjudicada(row_):
+            if "CantidadAdjudicada" not in row_.index:
+                return [""] * len(row_)
+            try:
+                v = float(str(row_["CantidadAdjudicada"]).replace(",", "."))
+            except Exception:
+                v = 0.0
+            if v > 1:
+                return ["background-color: #d4edda"] * len(row_)
+            return [""] * len(row_)
+
+        df_show = df_show.sort_values(by=[c for c in ["Correlativo"] if c in df_show.columns], ascending=True)
         st.dataframe(
-            df_prod[cols_prod].sort_values(by=[c for c in ["Correlativo"] if c in cols_prod], ascending=True),
+            df_show.style.apply(_row_style_adjudicada, axis=1),
             use_container_width=True,
             hide_index=True,
             height=320,
