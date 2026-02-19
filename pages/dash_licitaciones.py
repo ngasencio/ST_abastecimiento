@@ -400,27 +400,31 @@ if "MontoEstimado" in df_view.columns:
 
     df_view["MontoEstimado"] = df_view["MontoEstimado"].apply(_fmt_clp)
 
-st.dataframe(
+
+gemba_sel = st.dataframe(
     df_view,
     use_container_width=True,
     hide_index=True,
     column_config={
         "EstadoFlujo": st.column_config.TextColumn(
-            "📍 Etapa Actual", 
-            help="Hito más próximo detectado según el calendario"
+            "📍 Etapa Actual",
+            help="Hito más próximo detectado según el calendario",
         ),
         "FechaClave": st.column_config.DateColumn(
-            "📅 Fecha Hito", 
+            "📅 Fecha Hito",
             format="DD/MM/YYYY",
-            help="Fecha del evento mostrado en la etapa"
+            help="Fecha del evento mostrado en la etapa",
         ),
         "MontoEstimado": st.column_config.TextColumn("Monto Est. (CLP)"),
         "CodigoLicitacion": "ID Licitación",
         "C_Usuario": "Comprador Responsable",
         "Nombre": st.column_config.TextColumn("Nombre del Proceso", width="large"),
-        "Tipo": "Tipo"
+        "Tipo": "Tipo",
     },
-    height=600
+    height=600,
+    on_select="rerun",
+    selection_mode="single-row",
+    key="gemba_table",
 )
 
 
@@ -431,7 +435,7 @@ def _fmt_fecha(v):
         ts = pd.to_datetime(v, errors="coerce")
         if pd.isna(ts):
             return str(v)
-        return ts.strftime("%d-%m-%Y %H:%M") if ts.hour or ts.minute else ts.strftime("%d-%m-%Y")
+        return ts.strftime("%d-%m-%Y %H:%M:%S")
     except Exception:
         return str(v)
 
@@ -466,12 +470,11 @@ def _render_detalle_licitacion(codigo_licitacion: str) -> None:
     st.dataframe(dg_df, use_container_width=True, hide_index=True)
 
     st.markdown("#### b) Fechas")
-    cols_fechas_det = [c for c in columnas_fechas if c in row.index]
+    cols_fechas_det = [c for c in columnas_fechas if c in row.columns]
     if cols_fechas_det:
         fechas_df = pd.DataFrame(
             [{"Hito": c, "Fecha": _fmt_fecha(r.get(c))} for c in cols_fechas_det]
         )
-        fechas_df = fechas_df[fechas_df["Fecha"].astype(str).str.len() > 0]
         st.dataframe(fechas_df, use_container_width=True, hide_index=True)
     else:
         st.info("No hay columnas de fechas disponibles para esta licitación.")
@@ -502,14 +505,25 @@ def _render_detalle_licitacion(codigo_licitacion: str) -> None:
 
 
 st.markdown("### 📄 Revisar licitación (detalle)")
+rows_sel = []
+try:
+    rows_sel = (gemba_sel.selection.rows or []) if gemba_sel is not None else []
+except Exception:
+    rows_sel = []
+
+codigo_sel = None
+if rows_sel:
+    try:
+        codigo_sel = str(df_view.iloc[int(rows_sel[0])]["CodigoLicitacion"]) if "CodigoLicitacion" in df_view.columns else None
+    except Exception:
+        codigo_sel = None
+
 col_det_1, col_det_2 = st.columns([3, 1])
 with col_det_1:
-    codigos_disponibles = df_sorted["CodigoLicitacion"].astype(str).dropna().unique().tolist() if "CodigoLicitacion" in df_sorted.columns else []
-    codigo_sel = st.selectbox(
-        "Selecciona una licitación para revisar sus datos:",
-        options=codigos_disponibles,
-        index=0 if codigos_disponibles else None,
-    )
+    if codigo_sel:
+        st.info(f"Fila seleccionada: {codigo_sel}")
+    else:
+        st.info("Selecciona una fila en la tabla GEMBA para habilitar el detalle.")
 
 with col_det_2:
     abrir = st.button("📄 Ver", use_container_width=True, disabled=not bool(codigo_sel))
