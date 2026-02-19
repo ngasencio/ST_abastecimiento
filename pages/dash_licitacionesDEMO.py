@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from style.ui import cargar_css
 
+
 # Importación de datos
 import api.LI_data_loader as loader
 cargar_css()

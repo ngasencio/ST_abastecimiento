@@ -366,6 +366,10 @@ filtro_estado = st.multiselect(
 if filtro_estado:
     df_sorted = df_sorted[df_sorted['EstadoFlujo'].isin(filtro_estado)]
 
+df_sorted["MontoEstimado"] = df_sorted["MontoEstimado"].apply(
+    lambda x: f"${x:,.0f}".replace(",", ".") if pd.notna(x) else ""
+)
+
 # Renderizado de la Tabla
 st.dataframe(
     df_sorted[cols_view],
