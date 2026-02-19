@@ -531,6 +531,22 @@ with col_det_2:
 if abrir and codigo_sel:
     dlg = getattr(st, "dialog", None)
     if callable(dlg):
+        st.markdown(
+            """
+            <style>
+            div[role="dialog"] {
+                width: min(92vw, 1400px) !important;
+                max-width: min(92vw, 1400px) !important;
+            }
+            div[data-testid="stDialog"] div[role="dialog"] {
+                width: min(92vw, 1400px) !important;
+                max-width: min(92vw, 1400px) !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
         @dlg("Detalle de Licitación")
         def _dlg_detalle() -> None:
             _render_detalle_licitacion(codigo_sel)
