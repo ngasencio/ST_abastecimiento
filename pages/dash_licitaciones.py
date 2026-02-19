@@ -551,9 +551,19 @@ def _render_detalle_licitacion(codigo_licitacion: str) -> None:
                 return f"{int(n)} Días"
             return f"{n:g} Días"
         except Exception:
-            if "dia" in s.lower():
-                return s
-            return f"{s} Días"
+            pass
+        # Intentar parsear como fecha para extraer día si viene como 1900-01-16
+        try:
+            ts = pd.to_datetime(s, errors="coerce")
+            if pd.notna(ts):
+                # Si el año es 1900 (o muy antiguo), asumir que solo importa el día
+                if ts.year <= 1900:
+                    return f"{ts.day} Días"
+        except Exception:
+            pass
+        if "dia" in s.lower():
+            return s
+        return f"{s} Días"
 
     cols_fechas_det = [c for c in orden_fechas if c in row.columns]
     if cols_fechas_det:
@@ -595,27 +605,8 @@ def _render_detalle_licitacion(codigo_licitacion: str) -> None:
             "CantidadAdjudicada",
         ]
         cols_prod = [c for c in cols_prod if c in df_prod.columns]
-        df_show = df_prod[cols_prod].copy()
-        if "Correlativo" in df_show.columns:
-            try:
-                df_show["Correlativo"] = pd.to_numeric(df_show["Correlativo"], errors="ignore")
-            except Exception:
-                pass
-
-        def _row_style_adjudicada(row_):
-            if "CantidadAdjudicada" not in row_.index:
-                return [""] * len(row_)
-            try:
-                v = float(str(row_["CantidadAdjudicada"]).replace(",", "."))
-            except Exception:
-                v = 0.0
-            if v > 1:
-                return ["background-color: #d4edda"] * len(row_)
-            return [""] * len(row_)
-
-        df_show = df_show.sort_values(by=[c for c in ["Correlativo"] if c in df_show.columns], ascending=True)
         st.dataframe(
-            df_show.style.apply(_row_style_adjudicada, axis=1),
+            df_prod[cols_prod].sort_values(by=[c for c in ["Correlativo"] if c in cols_prod], ascending=True),
             use_container_width=True,
             hide_index=True,
             height=320,
