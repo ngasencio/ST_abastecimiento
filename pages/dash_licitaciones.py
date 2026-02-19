@@ -520,7 +520,7 @@ else:
             "FechaAdjudicacion": st.column_config.DateColumn(format="DD-MM-YYYY"),
         }
         if "Adj_UrlActa" in df_adj.columns:
-            column_config_adj["Adj_UrlActa"] = st.column_config.LinkColumn("Acta", display_text="🔗")
+            column_config_adj["Adj_UrlActa"] = st.column_config.LinkColumn("Acta", display_text="🔗 Acta")
 
         st.dataframe(
             df_adj[cols_adj].head(50),
