@@ -1047,11 +1047,18 @@ with col_graf2:
 # 7. MÓDULO DE ENVÍO DE CORREOS AUTOMATIZADOS
 # ==============================================================================
 
-# Configuración de correo
-OUTLOOK_SMTP_SERVER = "smtp-mail.outlook.com"
-OUTLOOK_SMTP_PORT = 587
-OUTLOOK_EMAIL = "nicolas.asencio@redsalud.gob.cl"
-OUTLOOK_PASSWORD = "A123salud"
+# Configuración de correo (puede usar variables de entorno)
+OUTLOOK_SMTP_SERVER = os.getenv("OUTLOOK_SMTP_SERVER", "smtp-mail.outlook.com")
+OUTLOOK_SMTP_PORT = int(os.getenv("OUTLOOK_SMTP_PORT", "587"))
+OUTLOOK_EMAIL = os.getenv("OUTLOOK_EMAIL", "nicolas.asencio@redsalud.gob.cl")
+OUTLOOK_PASSWORD = os.getenv("OUTLOOK_PASSWORD", "nias$2023")
+
+# Servidores SMTP alternativos para Microsoft 365
+SMTP_SERVERS_ALTERNATIVOS = [
+    ("smtp-mail.outlook.com", 587),
+    ("smtp.office365.com", 587),
+    ("smtp-mail.outlook.com", 465),  # Puerto SSL alternativo
+]
 
 # Diccionario de compradores y correos
 COMPRADORES = {
@@ -1066,12 +1073,12 @@ COMPRADORES = {
     "JUAN FELIPE ROJEL HUENTRO": "juan.rojelh@redalud.gob.cl",
     "NICOLAS ASENCIO MOREIRA": "nicolas.asencio@redsalud.gob.cl",
     "VERÓNICA ARACELY MÁRQUEZ AGUILAR": "veronica.marquez.a@redsalud.gob.cl",
-    "BASTIAN MIRANDA CORONADO": "bastian.miranda@redsalud.gob"
+    "BASTIAN MIRANDA CORONADO": "bastian.miranda@redsalud.gob.cl"
 }
 
 JEFATURAS = {
     "Cristina Flores": "cristina.flores@redsalud.gob.cl",
-    "Sandra Espinoza": "sandra.espinoza@redsalud.gob.cl"
+    "Sandra Espinoza": "sandrap.espinoza@redsalud.gob.cl"
 }
 
 # Configurar logging
@@ -1592,37 +1599,82 @@ def crear_plantilla_html_jefaturas(tablero_html):
     """
     return html
 
-def enviar_correo(destinatario, asunto, cuerpo_html):
-    """Envía un correo usando SMTP de Outlook"""
-    try:
-        # Crear mensaje
-        msg = MIMEMultipart('alternative')
-        msg['From'] = OUTLOOK_EMAIL
-        msg['To'] = destinatario
-        msg['Subject'] = asunto
-        
-        # Agregar cuerpo HTML
-        parte_html = MIMEText(cuerpo_html, 'html', 'utf-8')
-        msg.attach(parte_html)
-        
-        # Conectar y enviar
-        server = smtplib.SMTP(OUTLOOK_SMTP_SERVER, OUTLOOK_SMTP_PORT)
-        server.starttls()
-        server.login(OUTLOOK_EMAIL, OUTLOOK_PASSWORD)
-        server.send_message(msg)
-        server.quit()
-        
-        logger.info(f"Correo enviado exitosamente a {destinatario}")
-        return True, None
-    except Exception as e:
-        logger.error(f"Error al enviar correo a {destinatario}: {e}")
-        return False, str(e)
+def enviar_correo(destinatario, asunto, cuerpo_html, servidor=None, puerto=None, email=None, password=None):
+    """Envía un correo usando SMTP de Outlook con manejo mejorado de errores"""
+    # Usar parámetros proporcionados o valores por defecto
+    servidor_smtp = servidor or OUTLOOK_SMTP_SERVER
+    puerto_smtp = puerto or OUTLOOK_SMTP_PORT
+    email_smtp = email or OUTLOOK_EMAIL
+    password_smtp = password or OUTLOOK_PASSWORD
+    
+    # Crear mensaje
+    msg = MIMEMultipart('alternative')
+    msg['From'] = email_smtp
+    msg['To'] = destinatario
+    msg['Subject'] = asunto
+    
+    # Agregar cuerpo HTML
+    parte_html = MIMEText(cuerpo_html, 'html', 'utf-8')
+    msg.attach(parte_html)
+    
+    # Intentar con el servidor principal primero
+    servidores_a_probar = [(servidor_smtp, puerto_smtp)] + SMTP_SERVERS_ALTERNATIVOS
+    
+    ultimo_error = None
+    for servidor_intento, puerto_intento in servidores_a_probar:
+        try:
+            logger.info(f"Intentando conectar a {servidor_intento}:{puerto_intento}")
+            
+            # Crear conexión SMTP
+            if puerto_intento == 465:
+                # Puerto SSL
+                import ssl
+                context = ssl.create_default_context()
+                server = smtplib.SMTP_SSL(servidor_intento, puerto_intento, context=context)
+            else:
+                # Puerto TLS estándar
+                server = smtplib.SMTP(servidor_intento, puerto_intento, timeout=30)
+                server.starttls()
+            
+            # Intentar login
+            server.login(email_smtp, password_smtp)
+            
+            # Enviar mensaje
+            server.send_message(msg)
+            server.quit()
+            
+            logger.info(f"Correo enviado exitosamente a {destinatario} usando {servidor_intento}:{puerto_intento}")
+            return True, None
+            
+        except smtplib.SMTPAuthenticationError as e:
+            ultimo_error = f"Error de autenticación (535): Credenciales incorrectas o cuenta requiere autenticación avanzada. Detalles: {str(e)}"
+            logger.error(f"Error de autenticación con {servidor_intento}:{puerto_intento} - {ultimo_error}")
+            # No continuar con otros servidores si es error de autenticación
+            break
+            
+        except smtplib.SMTPException as e:
+            ultimo_error = f"Error SMTP con {servidor_intento}:{puerto_intento}: {str(e)}"
+            logger.warning(f"Error con {servidor_intento}:{puerto_intento}, intentando siguiente servidor...")
+            continue
+            
+        except Exception as e:
+            ultimo_error = f"Error inesperado con {servidor_intento}:{puerto_intento}: {str(e)}"
+            logger.warning(f"Error con {servidor_intento}:{puerto_intento}, intentando siguiente servidor...")
+            continue
+    
+    # Si llegamos aquí, todos los intentos fallaron
+    logger.error(f"Todos los intentos de envío fallaron para {destinatario}. Último error: {ultimo_error}")
+    return False, ultimo_error or "Error desconocido al enviar correo"
 
-def enviar_a_compradores():
+def enviar_a_compradores(email_override=None, password_override=None):
     """Envía correos individuales a cada comprador"""
     resultados = []
     total_enviados = 0
     total_fallidos = 0
+    
+    # Usar credenciales proporcionadas o las por defecto
+    email_usar = email_override or OUTLOOK_EMAIL
+    password_usar = password_override or OUTLOOK_PASSWORD
     
     # Procesar cada comprador
     for nombre_comprador, email_comprador in COMPRADORES.items():
@@ -1659,23 +1711,27 @@ def enviar_a_compradores():
             
             # Enviar correo
             asunto = f"Reporte de Licitaciones - Tablero Gemba - {nombre_comprador}"
-            exito, error = enviar_correo(email_comprador, asunto, cuerpo_html)
+            exito, error = enviar_correo(email_comprador, asunto, cuerpo_html, email=email_usar, password=password_usar)
             
             if exito:
                 total_enviados += 1
                 resultados.append({
                     'comprador': nombre_comprador,
                     'email': email_comprador,
-                    'estado': 'Enviado',
+                    'estado': '✅ Enviado',
                     'error': None
                 })
             else:
                 total_fallidos += 1
+                # Mejorar mensaje de error para errores 535
+                error_msg = error
+                if "535" in str(error) or "Authentication" in str(error):
+                    error_msg = f"Error de autenticación: Verifica credenciales o usa contraseña de aplicación. {error}"
                 resultados.append({
                     'comprador': nombre_comprador,
                     'email': email_comprador,
-                    'estado': 'Error',
-                    'error': error
+                    'estado': '❌ Error',
+                    'error': error_msg
                 })
                 
         except Exception as e:
@@ -1690,9 +1746,13 @@ def enviar_a_compradores():
     
     return resultados, total_enviados, total_fallidos
 
-def enviar_a_jefaturas():
+def enviar_a_jefaturas(email_override=None, password_override=None):
     """Envía correo consolidado a jefaturas"""
     try:
+        # Usar credenciales proporcionadas o las por defecto
+        email_usar = email_override or OUTLOOK_EMAIL
+        password_usar = password_override or OUTLOOK_PASSWORD
+        
         # Generar tablero consolidado (usar df_res_filtrado completo)
         tablero_html = generar_tablero_gemba_html_consolidado(df_res_filtrado)
         
@@ -1708,23 +1768,27 @@ def enviar_a_jefaturas():
         total_fallidos = 0
         
         for nombre_jefatura, email_jefatura in JEFATURAS.items():
-            exito, error = enviar_correo(email_jefatura, asunto, cuerpo_html)
+            exito, error = enviar_correo(email_jefatura, asunto, cuerpo_html, email=email_usar, password=password_usar)
             
             if exito:
                 total_enviados += 1
                 resultados.append({
                     'jefatura': nombre_jefatura,
                     'email': email_jefatura,
-                    'estado': 'Enviado',
+                    'estado': '✅ Enviado',
                     'error': None
                 })
             else:
                 total_fallidos += 1
+                # Mejorar mensaje de error para errores 535
+                error_msg = error
+                if "535" in str(error) or "Authentication" in str(error):
+                    error_msg = f"Error de autenticación: Verifica credenciales o usa contraseña de aplicación. {error}"
                 resultados.append({
                     'jefatura': nombre_jefatura,
                     'email': email_jefatura,
-                    'estado': 'Error',
-                    'error': error
+                    'estado': '❌ Error',
+                    'error': error_msg
                 })
         
         return resultados, total_enviados, total_fallidos
@@ -1740,12 +1804,72 @@ def enviar_a_jefaturas():
 st.markdown("---")
 st.markdown("## 📧 Envío de Reportes por Correo")
 
+# Sección de configuración y ayuda
+with st.expander("⚙️ Configuración y Solución de Problemas", expanded=False):
+    st.markdown("""
+    ### 🔐 Configuración de Credenciales
+    
+    Si recibes un error **535 (Authentication unsuccessful)**, sigue estos pasos:
+    
+    #### Opción 1: Usar Contraseña de Aplicación (Recomendado si tienes 2FA activado)
+    1. Ve a [Microsoft Account Security](https://account.microsoft.com/security)
+    2. Activa la verificación en dos pasos si no está activada
+    3. Ve a "Contraseñas de aplicación" o "App passwords"
+    4. Genera una nueva contraseña de aplicación para "Correo"
+    5. Usa esa contraseña en lugar de tu contraseña normal
+    
+    #### Opción 2: Verificar Credenciales
+    - Asegúrate de que el correo y contraseña sean correctos
+    - Verifica que no haya espacios adicionales
+    
+    #### Opción 3: Configuración de Seguridad de la Cuenta
+    - Algunas cuentas corporativas requieren habilitar "Aplicaciones menos seguras"
+    - Contacta al administrador de TI si es una cuenta corporativa
+    
+    ### 📝 Configurar Credenciales Manualmente
+    """)
+    
+    col_config1, col_config2 = st.columns(2)
+    with col_config1:
+        email_config = st.text_input(
+            "Correo Electrónico",
+            value=OUTLOOK_EMAIL,
+            help="Correo desde el cual se enviarán los reportes"
+        )
+    with col_config2:
+        password_config = st.text_input(
+            "Contraseña",
+            value="",
+            type="password",
+            help="Contraseña o contraseña de aplicación",
+            placeholder="Dejar vacío para usar la configuración por defecto"
+        )
+    
+    if st.button("💾 Guardar Configuración Temporal"):
+        # Las credenciales se usarán en las funciones de envío
+        st.session_state['email_config'] = email_config
+        st.session_state['password_config'] = password_config if password_config else None
+        st.success("Configuración guardada para esta sesión")
+    
+    st.markdown("---")
+    st.markdown("""
+    ### ⚠️ Nota Importante
+    - Las credenciales configuradas aquí solo se guardan durante la sesión actual
+    - Para producción, considera usar variables de entorno o un gestor de secretos
+    - No compartas tus credenciales con otros usuarios
+    """)
+
 col_btn1, col_btn2 = st.columns(2)
 
 with col_btn1:
     if st.button("📨 Enviar a Compradores", use_container_width=True, type="primary"):
+        # Obtener credenciales de la sesión si están configuradas
+        email_usar = st.session_state.get('email_config', OUTLOOK_EMAIL)
+        password_usar = st.session_state.get('password_config', OUTLOOK_PASSWORD)
+        
         with st.spinner("Enviando correos a compradores..."):
-            resultados, enviados, fallidos = enviar_a_compradores()
+            # Modificar función para usar credenciales de sesión
+            resultados, enviados, fallidos = enviar_a_compradores(email_usar, password_usar)
             
             if enviados > 0:
                 st.success(f"✅ Se enviaron {enviados} correos exitosamente")
@@ -1756,11 +1880,35 @@ with col_btn1:
             if resultados:
                 df_resultados = pd.DataFrame(resultados)
                 st.dataframe(df_resultados, use_container_width=True, hide_index=True)
+                
+                # Mostrar ayuda adicional si hay errores de autenticación
+                if fallidos > 0:
+                    errores_auth = [r for r in resultados if r.get('error') and ('535' in str(r.get('error')) or 'Authentication' in str(r.get('error')))]
+                    if errores_auth:
+                        st.warning("""
+                        ⚠️ **Error de Autenticación Detectado**
+                        
+                        Si recibes error 535 (Authentication unsuccessful), necesitas:
+                        1. **Generar una Contraseña de Aplicación** (si tienes 2FA activado):
+                           - Ve a: https://account.microsoft.com/security
+                           - Activa verificación en dos pasos
+                           - Genera una contraseña de aplicación
+                           - Úsala en la configuración de arriba
+                        
+                        2. **Verificar credenciales** en la sección de configuración
+                        
+                        3. **Contactar al administrador** si es cuenta corporativa con restricciones
+                        """)
 
 with col_btn2:
     if st.button("📊 Enviar a Jefaturas", use_container_width=True, type="primary"):
+        # Obtener credenciales de la sesión si están configuradas
+        email_usar = st.session_state.get('email_config', OUTLOOK_EMAIL)
+        password_usar = st.session_state.get('password_config', OUTLOOK_PASSWORD)
+        
         with st.spinner("Enviando correo consolidado a jefaturas..."):
-            resultados, enviados, fallidos = enviar_a_jefaturas()
+            # Modificar función para usar credenciales de sesión
+            resultados, enviados, fallidos = enviar_a_jefaturas(email_usar, password_usar)
             
             if enviados > 0:
                 st.success(f"✅ Se enviaron {enviados} correos a jefaturas exitosamente")
@@ -1771,4 +1919,23 @@ with col_btn2:
             if resultados:
                 df_resultados = pd.DataFrame(resultados)
                 st.dataframe(df_resultados, use_container_width=True, hide_index=True)
+                
+                # Mostrar ayuda adicional si hay errores de autenticación
+                if fallidos > 0:
+                    errores_auth = [r for r in resultados if r.get('error') and ('535' in str(r.get('error')) or 'Authentication' in str(r.get('error')))]
+                    if errores_auth:
+                        st.warning("""
+                        ⚠️ **Error de Autenticación Detectado**
+                        
+                        Si recibes error 535 (Authentication unsuccessful), necesitas:
+                        1. **Generar una Contraseña de Aplicación** (si tienes 2FA activado):
+                           - Ve a: https://account.microsoft.com/security
+                           - Activa verificación en dos pasos
+                           - Genera una contraseña de aplicación
+                           - Úsala en la configuración de arriba
+                        
+                        2. **Verificar credenciales** en la sección de configuración
+                        
+                        3. **Contactar al administrador** si es cuenta corporativa con restricciones
+                        """)
 
