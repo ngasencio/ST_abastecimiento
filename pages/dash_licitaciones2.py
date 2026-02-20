@@ -1426,10 +1426,12 @@ def crear_plantilla_html_comprador(nombre_comprador, email_comprador, tablero_ht
                 <div style="margin-bottom: 15px;">
                     {logo_aba_img}
                     {logo_sso_img}
+                <div style="color: #0f355c;">
+                    <h1>📋 Reporte de Licitaciones - Tablero Gemba</h1>
+                    <p style="margin: 10px 0 0 0; opacity: 0.9;">
+                        Servicio de Salud Osorno - Departamento de Abastecimiento y Operaciones
+                    </p>
                 </div>
-                <h1>📋 Reporte de Licitaciones - Tablero Gemba</h1>
-                <p style="margin: 10px 0 0 0; opacity: 0.9;">Servicio de Salud Osorno - Departamento de Recursos</p>
-            </div>
             
             <div class="section">
                 <h2>👤 Información del Comprador</h2>
