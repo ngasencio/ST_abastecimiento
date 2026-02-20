@@ -277,11 +277,12 @@ cols_view = [
 ]
 
 # Filtro rápido por estado de flujo dinámico
+iconos_excluir = ["✅", "✍️"]
 opciones_estado = sorted(df_res_filtrado['EstadoFlujo'].unique())
 filtro_estado = st.multiselect(
     "Filtrar por Etapa Actual del Flujo:",
     options=opciones_estado,
-    default=[e for e in opciones_estado if "✅" not in e] # Por defecto excluye finalizados
+    default=[e for e in opciones_estado if not any(icono in e for icono in iconos_excluir)]
 )
 
 if filtro_estado:
