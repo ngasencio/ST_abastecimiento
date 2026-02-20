@@ -28,9 +28,7 @@ pagina_ejecucionpac2 = st.Page("pages/dash_ejecucionpac2.py", title="Ejecución 
 pagina_ordenes = st.Page("pages/dash_ordencompra.py", title="Ordenes de Compra", icon="🧾")
 pagina_compraagil = st.Page("pages/dash_compraagil.py", title="Compra Ágil", icon="⚡")
 pagina_licitaciones = st.Page("pages/dash_licitaciones.py", title="Licitaciones", icon="📄")
-pagina_licitaciones2 = st.Page("pages/dash_licitaciones2.py", title="Licitaciones2", icon="📄")
-
-
+pagina_licitaciones2 = st.Page("pages/dash_licitaciones2.py", title="Licitaciones", icon="📄")
 
 #Grupo: Documentos
 pagina_documentos = st.Page("pages/dash_documentos.py", title="Documentos", icon="📋")
