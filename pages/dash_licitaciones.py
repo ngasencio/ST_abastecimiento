@@ -163,56 +163,84 @@ def procesar_estados_licitacion(df):
     now = pd.Timestamp.now()
 
     def calcular_hito_y_etapa(row):
-        # --- ORDEN CRONOLÓGICO INVERSO PARA DETECTAR ETAPA ACTUAL ---
-               
-                   
-        # 1. Inicio y publicación
-        if pd.notna(row.get('FechaPublicacion')) and row['FechaPublicacion'] >= now:
-            return row['FechaPublicacion'], "📢 Publicada"
-        if pd.notna(row.get('FechaCreacion')) and row['FechaCreacion'] >= now:
-            return row['FechaCreacion'], "🆕 Creada"
+        # Orden de hitos según flujo completo (sin considerar FechaFinal para el cálculo)
+        orden_fechas_hitos = [
+            "FechaCreacion",
+            "FechaInicio",
+            "FechaPublicacion",
+            "FechaPubRespuestas",
+            "FechaSoporteFisico",
+            "FechaVisitaTerreno",
+            "FechaEntregaAntecedentes",
+            "FechaCierre",
+            "FechaActoAperturaTecnica",
+            "FechaActoAperturaEconomica",
+            "FechaTiempoEvaluacion",
+            "FechaAdjudicacion",
+            "FechaEstimadaAdjudicacion",
+            "FechaEstimadaFirma",
+            "FechaInicioContrato",
+        ]
 
-         # 2. Etapa de consultas
-        if pd.notna(row.get('FechaPubRespuestas')) and row['FechaPubRespuestas'] >= now:
-            return row['FechaPubRespuestas'], "💬 Respuestas"
-        if pd.notna(row.get('FechaEntregaAntecedentes')) and row['FechaEntregaAntecedentes'] >= now:
-            return row['FechaEntregaAntecedentes'], "📂 Antecedentes"
-        if pd.notna(row.get('FechaVisitaTerreno')) and row['FechaVisitaTerreno'] >= now:
-            return row['FechaVisitaTerreno'], "👷 Visita Terreno"
+        iconos_estado = {
+            "FechaCreacion": "🆕 Creada",
+            "FechaInicio": "🚀 Inicio",
+            "FechaPublicacion": "📢 Publicada",
+            "FechaPubRespuestas": "💬 Respuestas",
+            "FechaSoporteFisico": "📎 Soporte Físico",
+            "FechaVisitaTerreno": "👷 Visita Terreno",
+            "FechaEntregaAntecedentes": "📂 Antecedentes",
+            "FechaCierre": "⏳ Cierre Ofertas",
+            "FechaActoAperturaTecnica": "🛠️ Apertura Técn.",
+            "FechaActoAperturaEconomica": "💰 Apertura Econ.",
+            "FechaTiempoEvaluacion": "🧮 En Evaluación",
+            "FechaAdjudicacion": "🏆 Adjudicación",
+            "FechaEstimadaAdjudicacion": "📅 Adj. Estimada",
+            "FechaEstimadaFirma": "✍️ Firma Pendiente",
+            "FechaInicioContrato": "🚀 Inicio Contrato",
+        }
 
-        # 3. Cierre y aperturas
-        if pd.notna(row.get('FechaActoAperturaEconomica')) and row['FechaActoAperturaEconomica'] >= now:
-            return row['FechaActoAperturaEconomica'], "💰 Apertura Econ."
-        if pd.notna(row.get('FechaActoAperturaTecnica')) and row['FechaActoAperturaTecnica'] >= now:
-            return row['FechaActoAperturaTecnica'], "🛠️ Apertura Técn."
-        if pd.notna(row.get('FechaCierre')) and row['FechaCierre'] >= now:
-            return row['FechaCierre'], "⏳ Cierre Ofertas"
+        # Buscar el hito futuro más cercano considerando fecha y hora
+        fecha_clave = pd.NaT
+        estado = "✅ Proceso Finalizado"
 
-        # 4. Evaluación y adjudicación
-        if pd.notna(row.get('FechaAdjudicacion')) and row['FechaAdjudicacion'] >= now:
-            return row['FechaAdjudicacion'], "🏆 Adjudicación"
-        if pd.notna(row.get('FechaEstimadaAdjudicacion')) and row['FechaEstimadaAdjudicacion'] >= now:
-            return row['FechaEstimadaAdjudicacion'], "📅 Adj. Estimada"
-        if pd.notna(row.get('FechaTiempoEvaluacion')) and row['FechaTiempoEvaluacion'] >= now:
-            return row['FechaTiempoEvaluacion'], "🧮 En Evaluación"
-            
-          
-        # 5. Firma y ejecución
-        if pd.notna(row.get('FechaFinal')) and row['FechaFinal'] >= now:
-            return row['FechaFinal'], "🏁 Finalización"
-        if pd.notna(row.get('FechaInicioContrato')) and row['FechaInicioContrato'] >= now:
-            return row['FechaInicioContrato'], "🚀 Inicio Contrato"
-        if pd.notna(row.get('FechaEstimadaFirma')) and row['FechaEstimadaFirma'] >= now:
-            return row['FechaEstimadaFirma'], "✍️ Firma Pendiente"
-           
-             
-        return pd.NaT, "✅ Proceso Finalizado"
+        for col in orden_fechas_hitos:
+            valor = row.get(col)
+            if pd.notna(valor) and valor >= now:
+                if pd.isna(fecha_clave) or valor < fecha_clave:
+                    fecha_clave = valor
+                    estado = iconos_estado.get(col, "📍 Próximo Hito")
+
+        return fecha_clave, estado
+
+    def calcular_estado_flujo_simple(row):
+        pub = row.get("FechaPublicacion")
+        preguntas = row.get("FechaPubRespuestas") if "FechaPubRespuestas" in row.index else row.get("FechaPreguntas")
+        cierre = row.get("FechaCierre")
+        estimada_adj = row.get("FechaEstimadaAdjudicacion")
+
+        # Asegurar comparación con fecha y hora completa
+        if pd.notna(pub) and pd.notna(preguntas) and pub <= now < preguntas:
+            return "💬 Responder Preguntas"
+        if pd.notna(preguntas) and pd.notna(cierre) and preguntas <= now < cierre:
+            return "⏳ Por Cerrar"
+        if pd.notna(cierre) and pd.notna(estimada_adj) and cierre <= now < estimada_adj:
+            return "🧮 En Evaluación"
+
+        # Estados complementarios simplificados
+        if pd.notna(pub) and now < pub:
+            return "📢 Pendiente de Publicación"
+        if pd.notna(estimada_adj) and now >= estimada_adj:
+            return "🏁 Post Adjudicación"
+
+        return "Sin Clasificar"
 
     # Aplicamos a df_filtrado (usando tu convención de nombre)
     if not df.empty:
-        df[['FechaClave', 'EstadoFlujo']] = df.apply(
+        df[["FechaClave", "EstadoFlujo"]] = df.apply(
             lambda row: pd.Series(calcular_hito_y_etapa(row)), axis=1
         )
+        df["EstadoFlujoSimple"] = df.apply(calcular_estado_flujo_simple, axis=1)
     return df
 
 # Procesamos los datos antes de mostrar la tabla
@@ -230,8 +258,14 @@ df_sorted = df_res_filtrado.sort_values(by='FechaClave', ascending=True, na_posi
 
 # Columnas a mostrar
 cols_view = [
-    'EstadoFlujo', 'FechaClave', 'CodigoLicitacion', 'Nombre', 
-    'MontoEstimado', 'C_Usuario', 'Tipo'
+    "EstadoFlujo",
+    "EstadoFlujoSimple",
+    "FechaClave",
+    "CodigoLicitacion",
+    "Nombre",
+    "MontoEstimado",
+    "C_Usuario",
+    "Tipo",
 ]
 
 # Filtro rápido por estado de flujo dinámico
@@ -244,6 +278,8 @@ filtro_estado = st.multiselect(
 
 if filtro_estado:
     df_sorted = df_sorted[df_sorted['EstadoFlujo'].isin(filtro_estado)]
+
+st.caption(f"Total licitaciones en la tabla: {len(df_sorted):,}")
 
 # Renderizado de la Tabla
 df_view = df_sorted[cols_view].copy()
@@ -397,31 +433,50 @@ def _render_detalle_licitacion(codigo_licitacion: str) -> None:
         "FechaFinal": "Final",
     }
 
-    def _fmt_tiempo_evaluacion(val) -> str:
+    def _fmt_tiempo_evaluacion(val, row) -> str:
+        """
+        Muestra la fecha de término de evaluación e incluye, cuando es posible,
+        la cantidad de días disponibles para evaluar.
+        """
         if val is None or (isinstance(val, float) and pd.isna(val)):
             return ""
+
+        # Si viene como timestamp/fecha (formato 2025-10-21T16:19:29.53)
+        if isinstance(val, (pd.Timestamp, datetime)):
+            texto_fecha = _fmt_fecha(val)
+            # Usamos como referencia el cierre de ofertas (o, en su defecto, la apertura técnica)
+            base = row.get("FechaCierre") or row.get("FechaActoAperturaTecnica")
+            if isinstance(base, (pd.Timestamp, datetime)):
+                delta = val - base
+                dias = delta.days
+                if dias > 0:
+                    return f"{texto_fecha} ({dias} días para evaluar)"
+            return texto_fecha
+
         s = str(val).strip()
         if not s:
             return ""
+
+        # Si viene como número de días
         try:
             n = float(s.replace(",", "."))
             if n.is_integer():
-                return f"{int(n)} Días"
-            return f"{n:g} Días"
+                return f"{int(n)} días de evaluación"
+            return f"{n:g} días de evaluación"
         except Exception:
             pass
+
         # Intentar parsear como fecha para extraer día si viene como 1900-01-16
         try:
             ts = pd.to_datetime(s, errors="coerce")
             if pd.notna(ts):
-                # Si el año es 1900 (o muy antiguo), asumir que solo importa el día
                 if ts.year <= 1900:
-                    return f"{ts.day} Días"
+                    return f"{ts.day} días de evaluación"
+                return _fmt_fecha(ts)
         except Exception:
             pass
-        if "dia" in s.lower():
-            return s
-        return f"{s} Días"
+
+        return s
 
     cols_fechas_det = [c for c in orden_fechas if c in row.columns]
     if cols_fechas_det:
@@ -429,7 +484,7 @@ def _render_detalle_licitacion(codigo_licitacion: str) -> None:
             [
                 {
                     "Hito": f"{iconos_fechas.get(c, '📅')} {nombres_fechas.get(c, c)}",
-                    "Fecha": _fmt_tiempo_evaluacion(r.get(c)) if c == "FechaTiempoEvaluacion" else _fmt_fecha(r.get(c)),
+                    "Fecha": _fmt_tiempo_evaluacion(r.get(c), r) if c == "FechaTiempoEvaluacion" else _fmt_fecha(r.get(c)),
                 }
                 for c in cols_fechas_det
             ]
