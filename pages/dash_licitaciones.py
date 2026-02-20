@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import numpy as np
 from style.ui import cargar_css
 from api import LI_data_loader as loader
+import plotly.graph_objects as go
 
 cargar_css()
 
@@ -21,12 +22,11 @@ try:
         st.error("No se encontraron datos. Ejecuta el actualizador primero.")
         st.stop()
     else:
-        st.success(f"Datos cargados: {len(df_MaestroLI_Resumen)} licitaciones disponibles.")
+        pass
         
 except Exception as e:
     st.error(f"Ocurrió un error en la carga: {e}")
     st.stop()
-
 
 # ============== EJECUCIÓN DE CARGA ===================
 df_res, df_det = df_MaestroLI_Resumen, df_MaestroLI_Detalle
@@ -342,166 +342,195 @@ def _render_detalle_licitacion(codigo_licitacion: str) -> None:
 
     r = row.iloc[0]
 
-    st.markdown(f"### 📄 Detalle de Licitación: `{codigo_licitacion}`")
+    # Header compacto
+    st.markdown(f"### 📄 `{codigo_licitacion}`")
     if "Nombre" in row.columns:
         st.markdown(f"**{r.get('Nombre', '')}**")
+    
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    st.markdown("#### a) Datos Generales")
+    # Layout de dos columnas: Datos Generales y Fechas lado a lado
+    col_datos, col_fechas = st.columns(2, gap="medium")
 
-    estado_raw = str(r.get("Estado", "") or "").strip()
-    estado_norm = estado_raw.lower()
-    if "adjudic" in estado_norm:
-        estado_view = "🏆 Adjudicada"
-    elif "desierta" in estado_norm:
-        estado_view = "🚫 Desierta"
-    elif "publicad" in estado_norm:
-        estado_view = "📢 Publicada"
-    elif "cerrad" in estado_norm:
-        estado_view = "⏳ Cerrada"
-    else:
-        estado_view = estado_raw
+    with col_datos:
+        st.markdown("#### 📋 Datos Generales")
+        estado_raw = str(r.get("Estado", "") or "").strip()
+        estado_norm = estado_raw.lower()
+        if "adjudic" in estado_norm:
+            estado_view = "🏆 Adjudicada"
+        elif "desierta" in estado_norm:
+            estado_view = "🚫 Desierta"
+        elif "publicad" in estado_norm:
+            estado_view = "📢 Publicada"
+        elif "cerrad" in estado_norm:
+            estado_view = "⏳ Cerrada"
+        else:
+            estado_view = estado_raw
 
-    datos_generales = {
-        "Estado": estado_view,
-        "Tipo": r.get("Tipo", ""),
-        "Moneda": r.get("Moneda", ""),
-        "MontoEstimado": r.get("MontoEstimado", ""),
-        "Comprador": r.get("C_Usuario", ""),
-        "Unidad": r.get("C_Unidad", ""),
-        "Organismo": r.get("C_NombreOrganismo", ""),
-        "Región": r.get("C_RegionUnidad", ""),
-        "Comuna": r.get("C_ComunaUnidad", ""),
-    }
-    dg_df = pd.DataFrame(
-        [{"Campo": k, "Valor": ("" if v is None else str(v))} for k, v in datos_generales.items() if k is not None],
-    )
-    st.dataframe(dg_df, use_container_width=True, hide_index=True)
+        # Formatear MontoEstimado en CLP
+        monto_val = r.get("MontoEstimado", "")
+        monto_formateado = ""
+        if monto_val is not None and str(monto_val).strip():
+            try:
+                monto_float = float(monto_val)
+                monto_formateado = f"$ {monto_float:,.0f}".replace(",", ".")
+            except (ValueError, TypeError):
+                monto_formateado = str(monto_val)
 
-    st.markdown("#### b) Fechas")
-    orden_fechas = [
-        "FechaCreacion",
-        "FechaInicio",
-        "FechaPublicacion",
-        "FechaPubRespuestas",
-        "FechaSoporteFisico",
-        "FechaVisitaTerreno",
-        "FechaEntregaAntecedentes",
-        "FechaCierre",
-        "FechaActoAperturaTecnica",
-        "FechaActoAperturaEconomica",
-        "FechaTiempoEvaluacion",
-        "FechaAdjudicacion",
-        "FechaEstimadaAdjudicacion",
-        "FechaEstimadaFirma",
-        "FechaInicioContrato",
-        "FechaFinal",
-    ]
-    iconos_fechas = {
-        "FechaCreacion": "🆕",
-        "FechaInicio": "🚀",
-        "FechaPublicacion": "📢",
-        "FechaPubRespuestas": "💬",
-        "FechaSoporteFisico": "📎",
-        "FechaVisitaTerreno": "👷",
-        "FechaEntregaAntecedentes": "📂",
-        "FechaCierre": "⏳",
-        "FechaActoAperturaTecnica": "🛠️",
-        "FechaActoAperturaEconomica": "💰",
-        "FechaTiempoEvaluacion": "🧮",
-        "FechaAdjudicacion": "🏆",
-        "FechaEstimadaAdjudicacion": "📅",
-        "FechaEstimadaFirma": "✍️",
-        "FechaInicioContrato": "📄",
-        "FechaFinal": "🏁",
-    }
-    nombres_fechas = {
-        "FechaCreacion": "Creación",
-        "FechaInicio": "Inicio",
-        "FechaPublicacion": "Publicación",
-        "FechaPubRespuestas": "Publicación Respuestas",
-        "FechaSoporteFisico": "Soporte Físico",
-        "FechaVisitaTerreno": "Visita Terreno",
-        "FechaEntregaAntecedentes": "Entrega Antecedentes",
-        "FechaCierre": "Cierre",
-        "FechaActoAperturaTecnica": "Apertura Técnica",
-        "FechaActoAperturaEconomica": "Apertura Económica",
-        "FechaTiempoEvaluacion": "Tiempo Evaluación",
-        "FechaAdjudicacion": "Adjudicación",
-        "FechaEstimadaAdjudicacion": "Adj. Estimada",
-        "FechaEstimadaFirma": "Firma Estimada",
-        "FechaInicioContrato": "Inicio Contrato",
-        "FechaFinal": "Final",
-    }
-
-    def _fmt_tiempo_evaluacion(val, row) -> str:
-        """
-        Muestra la fecha de término de evaluación e incluye, cuando es posible,
-        la cantidad de días disponibles para evaluar.
-        """
-        if val is None or (isinstance(val, float) and pd.isna(val)):
-            return ""
-
-        # Si viene como timestamp/fecha (formato 2025-10-21T16:19:29.53)
-        if isinstance(val, (pd.Timestamp, datetime)):
-            texto_fecha = _fmt_fecha(val)
-            # Usamos como referencia el cierre de ofertas (o, en su defecto, la apertura técnica)
-            base = row.get("FechaCierre") or row.get("FechaActoAperturaTecnica")
-            if isinstance(base, (pd.Timestamp, datetime)):
-                delta = val - base
-                dias = delta.days
-                if dias > 0:
-                    return f"{texto_fecha} ({dias} días para evaluar)"
-            return texto_fecha
-
-        s = str(val).strip()
-        if not s:
-            return ""
-
-        # Si viene como número de días
-        try:
-            n = float(s.replace(",", "."))
-            if n.is_integer():
-                return f"{int(n)} días de evaluación"
-            return f"{n:g} días de evaluación"
-        except Exception:
-            pass
-
-        # Intentar parsear como fecha para extraer día si viene como 1900-01-16
-        try:
-            ts = pd.to_datetime(s, errors="coerce")
-            if pd.notna(ts):
-                if ts.year <= 1900:
-                    return f"{ts.day} días de evaluación"
-                return _fmt_fecha(ts)
-        except Exception:
-            pass
-
-        return s
-
-    cols_fechas_det = [c for c in orden_fechas if c in row.columns]
-    if cols_fechas_det:
-        fechas_df = pd.DataFrame(
-            [
-                {
-                    "Hito": f"{iconos_fechas.get(c, '📅')} {nombres_fechas.get(c, c)}",
-                    "Fecha": _fmt_tiempo_evaluacion(r.get(c), r) if c == "FechaTiempoEvaluacion" else _fmt_fecha(r.get(c)),
-                }
-                for c in cols_fechas_det
-            ]
+        datos_generales = {
+            "Estado": estado_view,
+            "Tipo": r.get("Tipo", ""),
+            "Moneda": r.get("Moneda", ""),
+            "Monto Estimado": monto_formateado,
+            "Comprador": r.get("C_Usuario", ""),
+            "Unidad": r.get("C_Unidad", ""),
+            "Organismo": r.get("C_NombreOrganismo", ""),
+            "Región": r.get("C_RegionUnidad", ""),
+            "Comuna": r.get("C_ComunaUnidad", ""),
+        }
+        dg_df = pd.DataFrame(
+            [{"Campo": k, "Valor": ("" if v is None else str(v))} for k, v in datos_generales.items() if k is not None],
         )
         st.dataframe(
-            fechas_df,
+            dg_df,
             use_container_width=True,
             hide_index=True,
             column_config={
-                "Hito": st.column_config.TextColumn("Hito"),
-                "Fecha": st.column_config.TextColumn("Fecha (dd-mm-aaaa hh:mm:ss)"),
+                "Campo": st.column_config.TextColumn("Campo", width="small"),
+                "Valor": st.column_config.TextColumn("Valor", width="medium"),
             },
+            height=350,
         )
-    else:
-        st.info("No hay columnas de fechas disponibles para esta licitación.")
 
-    st.markdown("#### c) Productos a Licitar")
+    with col_fechas:
+        st.markdown("#### 📅 Fechas")
+        orden_fechas = [
+            "FechaCreacion",
+            "FechaInicio",
+            "FechaPublicacion",
+            "FechaPubRespuestas",
+            "FechaSoporteFisico",
+            "FechaVisitaTerreno",
+            "FechaEntregaAntecedentes",
+            "FechaCierre",
+            "FechaActoAperturaTecnica",
+            "FechaActoAperturaEconomica",
+            "FechaTiempoEvaluacion",
+            "FechaAdjudicacion",
+            "FechaEstimadaAdjudicacion",
+            "FechaEstimadaFirma",
+            "FechaInicioContrato",
+            "FechaFinal",
+        ]
+        iconos_fechas = {
+            "FechaCreacion": "🆕",
+            "FechaInicio": "🚀",
+            "FechaPublicacion": "📢",
+            "FechaPubRespuestas": "💬",
+            "FechaSoporteFisico": "📎",
+            "FechaVisitaTerreno": "👷",
+            "FechaEntregaAntecedentes": "📂",
+            "FechaCierre": "⏳",
+            "FechaActoAperturaTecnica": "🛠️",
+            "FechaActoAperturaEconomica": "💰",
+            "FechaTiempoEvaluacion": "🧮",
+            "FechaAdjudicacion": "🏆",
+            "FechaEstimadaAdjudicacion": "📅",
+            "FechaEstimadaFirma": "✍️",
+            "FechaInicioContrato": "📄",
+            "FechaFinal": "🏁",
+        }
+        nombres_fechas = {
+            "FechaCreacion": "Creación",
+            "FechaInicio": "Inicio",
+            "FechaPublicacion": "Publicación",
+            "FechaPubRespuestas": "Publicación Respuestas",
+            "FechaSoporteFisico": "Soporte Físico",
+            "FechaVisitaTerreno": "Visita Terreno",
+            "FechaEntregaAntecedentes": "Entrega Antecedentes",
+            "FechaCierre": "Cierre",
+            "FechaActoAperturaTecnica": "Apertura Técnica",
+            "FechaActoAperturaEconomica": "Apertura Económica",
+            "FechaTiempoEvaluacion": "Tiempo Evaluación",
+            "FechaAdjudicacion": "Adjudicación",
+            "FechaEstimadaAdjudicacion": "Adj. Estimada",
+            "FechaEstimadaFirma": "Firma Estimada",
+            "FechaInicioContrato": "Inicio Contrato",
+            "FechaFinal": "Final",
+        }
+
+        def _fmt_tiempo_evaluacion(val, row) -> str:
+            """
+            Muestra la fecha de término de evaluación e incluye, cuando es posible,
+            la cantidad de días disponibles para evaluar.
+            """
+            if val is None or (isinstance(val, float) and pd.isna(val)):
+                return ""
+
+            # Si viene como timestamp/fecha (formato 2025-10-21T16:19:29.53)
+            if isinstance(val, (pd.Timestamp, datetime)):
+                texto_fecha = _fmt_fecha(val)
+                # Usamos como referencia el cierre de ofertas (o, en su defecto, la apertura técnica)
+                base = row.get("FechaCierre") or row.get("FechaActoAperturaTecnica")
+                if isinstance(base, (pd.Timestamp, datetime)):
+                    delta = val - base
+                    dias = delta.days
+                    if dias > 0:
+                        return f"{texto_fecha} ({dias} días para evaluar)"
+                return texto_fecha
+
+            s = str(val).strip()
+            if not s:
+                return ""
+
+            # Si viene como número de días
+            try:
+                n = float(s.replace(",", "."))
+                if n.is_integer():
+                    return f"{int(n)} días de evaluación"
+                return f"{n:g} días de evaluación"
+            except Exception:
+                pass
+
+            # Intentar parsear como fecha para extraer día si viene como 1900-01-16
+            try:
+                ts = pd.to_datetime(s, errors="coerce")
+                if pd.notna(ts):
+                    if ts.year <= 1900:
+                        return f"{ts.day} días de evaluación"
+                    return _fmt_fecha(ts)
+            except Exception:
+                pass
+
+            return s
+
+        cols_fechas_det = [c for c in orden_fechas if c in row.columns]
+        if cols_fechas_det:
+            fechas_df = pd.DataFrame(
+                [
+                    {
+                        "Hito": f"{iconos_fechas.get(c, '📅')} {nombres_fechas.get(c, c)}",
+                        "Fecha": _fmt_tiempo_evaluacion(r.get(c), r) if c == "FechaTiempoEvaluacion" else _fmt_fecha(r.get(c)),
+                    }
+                    for c in cols_fechas_det
+                ]
+            )
+            st.dataframe(
+                fechas_df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Hito": st.column_config.TextColumn("Hito", width="small"),
+                    "Fecha": st.column_config.TextColumn("Fecha", width="medium"),
+                },
+                height=350,
+            )
+        else:
+            st.info("No hay columnas de fechas disponibles para esta licitación.")
+
+    # Sección de productos a ancho completo debajo
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("#### 📦 Productos a Licitar")
     df_prod = df_det_filtrado[df_det_filtrado["CodigoLicitacion"].astype(str) == str(codigo_licitacion)].copy()
     if df_prod.empty:
         st.info("No se encontraron productos/detalles para esta licitación.")
@@ -518,11 +547,29 @@ def _render_detalle_licitacion(codigo_licitacion: str) -> None:
             "CantidadAdjudicada",
         ]
         cols_prod = [c for c in cols_prod if c in df_prod.columns]
+        
+        # Formatear MontoUnitarioGanador si existe
+        if "MontoUnitarioGanador" in df_prod.columns:
+            def _fmt_monto_unitario(val):
+                if pd.isna(val) or val is None:
+                    return ""
+                try:
+                    return f"$ {float(val):,.0f}".replace(",", ".")
+                except (ValueError, TypeError):
+                    return str(val)
+            df_prod_display = df_prod.copy()
+            df_prod_display["MontoUnitarioGanador"] = df_prod_display["MontoUnitarioGanador"].apply(_fmt_monto_unitario)
+        else:
+            df_prod_display = df_prod.copy()
+        
         st.dataframe(
-            df_prod[cols_prod].sort_values(by=[c for c in ["Correlativo"] if c in cols_prod], ascending=True),
+            df_prod_display[cols_prod].sort_values(by=[c for c in ["Correlativo"] if c in cols_prod], ascending=True),
             use_container_width=True,
             hide_index=True,
-            height=320,
+            height=300,
+            column_config={
+                "MontoUnitarioGanador": st.column_config.TextColumn("Monto Unitario (CLP)", width="medium") if "MontoUnitarioGanador" in cols_prod else None,
+            },
         )
 
 
@@ -557,12 +604,29 @@ if abrir and codigo_sel:
             """
             <style>
             div[role="dialog"] {
-                width: min(92vw, 1400px) !important;
-                max-width: min(92vw, 1400px) !important;
+                width: min(95vw, 1500px) !important;
+                max-width: min(95vw, 1500px) !important;
             }
             div[data-testid="stDialog"] div[role="dialog"] {
-                width: min(92vw, 1400px) !important;
-                max-width: min(92vw, 1400px) !important;
+                width: min(95vw, 1500px) !important;
+                max-width: min(95vw, 1500px) !important;
+            }
+            div[data-testid="stDialog"] div[role="dialog"] > div {
+                padding: 1rem 1.5rem !important;
+            }
+            div[data-testid="stDialog"] [data-testid="stDataFrame"] {
+                margin-bottom: 0.5rem !important;
+            }
+            div[data-testid="stDialog"] [data-testid="stMarkdownContainer"] {
+                margin-bottom: 0.3rem !important;
+            }
+            div[data-testid="stDialog"] h3 {
+                margin-bottom: 0.5rem !important;
+                margin-top: 0.5rem !important;
+            }
+            div[data-testid="stDialog"] h4 {
+                margin-bottom: 0.4rem !important;
+                margin-top: 0.3rem !important;
             }
             </style>
             """,
@@ -823,3 +887,151 @@ if not df_eventos_prox.empty:
         )
 else:
     st.info("✅ No hay eventos críticos (Cierres o Adjudicaciones) programados para los próximos 14 días.")
+
+
+
+
+
+st.markdown("---")
+st.markdown("## 🎯 Análisis LEAN y OKRs de Eficiencia Operacional")
+st.markdown("Evaluación de desperdicios (tiempos de espera), predictibilidad y cumplimiento del cronograma.")
+
+# ------------------------------------------------------------------------------
+# PREPARACIÓN DE DATOS (MÉTRICAS LEAN)
+# ------------------------------------------------------------------------------
+df_metrics = df_res_filtrado.copy()
+
+# Solo evaluamos procesos que ya tienen FechaAdjudicacion para medir tiempos reales
+df_eval = df_metrics.dropna(subset=['FechaAdjudicacion']).copy()
+
+
+# 1. Desviación de Adjudicación (Días de retraso o adelanto)
+df_eval['Desviacion_Dias'] = (df_eval['FechaAdjudicacion'] - df_eval['FechaEstimadaAdjudicacion']).dt.days
+
+# 2. Cycle Time (Tiempo total desde Publicación hasta Adjudicación)
+df_eval['Cycle_Time_Dias'] = (df_eval['FechaAdjudicacion'] - df_eval['FechaPublicacion']).dt.days
+
+# 3. Predictibilidad (1 si cumplió plazo estimado <= 0 días de desviación, 0 si se retrasó)
+df_eval['Cumple_Plazo'] = (df_eval['Desviacion_Dias'] <= 0).astype(int)
+
+# 4. Serie temporal (Mes-Año de Adjudicación)
+df_eval['Mes_Adjudicacion'] = df_eval['FechaAdjudicacion'].dt.to_period('M').astype(str)
+
+# ------------------------------------------------------------------------------
+# OKRs PRINCIPALES (Tarjetas de KPI)
+# ------------------------------------------------------------------------------
+# OKR 1: Reducir tiempo promedio entre fecha estimada y real
+avg_desviacion = df_eval['Desviacion_Dias'].mean()
+
+# OKR 2: Mejorar predictibilidad del proceso (Tasa de cumplimiento)
+tasa_predictibilidad = df_eval['Cumple_Plazo'].mean() * 100
+
+# OKR 3: Reducir Cycle Time general
+avg_cycle_time = df_eval['Cycle_Time_Dias'].mean()
+
+col_okr1, col_okr2, col_okr3 = st.columns(3)
+with col_okr1:
+    st.metric(
+        label="🎯 OKR 1: Desviación Promedio", 
+        value=f"{avg_desviacion:.1f} días",
+        help="Días promedio de retraso/adelanto respecto a la fecha estimada de adjudicación."
+    )
+with col_okr2:
+    st.metric(
+        label="🎯 OKR 2: Predictibilidad del Proceso", 
+        value=f"{tasa_predictibilidad:.1f}%",
+        help="Porcentaje de licitaciones adjudicadas en o antes de la fecha estimada."
+    )
+with col_okr3:
+    st.metric(
+        label="⏱️ LEAN: Cycle Time Promedio", 
+        value=f"{avg_cycle_time:.1f} días",
+        help="Días promedio transcurridos desde Publicación hasta Adjudicación."
+    )
+
+st.divider()
+
+# ------------------------------------------------------------------------------
+# 1. TABLA DE ESTADÍSTICAS LEAN POR TIPO DE LICITACIÓN
+# ------------------------------------------------------------------------------
+st.markdown("### 📊 Variabilidad y Desempeño por Tipo de Licitación")
+
+# Agrupación y cálculo estadístico corregido
+df_lean_stats = df_eval.groupby('Tipo').agg(
+    Total_Procesos=('CodigoLicitacion', 'count'),
+    Cycle_Time_Prom=('Cycle_Time_Dias', 'mean'),
+    Desviacion_Prom=('Desviacion_Dias', 'mean'),
+    Variabilidad_Desviacion=('Desviacion_Dias', 'std'), 
+    Predictibilidad=('Cumple_Plazo', lambda x: x.mean() * 100) # <-- CORREGIDO AQUÍ
+).reset_index()
+
+# Rellenar nulos en variabilidad (ocurre si solo hay 1 proceso y no se puede calcular desviación estándar)
+df_lean_stats['Variabilidad_Desviacion'] = df_lean_stats['Variabilidad_Desviacion'].fillna(0)
+
+st.dataframe(
+    df_lean_stats.sort_values(by='Desviacion_Prom', ascending=False),
+    use_container_width=True,
+    hide_index=True,
+    column_config={
+        "Tipo": st.column_config.TextColumn("Tipo de Licitación"),
+        "Total_Procesos": st.column_config.NumberColumn("Nº Procesos", format="%d"),
+        "Cycle_Time_Prom": st.column_config.NumberColumn("Cycle Time (días)", format="%.1f"),
+        "Desviacion_Prom": st.column_config.NumberColumn("Desviación Prom. (días)", format="%.1f"),
+        "Variabilidad_Desviacion": st.column_config.NumberColumn("Variabilidad (Std Dev)", format="%.1f", help="A mayor número, más inestable es el proceso"),
+        "Predictibilidad": st.column_config.ProgressColumn("Tasa Predictibilidad", format="%.1f%%", min_value=0, max_value=100)
+    }
+)
+
+# ------------------------------------------------------------------------------
+# 2. GRÁFICO: SERIES TEMPORALES DE DESVIACIÓN MENSUAL (Identificación de Cuellos de Botella)
+# ------------------------------------------------------------------------------
+
+col_graf1, col_graf2 = st.columns(2)
+with col_graf1:
+    st.markdown("#### 📈 Evolución de Desviaciones")
+    st.caption("Promedio de días de retraso por mes de adjudicación")
+    
+    df_trend = df_eval.groupby('Mes_Adjudicacion')['Desviacion_Dias'].mean().reset_index()
+    df_trend = df_trend.sort_values('Mes_Adjudicacion')
+    
+    fig_trend = px.line(
+        df_trend, 
+        x='Mes_Adjudicacion', 
+        y='Desviacion_Dias', 
+        markers=True,
+        labels={'Mes_Adjudicacion': 'Mes', 'Desviacion_Dias': 'Desviación Promedio (Días)'},
+        color_discrete_sequence=['#e74c3c']
+    )
+    # Línea base de Cero desviaciones (Objetivo OKR)
+    fig_trend.add_hline(y=0, line_dash="dash", line_color="green", annotation_text="Meta Cero Retraso")
+    st.plotly_chart(fig_trend, use_container_width=True)
+
+# ------------------------------------------------------------------------------
+# 3. HEATMAP: CUMPLIMIENTO DE FECHAS POR TIPO Y PERÍODO
+# ------------------------------------------------------------------------------
+
+with col_graf2:
+    st.markdown("#### 🗺️ Mapa de Calor: Predictibilidad (%)")
+    st.caption("Tasa de cumplimiento de plazos por Tipo y Mes")
+    
+    # Preparar matriz para el heatmap
+    df_heatmap = df_eval.pivot_table(
+        index='Tipo', 
+        columns='Mes_Adjudicacion', 
+        values='Cumple_Plazo', 
+        aggfunc='mean'
+    ) * 100 # Porcentaje
+    
+    # Rellenar con 0s si no hay datos en ese cruce para evitar huecos en el gráfico
+    df_heatmap = df_heatmap.fillna(0)
+    
+    fig_heat = px.imshow(
+        df_heatmap,
+        text_auto=".0f",
+        aspect="auto",
+        color_continuous_scale="RdYlGn", # Rojo (Malo/0%) a Verde (Bueno/100%)
+        labels=dict(x="Mes", y="Tipo Licitación", color="% Cumplimiento")
+    )
+    fig_heat.update_xaxes(side="bottom")
+    st.plotly_chart(fig_heat, use_container_width=True)
+
