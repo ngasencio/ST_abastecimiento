@@ -1438,20 +1438,28 @@ def crear_plantilla_html_comprador(nombre_comprador, email_comprador, tablero_ht
             tr:hover {{
                 background-color: #f5f5f5;
             }}
+            .header-logos img {
+                height: 80px; /* Puedes subir o bajar este valor según necesites */
+                width: auto;
+                object-fit: contain; /* Asegura que los logos no se deformen ni se estiren */
+            }
         </style>
     </head>
     <body>
         <div class="container">
-            <div class="header">
-                <div style="margin-bottom: 15px;">
-                    {logo_aba_img}
-                    {logo_sso_img}
-                <div style="color: #0f355c;">
-                    <h1>📋 Reporte de Licitaciones - Tablero Gemba</h1>
-                    <p style="margin: 10px 0 0 0; opacity: 0.9;">
-                        Servicio de Salud Osorno - Departamento de Abastecimiento y Operaciones
-                    </p>
-                </div>
+          <div class="header" style="text-align: center; font-family: Arial, sans-serif; padding: 20px; background-color: #f8f9fa; border-radius: 8px; margin-bottom: 20px;">
+    
+            <div class="header-logos" style="display: flex; justify-content: center; align-items: center; gap: 40px; margin-bottom: 20px;">
+                {logo_aba_img}
+                {logo_sso_img}
+            </div>
+
+            <div style="color: #0f355c;">
+                <h1 style="margin: 0; font-size: 26px;">📋 Reporte de Licitaciones - Tablero Gemba</h1>
+                <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">
+                    Servicio de Salud Osorno - Departamento de Abastecimiento y Operaciones
+                </p>
+            </div>
             
             <div class="section">
                 <h2>👤 Información del Comprador</h2>
