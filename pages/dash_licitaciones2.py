@@ -1062,38 +1062,20 @@ SMTP_SERVERS_ALTERNATIVOS = [
 ]
 
 # Diccionario de compradores y correos
-#COMPRADORES = {
- #   "ALICIA VIDAL PAREDES": "alicia.vidal@redsalud.gob.cl",
-  #  "ARIELA ACEVEDO": "ariela.acevedo@redsalud.gob.cl",
-   # "IVAN VARGAS OJEDA": "ivan.vargas@redsalud.gob.cl",
-    #"JACQUELINE OYARZUN ALVAREZ": "jacqueline.oyarzuna@redsalud.gob.cl",
-    #"LESLY ANDREA DÍAZ ABURTO": "lesly.diaz@redsalud.gob.cl",
-    #"MIGUEL ARO": "miguel.aro@redsalud.gob.cl",
-    #"ROSA VASQUEZ": "rosae.vasquez@redsalud.gob.cl",
-    #"RUBÉN URIBE": "ruben.uribe@redsalud.gob.cl",
-    #"JUAN FELIPE ROJEL HUENTRO": "juan.rojelh@redsalud.gob.cl",
-    #"NICOLAS ASENCIO MOREIRA": "nicolas.asencio@redsalud.gob.cl",
-    #"VERÓNICA ARACELY MÁRQUEZ AGUILAR": "veronica.marquez.a@redsalud.gob.cl",
-    #"BASTIAN MIRANDA CORONADO": "bastian.miranda@redsalud.gob.cl"
-#}
-
-# Diccionario de compradores y correos
 COMPRADORES = {
-    "ALICIA VIDAL PAREDES": "nicolas.asencio@redsalud.gob.cl",
-    "ARIELA ACEVEDO": "nicolas.asencio@redsalud.gob.cl",
-    "IVAN VARGAS OJEDA": "nicolas.asencio@redsalud.gob.cl",
-    "JACQUELINE OYARZUN ALVAREZ": "nicolas.asencio@redsalud.gob.cl",
-    "LESLY ANDREA DÍAZ ABURTO": "nicolas.asencio@redsalud.gob.cl",
-    "MIGUEL ARO": "nicolas.asencio@redsalud.gob.cl",
-    "ROSA VASQUEZ": "nicolas.asencio@redsalud.gob.cl",
-    "RUBÉN URIBE": "nicolas.asencio@redsalud.gob.cl",
-    "JUAN FELIPE ROJEL HUENTRO": "nicolas.asencio@redsalud.gob.cl",
+    "ALICIA VIDAL PAREDES": "alicia.vidal@redsalud.gob.cl",
+    "ARIELA ACEVEDO": "ariela.acevedo@redsalud.gob.cl",
+    "IVAN VARGAS OJEDA": "ivan.vargas@redsalud.gob.cl",
+    "JACQUELINE OYARZUN ALVAREZ": "jacqueline.oyarzuna@redsalud.gob.cl",
+    "LESLY ANDREA DÍAZ ABURTO": "lesly.diaz@redsalud.gob.cl",
+    "MIGUEL ARO": "miguel.aro@redsalud.gob.cl",
+    "ROSA VASQUEZ": "rosae.vasquez@redsalud.gob.cl",
+    "RUBÉN URIBE": "ruben.uribe@redsalud.gob.cl",
+    "JUAN FELIPE ROJEL HUENTRO": "juan.rojelh@redsalud.gob.cl",
     "NICOLAS ASENCIO MOREIRA": "nicolas.asencio@redsalud.gob.cl",
-    "VERÓNICA ARACELY MÁRQUEZ AGUILAR": "nicolas.asencio@redsalud.gob.cl",
-    "BASTIAN MIRANDA CORONADO": "nicolas.asencio@redsalud.gob.cl"
+    "VERÓNICA ARACELY MÁRQUEZ AGUILAR": "veronica.marquez.a@redsalud.gob.cl",
+    "BASTIAN MIRANDA CORONADO": "bastian.miranda@redsalud.gob.cl"
 }
-
-
 
 JEFATURAS = {
     #"Cristina Flores": "cristina.flores@redsalud.gob.cl",
