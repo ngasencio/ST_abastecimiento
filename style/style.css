@@ -230,21 +230,25 @@ h3 {
 }
 
 /* Dataframes y Tablas */
-div[data-testid="stDataFrame"],
-div[data-testid="stTable"] {
-    background: var(--card-bg);
-    border-radius: var(--border-radius);
-    padding: 10px;
-    box-shadow: var(--shadow-sm);
-    border: 1px solid #e2e8f0;
+div[data-testid="stDataFrame"] thead tr th,
+div[data-testid="stTable"] thead tr th {
+
+    background-color: var(--secondary-color) !important;
+    /* #001C41 */
+    color: #020202 !important;
+    font-weight: 800 !important;
+    border-bottom: 2px solid var(--primary-color) !important;
+    text-align: center !important;
 }
 
-/* Cabecera de tabla */
-thead tr th {
-    background-color: #f1f5f9 !important;
-    color: var(--secondary-color) !important;
+/* Cabecera de tabla - Negra */
+div[data-testid="stDataFrame"] thead tr th,
+div[data-testid="stTable"] thead tr th {
+
+    background-color: #000000 !important;
+    color: #FFFFFF !important;
     font-weight: 700 !important;
-    border-bottom: 2px solid #e2e8f0 !important;
+    border: 1px solid #000000 !important;
 }
 
 /* Filas */

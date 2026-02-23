@@ -3,10 +3,8 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 from datetime import datetime
+
 from style.ui import cargar_css
-
-
-# Llama a la función al principio de todo, justo después de st.set_page_config
 cargar_css()
 
 st.markdown(
