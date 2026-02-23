@@ -89,6 +89,15 @@ with ctl_left:
     with st.expander("⚙️ Parámetros", expanded=True):
         codigo_organismo = st.text_input("Código Organismo", value=sso.CODIGO_ORGANISMO)
         ticket = st.text_input("Ticket API", value=sso.TICKET, type="password")
+        st.markdown("### 📋 Listado de Organismos")
+        st.markdown("""
+        - "7327" - Hospital Purranque, 61.607.602-7 
+        - "7470" - Hospital Río Negro, 61.602.262-8 
+        - "7287" - Hospital Puerto Octay, 61.602.261-K 
+        - "1238659" - Hospital Futa Srüka Lawenche Kunko Mapu Mo, 61.980.070-2 
+        - "1238663" - Hospital Pü Mulen de Quilacahuín, 61.980.080 – K 
+        - "7296" - Servicio de Salud Osorno, 61.607.600-0
+        """)
 
 with ctl_mid:
     with st.expander("🔁 Rendimiento", expanded=True):
