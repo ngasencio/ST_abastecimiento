@@ -1821,3 +1821,454 @@ with tab1:
                             3. **Contactar al administrador** si es cuenta corporativa con restricciones
                             """)
 
+with tab2:
+    st.markdown("## 👥 Análisis de Compradores")
+    st.markdown("Vista consolidada y ejecutiva del desempeño de cada comprador para optimizar asignación de recursos y supervisión.")
+    
+    # ==============================================================================
+    # FUNCIONES AUXILIARES
+    # ==============================================================================
+    
+    def calcular_ponderacion(tipo: str) -> int:
+        """Calcula el peso de carga laboral según el tipo de licitación"""
+        pesos = {"LR": 5, "LP": 4, "LE": 3, "L1": 2}
+        tipo_clean = str(tipo).strip().upper() if pd.notna(tipo) else ""
+        # Buscar coincidencias parciales (ej: "LP25" -> "LP")
+        for key, peso in pesos.items():
+            if tipo_clean.startswith(key):
+                return peso
+        return 1  # Peso por defecto si no coincide
+    
+    def clasificar_estado(row) -> str:
+        """Clasifica el estado de la licitación"""
+        estado_raw = str(row.get("Estado", "") or "").strip().lower()
+        estado_flujo = str(row.get("EstadoFlujo", "") or "").strip()
+        
+        if estado_raw == "adjudicada":
+            return "Adjudicada"
+        if estado_raw.startswith("desierta"):
+            return "Desierta"
+        if estado_raw == "publicada":
+            return "Publicada"
+        if estado_raw == "cerrada":
+            return "Cerrada"
+        # Si tiene EstadoFlujo que indica proceso activo
+        if any(x in estado_flujo for x in ["📢", "💬", "⏳", "🧮", "🛠️", "💰"]):
+            return "En Proceso"
+        return "Otro"
+    
+    # ==============================================================================
+    # PREPARACIÓN DE DATOS
+    # ==============================================================================
+    
+    # Asegurar que tenemos las columnas necesarias
+    df_analisis = df_res_filtrado.copy()
+    
+    # Agregar columnas calculadas
+    if "Tipo" in df_analisis.columns:
+        df_analisis["Ponderacion"] = df_analisis["Tipo"].apply(calcular_ponderacion)
+        df_analisis["CargaPonderada"] = df_analisis["Ponderacion"]  # 1 licitación = 1 unidad ponderada
+    else:
+        df_analisis["Ponderacion"] = 1
+        df_analisis["CargaPonderada"] = 1
+    
+    df_analisis["EstadoClasificado"] = df_analisis.apply(clasificar_estado, axis=1)
+    
+    # Normalizar montos
+    if "MontoEstimado" not in df_analisis.columns:
+        df_analisis["MontoEstimado"] = 0
+    df_analisis["MontoEstimado"] = pd.to_numeric(df_analisis["MontoEstimado"], errors="coerce").fillna(0)
+    
+    # ==============================================================================
+    # SELECTOR DE COMPRADOR
+    # ==============================================================================
+    
+    st.markdown("### 🔍 Selección de Comprador")
+    
+    compradores_disponibles = sorted(df_analisis["C_Usuario"].dropna().unique().tolist())
+    opciones_comprador = ["Todos los Compradores"] + compradores_disponibles
+    
+    comprador_seleccionado = st.selectbox(
+        "Selecciona un comprador para análisis detallado:",
+        options=opciones_comprador,
+        index=0,
+        help="Selecciona un comprador específico o 'Todos los Compradores' para vista consolidada"
+    )
+    
+    # Filtrar por comprador si se seleccionó uno específico
+    if comprador_seleccionado == "Todos los Compradores":
+        df_comprador = df_analisis.copy()
+        titulo_comprador = "Todos los Compradores"
+    else:
+        df_comprador = df_analisis[df_analisis["C_Usuario"] == comprador_seleccionado].copy()
+        titulo_comprador = comprador_seleccionado
+    
+    # ==============================================================================
+    # KPIs PRINCIPALES
+    # ==============================================================================
+    
+    st.markdown("### 📊 Métricas Clave")
+    
+    col_kpi1, col_kpi2, col_kpi3, col_kpi4 = st.columns(4)
+    
+    carga_ponderada_total = df_comprador["CargaPonderada"].sum()
+    licitaciones_en_proceso = len(df_comprador[df_comprador["EstadoClasificado"] == "En Proceso"])
+    monto_total = df_comprador["MontoEstimado"].sum()
+    monto_en_proceso = df_comprador[df_comprador["EstadoClasificado"] == "En Proceso"]["MontoEstimado"].sum()
+    
+    with col_kpi1:
+        st.metric(
+            label="⚖️ Carga Ponderada Total",
+            value=f"{carga_ponderada_total:.0f}",
+            help="Suma de licitaciones ponderadas según tipo (LR=5, LP=4, LE=3, L1=2)"
+        )
+    
+    with col_kpi2:
+        st.metric(
+            label="🔄 Licitaciones En Proceso",
+            value=f"{licitaciones_en_proceso}",
+            delta=f"{licitaciones_en_proceso - len(df_comprador) + licitaciones_en_proceso}" if licitaciones_en_proceso > 0 else None,
+            delta_color="inverse",
+            help="Licitaciones activas que requieren seguimiento"
+        )
+    
+    with col_kpi3:
+        st.metric(
+            label="💰 Monto Total",
+            value=f"${monto_total:,.0f}",
+            help="Monto total estimado de todas las licitaciones"
+        )
+    
+    with col_kpi4:
+        st.metric(
+            label="⚠️ Monto En Proceso",
+            value=f"${monto_en_proceso:,.0f}",
+            help="Monto total de licitaciones en proceso activo"
+        )
+    
+    # Alerta si hay alta carga o montos en proceso
+    if carga_ponderada_total > 50:
+        st.warning(f"⚠️ **Alta Carga Laboral**: {titulo_comprador} tiene una carga ponderada de {carga_ponderada_total:.0f}, considerando redistribución de recursos.")
+    
+    if monto_en_proceso > monto_total * 0.7:
+        st.warning(f"⚠️ **Alto Monto en Proceso**: {monto_en_proceso/monto_total*100:.1f}% del monto total está en proceso activo.")
+    
+    # ==============================================================================
+    # GRÁFICOS Y VISUALIZACIONES
+    # ==============================================================================
+    
+    st.markdown("---")
+    
+    col_graf1, col_graf2 = st.columns(2)
+    
+    with col_graf1:
+        st.markdown("#### 📊 Distribución por Estado")
+        
+        # Contar estados
+        conteo_estados = df_comprador["EstadoClasificado"].value_counts()
+        
+        # Colores diferenciados: destacar "En Proceso"
+        colores_estados = {
+            "En Proceso": "#FF6B6B",  # Rojo destacado
+            "Publicada": "#4ECDC4",   # Turquesa
+            "Cerrada": "#95E1D3",      # Verde claro
+            "Adjudicada": "#F38181",   # Rosa
+            "Desierta": "#AA96DA",      # Morado
+            "Otro": "#C7CEEA"          # Gris claro
+        }
+        
+        colores = [colores_estados.get(estado, "#C7CEEA") for estado in conteo_estados.index]
+        
+        fig_torta = px.pie(
+            values=conteo_estados.values,
+            names=conteo_estados.index,
+            title=f"Estados de Licitaciones - {titulo_comprador}",
+            color_discrete_sequence=colores,
+            hole=0.4
+        )
+        fig_torta.update_traces(
+            textposition='inside',
+            textinfo='percent+label',
+            hovertemplate='<b>%{label}</b><br>Cantidad: %{value}<br>Porcentaje: %{percent}<extra></extra>'
+        )
+        fig_torta.update_layout(
+            height=400,
+            showlegend=True,
+            legend=dict(orientation="v", yanchor="middle", y=0.5, x=1.15)
+        )
+        st.plotly_chart(fig_torta, use_container_width=True)
+    
+    with col_graf2:
+        st.markdown("#### 📈 Licitaciones por Tipo")
+        
+        # Agrupar por Tipo
+        if "Tipo" in df_comprador.columns:
+            conteo_tipo = df_comprador.groupby("Tipo").agg(
+                Cantidad=("CodigoLicitacion", "count"),
+                CargaPonderada=("CargaPonderada", "sum"),
+                MontoTotal=("MontoEstimado", "sum")
+            ).reset_index()
+            conteo_tipo = conteo_tipo.sort_values("Cantidad", ascending=True)
+            
+            # Colores diferenciados por tipo
+            colores_tipo = px.colors.qualitative.Set3[:len(conteo_tipo)]
+            
+            fig_barras = px.bar(
+                conteo_tipo,
+                x="Cantidad",
+                y="Tipo",
+                orientation='h',
+                title=f"Distribución por Tipo - {titulo_comprador}",
+                color="CargaPonderada",
+                color_continuous_scale="YlOrRd",
+                labels={"Cantidad": "Cantidad de Licitaciones", "Tipo": "Tipo", "CargaPonderada": "Carga Ponderada"},
+                hover_data=["MontoTotal"]
+            )
+            fig_barras.update_layout(
+                height=400,
+                xaxis_title="Cantidad de Licitaciones",
+                yaxis_title="Tipo",
+                showlegend=False
+            )
+            fig_barras.update_traces(
+                hovertemplate='<b>%{y}</b><br>Cantidad: %{x}<br>Carga Ponderada: %{customdata[0]:.0f}<br>Monto: $%{customdata[1]:,.0f}<extra></extra>',
+                customdata=conteo_tipo[["CargaPonderada", "MontoTotal"]].values
+            )
+            st.plotly_chart(fig_barras, use_container_width=True)
+        else:
+            st.info("No hay información de Tipo disponible para este comprador.")
+    
+    # ==============================================================================
+    # TABLA DE RESUMEN POR TIPO
+    # ==============================================================================
+    
+    st.markdown("---")
+    st.markdown("### 📋 Resumen Detallado por Tipo")
+    
+    if "Tipo" in df_comprador.columns:
+        resumen_tipo = df_comprador.groupby("Tipo").agg(
+            Cantidad=("CodigoLicitacion", "count"),
+            MontoTotal=("MontoEstimado", "sum"),
+            CargaPonderada=("CargaPonderada", "sum"),
+            EnProceso=("EstadoClasificado", lambda x: (x == "En Proceso").sum())
+        ).reset_index()
+        
+        resumen_tipo["PromedioMonto"] = resumen_tipo["MontoTotal"] / resumen_tipo["Cantidad"]
+        resumen_tipo = resumen_tipo.sort_values("CargaPonderada", ascending=False)
+        
+        # Formatear montos
+        resumen_tipo["MontoTotal_Fmt"] = resumen_tipo["MontoTotal"].apply(lambda x: f"${x:,.0f}")
+        resumen_tipo["PromedioMonto_Fmt"] = resumen_tipo["PromedioMonto"].apply(lambda x: f"${x:,.0f}")
+        
+        # Preparar para visualización
+        resumen_display = resumen_tipo[[
+            "Tipo", "Cantidad", "CargaPonderada", "EnProceso",
+            "MontoTotal_Fmt", "PromedioMonto_Fmt"
+        ]].copy()
+        resumen_display.columns = [
+            "Tipo", "Cantidad", "⚖️ Carga Ponderada", "🔄 En Proceso",
+            "💰 Monto Total", "📊 Promedio Monto"
+        ]
+        
+        st.dataframe(
+            resumen_display,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "⚖️ Carga Ponderada": st.column_config.NumberColumn(
+                    "⚖️ Carga Ponderada",
+                    format="%.0f",
+                    help="Métrica principal de carga laboral"
+                ),
+                "🔄 En Proceso": st.column_config.NumberColumn(
+                    "🔄 En Proceso",
+                    format="%d",
+                    help="Licitaciones activas en proceso"
+                ),
+            }
+        )
+    else:
+        st.info("No hay información de Tipo disponible para generar el resumen.")
+    
+    # ==============================================================================
+    # ANÁLISIS DE CARGA LABORAL POR COMPRADOR (Vista Consolidada)
+    # ==============================================================================
+    
+    st.markdown("---")
+    st.markdown("### 👥 Análisis de Carga Laboral por Comprador")
+    
+    if comprador_seleccionado == "Todos los Compradores":
+        # Vista consolidada: análisis de todos los compradores
+        carga_por_comprador = df_analisis.groupby("C_Usuario").agg(
+            CantidadLicitaciones=("CodigoLicitacion", "count"),
+            CargaPonderada=("CargaPonderada", "sum"),
+            MontoTotal=("MontoEstimado", "sum"),
+            EnProceso=("EstadoClasificado", lambda x: (x == "En Proceso").sum()),
+            Publicadas=("EstadoClasificado", lambda x: (x == "Publicada").sum()),
+            Cerradas=("EstadoClasificado", lambda x: (x == "Cerrada").sum())
+        ).reset_index()
+        
+        carga_por_comprador["PromedioMonto"] = carga_por_comprador["MontoTotal"] / carga_por_comprador["CantidadLicitaciones"]
+        carga_por_comprador = carga_por_comprador.sort_values("CargaPonderada", ascending=False)
+        
+        # Gráfico de barras horizontales
+        fig_carga = px.bar(
+            carga_por_comprador.head(15),
+            x="CargaPonderada",
+            y="C_Usuario",
+            orientation='h',
+            title="Top 15 Compradores por Carga Ponderada",
+            color="MontoTotal",
+            color_continuous_scale="Viridis",
+            labels={"CargaPonderada": "Carga Ponderada", "C_Usuario": "Comprador"},
+            hover_data=["CantidadLicitaciones", "EnProceso", "MontoTotal"]
+        )
+        fig_carga.update_layout(
+            height=600,
+            xaxis_title="Carga Ponderada (Métrica Principal)",
+            yaxis_title="Comprador",
+            yaxis={'categoryorder': 'total ascending'}
+        )
+        fig_carga.update_traces(
+            hovertemplate='<b>%{y}</b><br>Carga Ponderada: %{x:.0f}<br>Licitaciones: %{customdata[0]}<br>En Proceso: %{customdata[1]}<br>Monto: $%{customdata[2]:,.0f}<extra></extra>',
+            customdata=carga_por_comprador[["CantidadLicitaciones", "EnProceso", "MontoTotal"]].head(15).values
+        )
+        st.plotly_chart(fig_carga, use_container_width=True)
+        
+        # Tabla detallada
+        carga_display = carga_por_comprador[[
+            "C_Usuario", "CantidadLicitaciones", "CargaPonderada",
+            "EnProceso", "Publicadas", "Cerradas", "MontoTotal"
+        ]].copy()
+        carga_display["MontoTotal_Fmt"] = carga_display["MontoTotal"].apply(lambda x: f"${x:,.0f}")
+        carga_display = carga_display.drop("MontoTotal", axis=1)
+        carga_display.columns = [
+            "Comprador", "Cantidad", "⚖️ Carga Ponderada",
+            "🔄 En Proceso", "📢 Publicadas", "⏳ Cerradas", "💰 Monto Total"
+        ]
+        
+        st.dataframe(
+            carga_display,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "⚖️ Carga Ponderada": st.column_config.NumberColumn(
+                    "⚖️ Carga Ponderada",
+                    format="%.0f",
+                    help="Métrica principal de carga laboral"
+                ),
+                "🔄 En Proceso": st.column_config.NumberColumn(
+                    "🔄 En Proceso",
+                    format="%d"
+                ),
+            }
+        )
+    else:
+        # Vista individual: mostrar detalle de licitaciones del comprador seleccionado
+        st.markdown(f"#### 📋 Licitaciones de {comprador_seleccionado}")
+        
+        cols_detalle = [
+            "CodigoLicitacion", "Nombre", "Tipo", "EstadoClasificado",
+            "EstadoFlujo", "MontoEstimado", "FechaClave", "DiasParaProximoHito"
+        ]
+        cols_detalle = [c for c in cols_detalle if c in df_comprador.columns]
+        
+        df_detalle = df_comprador[cols_detalle].copy()
+        
+        # Formatear montos
+        if "MontoEstimado" in df_detalle.columns:
+            df_detalle["MontoEstimado"] = df_detalle["MontoEstimado"].apply(
+                lambda x: f"${x:,.0f}" if pd.notna(x) and x != 0 else ""
+            )
+        
+        # Resaltar "En Proceso"
+        st.dataframe(
+            df_detalle.sort_values(
+                by=[c for c in ["EstadoClasificado", "FechaClave"] if c in df_detalle.columns],
+                ascending=[True, True]
+            ),
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "EstadoClasificado": st.column_config.TextColumn(
+                    "Estado",
+                    help="Estado clasificado de la licitación"
+                ),
+                "MontoEstimado": st.column_config.TextColumn("Monto (CLP)"),
+                "FechaClave": st.column_config.DateColumn(format="DD/MM/YYYY"),
+            }
+        )
+    
+    # ==============================================================================
+    # MÉTRICAS ADICIONALES DE IMPACTO
+    # ==============================================================================
+    
+    st.markdown("---")
+    st.markdown("### 🎯 Métricas de Impacto y Seguimiento")
+    
+    col_met1, col_met2, col_met3 = st.columns(3)
+    
+    with col_met1:
+        # Comprador con mayor carga ponderada
+        if comprador_seleccionado == "Todos los Compradores":
+            max_carga = df_analisis.groupby("C_Usuario")["CargaPonderada"].sum().idxmax()
+            max_carga_valor = df_analisis.groupby("C_Usuario")["CargaPonderada"].sum().max()
+            st.metric(
+                label="👤 Comprador con Mayor Carga",
+                value=max_carga,
+                delta=f"{max_carga_valor:.0f} puntos",
+                help="Comprador con mayor carga laboral ponderada"
+            )
+        else:
+            st.metric(
+                label="📊 Posición en Ranking",
+                value=f"#{list(df_analisis.groupby('C_Usuario')['CargaPonderada'].sum().sort_values(ascending=False).index).index(comprador_seleccionado) + 1}",
+                help="Posición del comprador en ranking de carga ponderada"
+            )
+    
+    with col_met2:
+        # Porcentaje de licitaciones en proceso
+        pct_en_proceso = (licitaciones_en_proceso / len(df_comprador) * 100) if len(df_comprador) > 0 else 0
+        st.metric(
+            label="📈 % En Proceso",
+            value=f"{pct_en_proceso:.1f}%",
+            help="Porcentaje de licitaciones en proceso activo"
+        )
+    
+    with col_met3:
+        # Promedio de monto por licitación
+        promedio_monto = monto_total / len(df_comprador) if len(df_comprador) > 0 else 0
+        st.metric(
+            label="💵 Promedio Monto/Licitación",
+            value=f"${promedio_monto:,.0f}",
+            help="Monto promedio por licitación"
+        )
+    
+    # ==============================================================================
+    # ALERTAS Y RECOMENDACIONES
+    # ==============================================================================
+    
+    if comprador_seleccionado != "Todos los Compradores":
+        st.markdown("---")
+        st.markdown("### ⚠️ Alertas y Recomendaciones")
+        
+        alertas = []
+        
+        if carga_ponderada_total > 50:
+            alertas.append(f"🔴 **Alta Carga Laboral**: Carga ponderada de {carga_ponderada_total:.0f} puntos. Considerar redistribución.")
+        
+        if licitaciones_en_proceso > len(df_comprador) * 0.5:
+            alertas.append(f"🟡 **Alto % En Proceso**: {pct_en_proceso:.1f}% de las licitaciones están en proceso activo.")
+        
+        if monto_en_proceso > monto_total * 0.7:
+            alertas.append(f"🟠 **Alto Monto en Riesgo**: ${monto_en_proceso:,.0f} ({monto_en_proceso/monto_total*100:.1f}%) en proceso activo.")
+        
+        if len(df_comprador[df_comprador["EstadoClasificado"] == "Desierta"]) > len(df_comprador) * 0.2:
+            alertas.append(f"⚠️ **Alta Tasa de Desiertas**: {len(df_comprador[df_comprador['EstadoClasificado']=='Desierta'])} licitaciones desiertas.")
+        
+        if alertas:
+            for alerta in alertas:
+                st.warning(alerta)
+        else:
+            st.success("✅ No se detectaron alertas críticas para este comprador.")
+    
