@@ -170,8 +170,45 @@ now = pd.Timestamp.now()
 def procesar_estados_licitacion(df):
     now = pd.Timestamp.now()
 
-    def calcular_hito_y_etapa(row):
-        # Orden de hitos según flujo completo (sin considerar FechaFinal para el cálculo)
+    def _norm_estado(v: object) -> str:
+        return str(v or "").strip().lower()
+
+    def _dias_hasta(ts: pd.Timestamp) -> int:
+        """Días restantes considerando fecha+hora (ceil si futuro, floor si pasado)."""
+        try:
+            delta = ts - now
+            secs = float(delta.total_seconds())
+            if secs >= 0:
+                return int(np.ceil(secs / 86400))
+            return int(np.floor(secs / 86400))
+        except Exception:
+            return 0
+
+    def _semaforo_dias(dias: int) -> str:
+        if dias > 7:
+            return "🟢"
+        if 3 <= dias <= 7:
+            return "🟡"
+        return "🔴"
+
+    def calcular_flujo(row):
+        """
+        Integra Estado (fuente de verdad) + fechas de hitos.
+        Retorna: FechaClave, EstadoFlujo, EstadoFlujoSimple, DiasParaProximoHito
+        """
+        estado_raw = _norm_estado(row.get("Estado"))
+
+        # 1) Estados finalizados (independiente de fechas)
+        if estado_raw == "adjudicada":
+            fecha = row.get("FechaAdjudicacion")
+            return (fecha if pd.notna(fecha) else pd.NaT, "Adjudicada", "Adjudicada", "")
+
+        if estado_raw.startswith("desierta"):
+            # Incluye: "Desierta (o art. 3 ó 9 Ley 19.886)"
+            fecha = row.get("FechaCierre")
+            return (fecha if pd.notna(fecha) else pd.NaT, "Desierta", "Desierta", "")
+
+        # 2) Estados en proceso: Publicada / Cerrada -> mantener lógica por hitos
         orden_fechas_hitos = [
             "FechaCreacion",
             "FechaInicio",
@@ -219,9 +256,7 @@ def procesar_estados_licitacion(df):
                     fecha_clave = valor
                     estado = iconos_estado.get(col, "📍 Próximo Hito")
 
-        return fecha_clave, estado
-
-    def calcular_estado_flujo_simple(row):
+        # EstadoFlujoSimple (mantener lógica actual)
         pub = row.get("FechaPublicacion")
         preguntas = row.get("FechaPubRespuestas") if "FechaPubRespuestas" in row.index else row.get("FechaPreguntas")
         cierre = row.get("FechaCierre")
@@ -229,26 +264,33 @@ def procesar_estados_licitacion(df):
 
         # Asegurar comparación con fecha y hora completa
         if pd.notna(pub) and pd.notna(preguntas) and pub <= now < preguntas:
-            return "💬 Responder Preguntas"
-        if pd.notna(preguntas) and pd.notna(cierre) and preguntas <= now < cierre:
-            return "⏳ Por Cerrar"
-        if pd.notna(cierre) and pd.notna(estimada_adj) and cierre <= now < estimada_adj:
-            return "🧮 En Evaluación"
+            estado_simple = "💬 Responder Preguntas"
+        elif pd.notna(preguntas) and pd.notna(cierre) and preguntas <= now < cierre:
+            estado_simple = "⏳ Por Cerrar"
+        elif pd.notna(cierre) and pd.notna(estimada_adj) and cierre <= now < estimada_adj:
+            estado_simple = "🧮 En Evaluación"
+        elif pd.notna(pub) and now < pub:
+            estado_simple = "📢 Pendiente de Publicación"
+        elif pd.notna(estimada_adj) and now >= estimada_adj:
+            estado_simple = "🏁 Post Adjudicación"
+        else:
+            estado_simple = "Sin Clasificar"
 
-        # Estados complementarios simplificados
-        if pd.notna(pub) and now < pub:
-            return "📢 Pendiente de Publicación"
-        if pd.notna(estimada_adj) and now >= estimada_adj:
-            return "🏁 Post Adjudicación"
+        # Días para próximo hito (solo para estados activos)
+        dias_txt = ""
+        if pd.notna(fecha_clave):
+            dias = _dias_hasta(fecha_clave)
+            dias_txt = f"{_semaforo_dias(dias)} {dias}d"
 
-        return "Sin Clasificar"
+        return fecha_clave, estado, estado_simple, dias_txt
 
-    # Aplicamos a df_filtrado (usando tu convención de nombre)
+    # Aplicamos al dataframe
     if not df.empty:
-        df[["FechaClave", "EstadoFlujo"]] = df.apply(
-            lambda row: pd.Series(calcular_hito_y_etapa(row)), axis=1
+        df[["FechaClave", "EstadoFlujo", "EstadoFlujoSimple", "DiasParaProximoHito"]] = df.apply(
+            lambda row: pd.Series(calcular_flujo(row)),
+            axis=1,
         )
-        df["EstadoFlujoSimple"] = df.apply(calcular_estado_flujo_simple, axis=1)
+
     return df
 
 # Procesamos los datos antes de mostrar la tabla
@@ -264,8 +306,16 @@ with tab1:
 # ==============================================================================
     st.markdown("### 📋 Panel de Control de Procesos (Gemba)")
 
+    # GEMBA: solo procesos activos (Publicada / Cerrada)
+    if "Estado" in df_res_filtrado.columns:
+        df_gemba = df_res_filtrado[
+            df_res_filtrado["Estado"].astype(str).str.strip().str.lower().isin(["publicada", "cerrada"])
+        ].copy()
+    else:
+        df_gemba = df_res_filtrado.copy()
+
     # Ordenar por fecha clave (lo más urgente arriba)
-    df_sorted = df_res_filtrado.sort_values(by='FechaClave', ascending=True, na_position='last')
+    df_sorted = df_gemba.sort_values(by="FechaClave", ascending=True, na_position="last")
 
     # Columnas a mostrar
     cols_view = [
@@ -275,13 +325,14 @@ with tab1:
         "C_Usuario",
         "EstadoFlujo",
         "EstadoFlujoSimple",
+        "DiasParaProximoHito",
         "FechaClave",
         "MontoEstimado",
     ]
 
     # Filtro rápido por estado de flujo dinámico
     iconos_excluir = ["✅", "✍️"]
-    opciones_estado = sorted(df_res_filtrado['EstadoFlujo'].unique())
+    opciones_estado = sorted(df_gemba["EstadoFlujo"].dropna().unique())
     filtro_estado = st.multiselect(
         "Filtrar por Etapa Actual del Flujo:",
         options=opciones_estado,
@@ -295,15 +346,15 @@ with tab1:
 
     # Renderizado de la Tabla
     df_view = df_sorted[cols_view].copy()
-    if "MontoEstimado" in df_view.columns:
-        def _fmt_clp(v):
-            if pd.isna(v):
-                return ""
-            try:
-                return f"$ {float(v):,.0f}".replace(",", ".")
-            except Exception:
-                return str(v)
+    def _fmt_clp(v):
+        if pd.isna(v):
+            return ""
+        try:
+            return f"$ {float(v):,.0f}".replace(",", ".")
+        except Exception:
+            return str(v)
 
+    if "MontoEstimado" in df_view.columns:
         df_view["MontoEstimado"] = df_view["MontoEstimado"].apply(_fmt_clp)
 
 
@@ -315,6 +366,11 @@ with tab1:
             "EstadoFlujo": st.column_config.TextColumn(
                 "📍 Etapa Actual",
                 help="Hito más próximo detectado según el calendario",
+            ),
+            "DiasParaProximoHito": st.column_config.TextColumn(
+                "⏱️ Días Próx. Hito",
+                help="Días restantes al próximo hito (🟢>7 | 🟡3-7 | 🔴<3)",
+                width="small",
             ),
             "FechaClave": st.column_config.DateColumn(
                 "📅 Fecha Hito",
@@ -722,42 +778,140 @@ with tab1:
 
 
     st.markdown("---")
-    st.markdown("## ✅ Procesos Adjudicados")
+    st.markdown("## ✅ Procesos Finalizados")
+
+    def _fmt_var_adj(v) -> str:
+        if v is None or (isinstance(v, float) and pd.isna(v)):
+            return ""
+        try:
+            d = int(v)
+        except Exception:
+            return str(v)
+        if d <= 0:
+            return f"🟢 {abs(d)}d adelanto" if d < 0 else "🟢 0d a tiempo"
+        return f"🔴 {d}d atraso"
 
     if "Estado" not in df_res_filtrado.columns:
-        st.info("No está disponible la columna 'Estado' para identificar procesos adjudicados.")
+        st.info("No está disponible la columna 'Estado' para separar adjudicadas/desiertas.")
+        df_adjudicadas = df_res_filtrado.iloc[0:0].copy()
+        df_desiertas = df_res_filtrado.iloc[0:0].copy()
     else:
-        df_adj = df_res_filtrado[
-            df_res_filtrado["Estado"].astype(str).str.strip().str.lower().eq("adjudicada")
-        ].copy()
+        estado_norm = df_res_filtrado["Estado"].astype(str).str.strip().str.lower()
+        df_adjudicadas = df_res_filtrado[estado_norm.eq("adjudicada")].copy()
+        df_desiertas = df_res_filtrado[estado_norm.str.startswith("desierta")].copy()
 
-        if df_adj.empty:
-            st.info("No hay procesos con Estado = 'Adjudicada' para los filtros actuales.")
+    col_fin_1, col_fin_2 = st.columns(2, gap="large")
+
+    with col_fin_1:
+        st.markdown("### 🏆 Adjudicadas")
+        if df_adjudicadas.empty:
+            st.info("No hay procesos adjudicados para los filtros actuales.")
         else:
+            st.caption(f"Total adjudicadas: {len(df_adjudicadas):,}")
+
+            # Variación vs fecha estimada (negativo=adelanto, positivo=atraso)
+            if "FechaAdjudicacion" in df_adjudicadas.columns and "FechaEstimadaAdjudicacion" in df_adjudicadas.columns:
+                df_adjudicadas["VarAdjDias"] = (
+                    pd.to_datetime(df_adjudicadas["FechaAdjudicacion"], errors="coerce")
+                    - pd.to_datetime(df_adjudicadas["FechaEstimadaAdjudicacion"], errors="coerce")
+                ).dt.days
+                df_adjudicadas["DesempeñoAdjudicación"] = df_adjudicadas["VarAdjDias"].apply(_fmt_var_adj)
+            else:
+                df_adjudicadas["VarAdjDias"] = np.nan
+                df_adjudicadas["DesempeñoAdjudicación"] = ""
+
             cols_adj = [
                 "CodigoLicitacion",
-                "Nombre",
+                "Estado",
                 "C_Usuario",
                 "MontoEstimado",
+                "FechaEstimadaAdjudicacion",
                 "FechaAdjudicacion",
+                "DesempeñoAdjudicación",
                 "Adj_UrlActa",
             ]
-            cols_adj = [c for c in cols_adj if c in df_adj.columns]
-            if "FechaAdjudicacion" in df_adj.columns:
-                df_adj = df_adj.sort_values("FechaAdjudicacion", ascending=False)
+            cols_adj = [c for c in cols_adj if c in df_adjudicadas.columns]
+            df_adj_view = df_adjudicadas[cols_adj].copy()
 
-            column_config_adj = {
-                "MontoEstimado": st.column_config.NumberColumn(format="$ %,.0f"),
-                "FechaAdjudicacion": st.column_config.DateColumn(format="DD-MM-YYYY"),
-            }
-            if "Adj_UrlActa" in df_adj.columns:
-                column_config_adj["Adj_UrlActa"] = st.column_config.LinkColumn("Acta", display_text="🔗 Acta")
+            if "MontoEstimado" in df_adj_view.columns:
+                df_adj_view["MontoEstimado"] = df_adj_view["MontoEstimado"].apply(_fmt_clp)
 
             st.dataframe(
-                df_adj[cols_adj].head(50),
+                df_adj_view.sort_values(
+                    by=[c for c in ["FechaAdjudicacion"] if c in df_adj_view.columns],
+                    ascending=False,
+                ).head(50),
                 use_container_width=True,
                 hide_index=True,
-                column_config=column_config_adj,
+                column_config={
+                    "MontoEstimado": st.column_config.TextColumn("Monto (CLP)"),
+                    "FechaEstimadaAdjudicacion": st.column_config.DateColumn("Fecha Estimada", format="DD-MM-YYYY"),
+                    "FechaAdjudicacion": st.column_config.DateColumn("Fecha Real", format="DD-MM-YYYY"),
+                    "Adj_UrlActa": st.column_config.LinkColumn("Acta", display_text="🔗 Acta") if "Adj_UrlActa" in df_adj_view.columns else None,
+                },
+            )
+
+            with st.expander("📊 Desempeño por comprador (Adjudicación)", expanded=False):
+                df_perf = df_adjudicadas.dropna(subset=["C_Usuario", "VarAdjDias"]).copy()
+                if df_perf.empty:
+                    st.info("No hay datos suficientes (fechas estimada/real) para analizar desempeño.")
+                else:
+                    resumen = (
+                        df_perf.groupby("C_Usuario", as_index=False)
+                        .agg(
+                            Procesos=("CodigoLicitacion", "nunique"),
+                            Promedio_Var_Días=("VarAdjDias", "mean"),
+                            Mediana_Var_Días=("VarAdjDias", "median"),
+                            A_Tiempo_o_Antes=("VarAdjDias", lambda s: int((s <= 0).sum())),
+                            Atrasadas=("VarAdjDias", lambda s: int((s > 0).sum())),
+                            Pct_Cumple=("VarAdjDias", lambda s: float((s <= 0).mean() * 100)),
+                        )
+                        .sort_values(["Pct_Cumple", "Procesos"], ascending=[False, False])
+                    )
+                    st.dataframe(
+                        resumen,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "Promedio_Var_Días": st.column_config.NumberColumn(format="%.1f"),
+                            "Mediana_Var_Días": st.column_config.NumberColumn(format="%.1f"),
+                            "Pct_Cumple": st.column_config.ProgressColumn(min_value=0, max_value=100, format="%.1f%%"),
+                        },
+                    )
+
+    with col_fin_2:
+        st.markdown("### 🚫 Desiertas")
+        if df_desiertas.empty:
+            st.info("No hay procesos desiertos para los filtros actuales.")
+        else:
+            st.caption(f"Total desiertas: {len(df_desiertas):,}")
+            cols_des = [
+                "CodigoLicitacion",
+                "Estado",
+                "C_Usuario",
+                "MontoEstimado",
+                "FechaPublicacion",
+                "FechaCierre",
+                "Adj_UrlActa",
+            ]
+            cols_des = [c for c in cols_des if c in df_desiertas.columns]
+            df_des_view = df_desiertas[cols_des].copy()
+            if "MontoEstimado" in df_des_view.columns:
+                df_des_view["MontoEstimado"] = df_des_view["MontoEstimado"].apply(_fmt_clp)
+
+            st.dataframe(
+                df_des_view.sort_values(
+                    by=[c for c in ["FechaCierre", "FechaPublicacion"] if c in df_des_view.columns],
+                    ascending=False,
+                ).head(50),
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "MontoEstimado": st.column_config.TextColumn("Monto (CLP)"),
+                    "FechaPublicacion": st.column_config.DateColumn(format="DD-MM-YYYY") if "FechaPublicacion" in df_des_view.columns else None,
+                    "FechaCierre": st.column_config.DateColumn(format="DD-MM-YYYY") if "FechaCierre" in df_des_view.columns else None,
+                    "Adj_UrlActa": st.column_config.LinkColumn("Acta", display_text="🔗 Acta") if "Adj_UrlActa" in df_des_view.columns else None,
+                },
             )
 
     # ==============================================================================
