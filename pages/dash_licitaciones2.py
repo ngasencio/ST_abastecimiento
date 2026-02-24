@@ -1068,526 +1068,86 @@ with tab1:
         return html
 
     def generar_tablero_gemba_html_consolidado(df_resumen):
-        """Genera HTML del tablero GEMBA consolidado para jefaturas (autónomo para envío por correo)."""
+        """Genera HTML del tablero gemba consolidado para jefaturas"""
         if df_resumen.empty:
             return "<p>No hay datos disponibles para el período.</p>"
-
-        df = df_resumen.copy()
-
-        # Normalizar columnas clave
-        if "MontoEstimado" in df.columns:
-            df["MontoEstimado"] = pd.to_numeric(df["MontoEstimado"], errors="coerce").fillna(0)
-        else:
-            df["MontoEstimado"] = 0
-
-        def _fmt_clp(v) -> str:
-            try:
-                v = float(v)
-                return f"$ {v:,.0f}".replace(",", ".")
-            except Exception:
-                return str(v)
-
-        def _fmt_fecha(v) -> str:
-            try:
-                ts = pd.to_datetime(v, errors="coerce")
-                if pd.isna(ts):
-                    return ""
-                return ts.strftime("%d-%m-%Y")
-            except Exception:
-                return ""
-
-        # =========================
-        # Cálculos base
-        # =========================
-        if "Estado" in df.columns:
-            estado_norm = df["Estado"].astype(str).str.strip().str.lower()
-            mask_activas = estado_norm.isin(["publicada", "cerrada"])
-        else:
-            mask_activas = pd.Series(True, index=df.index)
-
-        df_activas = df[mask_activas].copy()
-
-        total_activas = len(df_activas)
-        monto_total_activas = df_activas["MontoEstimado"].sum()
-
-        # Para ordenamiento por comprador (GEMBA, datos generales)
-        if "C_Usuario" in df_activas.columns:
-            resumen_act_por_comprador = (
-                df_activas.groupby("C_Usuario")
-                .agg(
-                    Cantidad=("CodigoLicitacion", "count"),
-                    MontoEstimado=("MontoEstimado", "sum"),
-                )
-                .reset_index()
-            )
-        else:
-            resumen_act_por_comprador = pd.DataFrame(columns=["C_Usuario", "Cantidad", "MontoEstimado"])
-
-        # Para tipos principales por comprador
-        if {"C_Usuario", "Tipo"}.issubset(df_activas.columns):
-            tipos_top = (
-                df_activas.groupby(["C_Usuario", "Tipo"])
-                .size()
-                .reset_index(name="n")
-                .sort_values(["C_Usuario", "n"], ascending=[True, False])
-                .drop_duplicates("C_Usuario")
-                .set_index("C_Usuario")["Tipo"]
-            )
-        else:
-            tipos_top = {}
-
-        # =========================
-        # Bloque: Resumen Ejecutivo + Métrica Total Licitaciones Activas
-        # =========================
-        html = """
-        <div class="gemba-email-root" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; color: #333;">
-        <style>
-            .gemba-section { margin-top: 24px; }
-            .gemba-section h3 { color: #138AEC; margin-bottom: 10px; }
-            .gemba-card-container { display: flex; gap: 16px; margin-bottom: 8px; flex-wrap: wrap; }
-            .gemba-card {
-                background-color: #f0f0f0;
-                padding: 12px 16px;
-                border-radius: 8px;
-                flex: 1 1 220px;
-                box-sizing: border-box;
-            }
-            .gemba-table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-top: 8px;
-                font-size: 13px;
-            }
-            .gemba-table th {
-                padding: 8px 10px;
-                border: 1px solid #ddd;
-                background-color: #138AEC;
-                color: white;
-                text-align: left;
-            }
-            .gemba-table td {
-                padding: 6px 10px;
-                border: 1px solid #ddd;
-                text-align: left;
-            }
-            .gemba-bar-row {
-                display: flex;
-                align-items: center;
-                margin-bottom: 6px;
-                gap: 6px;
-            }
-            .gemba-bar-label {
-                width: 35%;
-                font-size: 12px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-            .gemba-bar-track {
-                flex: 1;
-                background-color: #eee;
-                border-radius: 999px;
-                overflow: hidden;
-                height: 14px;
-            }
-            .gemba-bar-fill {
-                background: linear-gradient(90deg, #138AEC, #3E9FEF);
-                height: 100%;
-                position: relative;
-            }
-            .gemba-bar-value {
-                position: absolute;
-                right: 6px;
-                top: 50%;
-                transform: translateY(-50%);
-                font-size: 11px;
-                color: white;
-            }
-            .gemba-bar-type {
-                width: 20%;
-                font-size: 11px;
-                color: #555;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-            .gemba-flex-row {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 18px;
-            }
-            .gemba-flex-col {
-                flex: 1 1 260px;
-                box-sizing: border-box;
-            }
-            .gemba-details {
-                margin-bottom: 10px;
-                border-radius: 6px;
-                border: 1px solid #ddd;
-                background-color: #fafafa;
-                padding: 6px 10px;
-            }
-            .gemba-details summary {
-                cursor: pointer;
-                font-weight: 600;
-                color: #2c3e50;
-                outline: none;
-            }
-            .gemba-tag-proceso {
-                display: inline-block;
-                padding: 2px 6px;
-                border-radius: 999px;
-                font-size: 11px;
-                background-color: #FF6B6B;
-                color: white;
-            }
-        </style>
-        """
-
-        html += """
-        <div class="gemba-section">
-            <h3>Resumen Ejecutivo del Mes</h3>
-            <div class="gemba-card-container">
-                <div class="gemba-card">
-                    <strong>Total Licitaciones Activas:</strong><br>
-                    <span style="font-size: 20px; font-weight: 700;">{total_activas}</span>
+        
+        # Estadísticas generales
+        total_licitaciones = len(df_resumen)
+        monto_total = df_resumen['MontoEstimado'].sum()
+        
+        # Por estado
+        estados_count = df_resumen['EstadoFlujo'].value_counts().head(10)
+        
+        # Por comprador
+        compradores_count = df_resumen.groupby('C_Usuario').agg({
+            'CodigoLicitacion': 'count',
+            'MontoEstimado': 'sum'
+        }).sort_values('CodigoLicitacion', ascending=False).head(10)
+        
+        html = f"""
+        <div style="margin-top: 20px;">
+            <h3 style="color: #138AEC;">Resumen Ejecutivo del Mes</h3>
+            <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+                <div style="background-color: #f0f0f0; padding: 15px; border-radius: 8px; flex: 1;">
+                    <strong>Total Licitaciones:</strong> {total_licitaciones:,}
                 </div>
-                <div class="gemba-card">
-                    <strong>Monto Total Estimado (Activas):</strong><br>
-                    <span style="font-size: 18px; font-weight: 600;">{monto_total}</span>
+                <div style="background-color: #f0f0f0; padding: 15px; border-radius: 8px; flex: 1;">
+                    <strong>Monto Total Estimado:</strong> $ {monto_total:,.0f}
                 </div>
             </div>
         </div>
-        """.format(
-            total_activas=total_activas,
-            monto_total=_fmt_clp(monto_total_activas),
-        )
-
-        # =========================
-        # Bloque 1: Datos Generales
-        # =========================
-        html += """
-        <div class="gemba-section">
-            <h3>1) Datos Generales</h3>
-            <div class="gemba-flex-row">
-                <div class="gemba-flex-col">
-                    <h4 style="margin: 4px 0 8px;">Licitaciones Activas por Comprador</h4>
+        
+        <h3 style="color: #138AEC; margin-top: 30px;">Distribución por Estado</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <thead>
+                <tr style="background-color: #138AEC; color: white;">
+                    <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Estado</th>
+                    <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Cantidad</th>
+                </tr>
+            </thead>
+            <tbody>
         """
-
-        if not resumen_act_por_comprador.empty:
-            resumen_act_por_comprador = resumen_act_por_comprador.sort_values(
-                "MontoEstimado", ascending=False
-            )
-            max_cant = float(resumen_act_por_comprador["Cantidad"].max() or 1)
-
-            for _, row in resumen_act_por_comprador.iterrows():
-                comprador = row["C_Usuario"]
-                cant = int(row["Cantidad"])
-                width_pct = max(8, int(cant / max_cant * 100))
-                tipo_principal = tipos_top.get(comprador, "") if isinstance(tipos_top, dict) or hasattr(tipos_top, "get") else ""
-
-                html += """
-                    <div class="gemba-bar-row">
-                        <div class="gemba-bar-label">{comprador}</div>
-                        <div class="gemba-bar-track">
-                            <div class="gemba-bar-fill" style="width: {width}%">
-                                <span class="gemba-bar-value">{cant}</span>
-                            </div>
-                        </div>
-                        <div class="gemba-bar-type">{tipo}</div>
-                    </div>
-                """.format(
-                    comprador=comprador,
-                    width=width_pct,
-                    cant=cant,
-                    tipo=tipo_principal or "",
-                )
-        else:
-            html += "<p>No hay licitaciones activas para mostrar.</p>"
-
-        html += """
-                </div>
-                <div class="gemba-flex-col">
-                    <h4 style="margin: 4px 0 8px;">Resumen por Comprador</h4>
-                    <table class="gemba-table">
-                        <thead>
-                            <tr>
-                                <th>Comprador</th>
-                                <th>Licitaciones Activas</th>
-                                <th>Monto Total (CLP)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-        """
-
-        if not resumen_act_por_comprador.empty:
-            for _, row in resumen_act_por_comprador.iterrows():
-                html += """
-                            <tr>
-                                <td>{comprador}</td>
-                                <td>{cant}</td>
-                                <td>{monto}</td>
-                            </tr>
-                """.format(
-                    comprador=row["C_Usuario"],
-                    cant=int(row["Cantidad"]),
-                    monto=_fmt_clp(row["MontoEstimado"]),
-                )
-        else:
-            html += """
-                            <tr>
-                                <td colspan="3">No hay información de compradores para licitaciones activas.</td>
-                            </tr>
+        
+        for estado, cantidad in estados_count.items():
+            html += f"""
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{estado}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{cantidad}</td>
+                </tr>
             """
-
+        
         html += """
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+            </tbody>
+        </table>
+        
+        <h3 style="color: #138AEC; margin-top: 30px;">Top 10 Compradores por Carga de Trabajo</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <thead>
+                <tr style="background-color: #138AEC; color: white;">
+                    <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Comprador</th>
+                    <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Licitaciones</th>
+                    <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Monto Total</th>
+                </tr>
+            </thead>
+            <tbody>
         """
-
-        # =========================
-        # Bloque 2: Tablero GEMBA por Comprador
-        # =========================
-        html += """
-        <div class="gemba-section">
-            <h3>2) Tablero GEMBA - Licitaciones Activas por Comprador</h3>
-        """
-
-        if not df_activas.empty and "C_Usuario" in df_activas.columns:
-            montos_por_comprador = (
-                df_activas.groupby("C_Usuario")["MontoEstimado"].sum().sort_values(ascending=False)
-            )
-            for comprador, monto_total_comp in montos_por_comprador.items():
-                df_c = df_activas[df_activas["C_Usuario"] == comprador].copy()
-                df_c = df_c.sort_values(
-                    by=["FechaClave", "CodigoLicitacion"] if "FechaClave" in df_c.columns else "CodigoLicitacion"
-                )
-
-                html += """
-            <details class="gemba-details">
-                <summary>{comprador} — {n} licitaciones activas, Monto: {monto}</summary>
-                <table class="gemba-table">
-                    <thead>
-                        <tr>
-                            <th>ID Licitación</th>
-                            <th>Nombre</th>
-                            <th>Etapa Actual</th>
-                            <th>Estado Simple</th>
-                            <th>Días</th>
-                            <th>Fecha</th>
-                            <th>Monto</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                """.format(
-                    comprador=comprador,
-                    n=len(df_c),
-                    monto=_fmt_clp(monto_total_comp),
-                )
-
-                for _, r in df_c.iterrows():
-                    codigo = r.get("CodigoLicitacion", "")
-                    nombre = r.get("Nombre", "")
-                    etapa = r.get("EstadoFlujo", "")
-                    estado_simple = r.get("EstadoFlujoSimple", "")
-                    dias = r.get("DiasParaProximoHito", "")
-                    fecha = _fmt_fecha(r.get("FechaClave"))
-                    monto = _fmt_clp(r.get("MontoEstimado", 0))
-
-                    html += """
-                        <tr>
-                            <td>{codigo}</td>
-                            <td>{nombre}</td>
-                            <td>{etapa}</td>
-                            <td>{estado_simple}</td>
-                            <td>{dias}</td>
-                            <td>{fecha}</td>
-                            <td>{monto}</td>
-                        </tr>
-                    """.format(
-                        codigo=codigo,
-                        nombre=nombre,
-                        etapa=etapa,
-                        estado_simple=estado_simple,
-                        dias=dias,
-                        fecha=fecha,
-                        monto=monto,
-                    )
-
-                html += """
-                    </tbody>
-                </table>
-            </details>
-                """
-        else:
-            html += "<p>No hay licitaciones activas para construir el tablero GEMBA.</p>"
-
-        html += "</div>"  # cierre sección GEMBA
-
-        # =========================
-        # Bloque 3: Licitaciones Adjudicadas (últimas 10)
-        # =========================
-        html += """
-        <div class="gemba-section">
-            <h3>3) Licitaciones Adjudicadas (Últimas 10)</h3>
-            <table class="gemba-table">
-                <thead>
-                    <tr>
-                        <th>ID Licitación</th>
-                        <th>Nombre</th>
-                        <th>Fecha Adjudicación</th>
-                        <th>Comprador</th>
-                        <th>Monto Estimado</th>
-                        <th>URL</th>
-                    </tr>
-                </thead>
-                <tbody>
-        """
-
-        if "Estado" in df.columns:
-            estado_norm_all = df["Estado"].astype(str).str.strip().str.lower()
-            df_adj = df[estado_norm_all.str.contains("adjudic", na=False)].copy()
-        else:
-            df_adj = df[df.get("EstadoFlujoSimple", "").astype(str).str.contains("adjudic", na=False)].copy()
-
-        if not df_adj.empty:
-            if "FechaAdjudicacion" in df_adj.columns:
-                df_adj = df_adj.sort_values("FechaAdjudicacion", ascending=False)
-            df_adj = df_adj.head(10)
-
-            url_col = None
-            for candidate in ["Adj_UrlActa", "URL", "UrlLicitacion", "Link"]:
-                if candidate in df_adj.columns:
-                    url_col = candidate
-                    break
-
-            for _, r in df_adj.iterrows():
-                codigo = r.get("CodigoLicitacion", "")
-                nombre = r.get("Nombre", "")
-                fecha_adj = _fmt_fecha(r.get("FechaAdjudicacion"))
-                comprador = r.get("C_Usuario", "")
-                monto = _fmt_clp(r.get("MontoEstimado", 0))
-                url_val = r.get(url_col, "") if url_col else ""
-                if url_val:
-                    url_html = f'<a href="{url_val}" target="_blank">Ver</a>'
-                else:
-                    url_html = "-"
-
-                html += """
-                    <tr>
-                        <td>{codigo}</td>
-                        <td>{nombre}</td>
-                        <td>{fecha}</td>
-                        <td>{comprador}</td>
-                        <td>{monto}</td>
-                        <td>{url}</td>
-                    </tr>
-                """.format(
-                    codigo=codigo,
-                    nombre=nombre,
-                    fecha=fecha_adj,
-                    comprador=comprador,
-                    monto=monto,
-                    url=url_html,
-                )
-        else:
-            html += """
-                    <tr>
-                        <td colspan="6">No se encontraron licitaciones adjudicadas para el período.</td>
-                    </tr>
+        
+        for comprador, row in compradores_count.iterrows():
+            monto_comprador = row['MontoEstimado']
+            html += f"""
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{comprador}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{int(row['CodigoLicitacion'])}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">$ {monto_comprador:,.0f}</td>
+                </tr>
             """
-
+        
         html += """
-                </tbody>
-            </table>
-        </div>
+            </tbody>
+        </table>
         """
-
-        # =========================
-        # Bloque 4: Procesos Desiertos (últimos 10)
-        # =========================
-        html += """
-        <div class="gemba-section">
-            <h3>4) Procesos Desiertos (Últimos 10)</h3>
-            <table class="gemba-table">
-                <thead>
-                    <tr>
-                        <th>ID Licitación</th>
-                        <th>Nombre</th>
-                        <th>Fecha Adjudicación</th>
-                        <th>Comprador</th>
-                        <th>Monto Estimado</th>
-                        <th>URL</th>
-                    </tr>
-                </thead>
-                <tbody>
-        """
-
-        if "Estado" in df.columns:
-            mask_desierta = estado_norm_all.str.contains("desierta", na=False) | estado_norm_all.str.contains(
-                "art. 3", na=False
-            ) | estado_norm_all.str.contains("art. 9", na=False) | estado_norm_all.str.contains("19.886", na=False)
-            df_des = df[mask_desierta].copy()
-        else:
-            df_des = df[df.get("EstadoFlujoSimple", "").astype(str).str.contains("desiert", na=False)].copy()
-
-        if not df_des.empty:
-            if "FechaAdjudicacion" in df_des.columns:
-                df_des = df_des.sort_values("FechaAdjudicacion", ascending=False)
-            df_des = df_des.head(10)
-
-            url_col_des = None
-            for candidate in ["Adj_UrlActa", "URL", "UrlLicitacion", "Link"]:
-                if candidate in df_des.columns:
-                    url_col_des = candidate
-                    break
-
-            for _, r in df_des.iterrows():
-                codigo = r.get("CodigoLicitacion", "")
-                nombre = r.get("Nombre", "")
-                fecha_adj = _fmt_fecha(r.get("FechaAdjudicacion"))
-                comprador = r.get("C_Usuario", "")
-                monto = _fmt_clp(r.get("MontoEstimado", 0))
-                url_val = r.get(url_col_des, "") if url_col_des else ""
-                if url_val:
-                    url_html = f'<a href="{url_val}" target="_blank">Ver</a>'
-                else:
-                    url_html = "-"
-
-                html += """
-                    <tr>
-                        <td>{codigo}</td>
-                        <td>{nombre}</td>
-                        <td>{fecha}</td>
-                        <td>{comprador}</td>
-                        <td>{monto}</td>
-                        <td>{url}</td>
-                    </tr>
-                """.format(
-                    codigo=codigo,
-                    nombre=nombre,
-                    fecha=fecha_adj,
-                    comprador=comprador,
-                    monto=monto,
-                    url=url_html,
-                )
-        else:
-            html += """
-                    <tr>
-                        <td colspan="6">No se encontraron procesos desiertos para el período.</td>
-                    </tr>
-            """
-
-        html += """
-                </tbody>
-            </table>
-        </div>
-        </div>
-        """
-
+        
         return html
 
     def generar_pasos_a_realizar(estado_flujo):
