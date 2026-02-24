@@ -1115,7 +1115,7 @@ with tab1:
             resumen_act_por_comprador = (
                 df_activas.groupby("C_Usuario")
                 .agg(
-                    Cantidad=("CodigoLicitacion", "count"),
+                    Cantidad=("CodigoLicitacion", "nunique"),
                     MontoEstimado=("MontoEstimado", "sum"),
                 )
                 .reset_index()
@@ -1247,16 +1247,22 @@ with tab1:
         html += """
         <div class="gemba-section">
             <h3>Resumen Ejecutivo del Mes</h3>
-            <div class="gemba-card-container">
-                <div class="gemba-card">
-                    <strong>Total Licitaciones Activas:</strong><br>
-                    <span style="font-size: 20px; font-weight: 700;">{total_activas}</span>
-                </div>
-                <div class="gemba-card">
-                    <strong>Monto Total Estimado (Activas):</strong><br>
-                    <span style="font-size: 18px; font-weight: 600;">{monto_total}</span>
-                </div>
-            </div>
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 8px;">
+                <tr>
+                    <td width="50%" valign="top" style="padding-right: 8px;">
+                        <div class="gemba-card" style="background-color: #f0f0f0; padding: 12px 16px; border-radius: 8px; box-sizing: border-box;">
+                            <strong>Total Licitaciones Activas:</strong><br>
+                            <span style="font-size: 20px; font-weight: 700;">{total_activas}</span>
+                        </div>
+                    </td>
+                    <td width="50%" valign="top" style="padding-left: 8px;">
+                        <div class="gemba-card" style="background-color: #f0f0f0; padding: 12px 16px; border-radius: 8px; box-sizing: border-box;">
+                            <strong>Monto Total Estimado (Activas):</strong><br>
+                            <span style="font-size: 18px; font-weight: 600;">{monto_total}</span>
+                        </div>
+                    </td>
+                </tr>
+            </table>
         </div>
         """.format(
             total_activas=total_activas,
@@ -1269,9 +1275,10 @@ with tab1:
         html += """
         <div class="gemba-section">
             <h3>1) Datos Generales</h3>
-            <div class="gemba-flex-row">
-                <div class="gemba-flex-col">
-                    <h4 style="margin: 4px 0 8px;">Licitaciones Activas por Comprador</h4>
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed;">
+                <tr>
+                    <td width="55%" valign="top" style="padding-right: 15px;">
+                        <h4 style="margin: 4px 0 8px;">Licitaciones Activas por Comprador</h4>
         """
 
         if not resumen_act_por_comprador.empty:
@@ -1287,18 +1294,30 @@ with tab1:
                 tipo_principal = tipos_top.get(comprador, "") if isinstance(tipos_top, dict) or hasattr(tipos_top, "get") else ""
 
                 html += """
-                    <div class="gemba-bar-row">
-                        <div class="gemba-bar-label">{comprador}</div>
-                        <div class="gemba-bar-track">
-                            <div class="gemba-bar-fill" style="width: {width}%">
-                                <span class="gemba-bar-value">{cant}</span>
-                            </div>
-                        </div>
-                        <div class="gemba-bar-type">{tipo}</div>
-                    </div>
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 6px;">
+                        <tr>
+                            <td width="35%" style="font-size: 12px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 6px;" title="{comprador}">
+                                {comprador}
+                            </td>
+                            <td width="45%" valign="middle">
+                                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #eee; border-radius: 4px; height: 16px;">
+                                    <tr>
+                                        <td width="{width}%" style="background-color: #138AEC; border-radius: 4px; height: 16px; text-align: right; vertical-align: middle;">
+                                            <span style="font-size: 11px; color: white; margin-right: 6px; font-weight: bold;">{cant}</span>
+                                        </td>
+                                        <td width="{rem_width}%" style="border-radius: 4px; height: 16px;"></td>
+                                    </tr>
+                                </table>
+                            </td>
+                            <td width="20%" style="font-size: 11px; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 6px;" title="{tipo}">
+                                {tipo}
+                            </td>
+                        </tr>
+                    </table>
                 """.format(
                     comprador=comprador,
                     width=width_pct,
+                    rem_width=100 - width_pct,
                     cant=cant,
                     tipo=tipo_principal or "",
                 )
@@ -1306,18 +1325,18 @@ with tab1:
             html += "<p>No hay licitaciones activas para mostrar.</p>"
 
         html += """
-                </div>
-                <div class="gemba-flex-col">
-                    <h4 style="margin: 4px 0 8px;">Resumen por Comprador</h4>
-                    <table class="gemba-table">
-                        <thead>
-                            <tr>
-                                <th>Comprador</th>
-                                <th>Licitaciones Activas</th>
-                                <th>Monto Total (CLP)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    </td>
+                    <td width="45%" valign="top">
+                        <h4 style="margin: 4px 0 8px;">Resumen por Comprador</h4>
+                        <table class="gemba-table" width="100%">
+                            <thead>
+                                <tr>
+                                    <th>Comprador</th>
+                                    <th>Licitaciones Activas</th>
+                                    <th>Monto Total (CLP)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
         """
 
         if not resumen_act_por_comprador.empty:
@@ -1343,8 +1362,9 @@ with tab1:
         html += """
                         </tbody>
                     </table>
-                </div>
-            </div>
+                    </td>
+                </tr>
+            </table>
         </div>
         """
 
@@ -1353,7 +1373,7 @@ with tab1:
         # =========================
         html += """
         <div class="gemba-section">
-            <h3>2) Tablero GEMBA - Licitaciones Activas por Comprador</h3>
+            <h3>2) Tablero Mercado Público - Licitaciones Activas por Comprador</h3>
         """
 
         if not df_activas.empty and "C_Usuario" in df_activas.columns:
@@ -1368,19 +1388,21 @@ with tab1:
 
                 html += """
             <details class="gemba-details">
-                <summary>{comprador} — {n} licitaciones activas, Monto: {monto}</summary>
-                <table class="gemba-table">
+                <br>
+                <summary> <strong>{comprador} — {n} licitaciones activas, Monto: {monto}</strong></summary>
+                <table class="gemba-table" style="table-layout: fixed; width: 100%; text-align: left;">
                     <thead>
                         <tr>
-                            <th>ID Licitación</th>
-                            <th>Nombre</th>
-                            <th>Etapa Actual</th>
-                            <th>Estado Simple</th>
-                            <th>Días</th>
-                            <th>Fecha</th>
-                            <th>Monto</th>
+                            <th style="width: 12%;">ID Licitación</th>
+                            <th style="width: 30%;">Nombre</th>
+                            <th style="width: 15%;">Etapa Actual</th>
+                            <th style="width: 15%;">Estado Simple</th>
+                            <th style="width: 8%;" style="text-align: center;">Días</th>
+                            <th style="width: 10%;" style="text-align: center;">Fecha</th>
+                            <th style="width: 10%;" style="text-align: center;">Monto</th>
                         </tr>
                     </thead>
+                    <br>
                     <tbody>
                 """.format(
                     comprador=comprador,
@@ -1403,9 +1425,9 @@ with tab1:
                             <td>{nombre}</td>
                             <td>{etapa}</td>
                             <td>{estado_simple}</td>
-                            <td>{dias}</td>
-                            <td>{fecha}</td>
-                            <td>{monto}</td>
+                            <td style="text-align: center;">{dias}</td>
+                            <td style="text-align: center;">{fecha}</td>
+                            <td style="text-align: center;">{monto}</td>
                         </tr>
                     """.format(
                         codigo=codigo,
@@ -1432,7 +1454,7 @@ with tab1:
         # =========================
         html += """
         <div class="gemba-section">
-            <h3>3) Licitaciones Adjudicadas (Últimas 10)</h3>
+            <h3>3) ✅ Licitaciones Adjudicadas (Últimas 10)</h3>
             <table class="gemba-table">
                 <thead>
                     <tr>
@@ -1511,7 +1533,7 @@ with tab1:
         # =========================
         html += """
         <div class="gemba-section">
-            <h3>4) Procesos Desiertos (Últimos 10)</h3>
+            <h3>4) 🚫 Procesos Desiertos (Últimos 10)</h3>
             <table class="gemba-table">
                 <thead>
                     <tr>
@@ -1910,8 +1932,15 @@ with tab1:
                         {logo_aba_img}
                         {logo_sso_img}
                     </div>
-                    <h1>📊 Reporte Consolidado Mensual - Tablero Mercado Público</h1>
-                    <p style="margin: 10px 0 0 0; opacity: 0.9;">Servicio de Salud Osorno - Departamento de Abastecimiento y Operaciones</p>
+                    <h1 style="color:#001C41;">
+                        📊 Reporte Consolidado Mensual - Tablero Mercado Público
+                    </h1>
+                    <p style="margin: 10px 0 0 0; 
+                        color: #001C41; 
+                        font-weight: 500; 
+                        opacity: 0.85;">
+                        Servicio de Salud Osorno - Departamento de Abastecimiento y Operaciones
+                    </p>
                 </div>
                 
                 <div class="section">
@@ -2098,7 +2127,7 @@ with tab1:
             
             # Enviar a ambas jefaturas
             destinatarios = list(JEFATURAS.values())
-            asunto = f"Reporte Consolidado Mensual - Tablero Gemba - {datetime.now().strftime('%B %Y')}"
+            asunto = f"Reporte Consolidado Mensual - Tablero Mercado Público - {datetime.now().strftime('%B %Y')}"
             
             resultados = []
             total_enviados = 0
