@@ -953,9 +953,9 @@ with tab1:
         "ROSA VASQUEZ": "rosae.vasquez@redsalud.gob.cl",
         "RUBÉN URIBE": "ruben.uribe@redsalud.gob.cl",
         "JUAN FELIPE ROJEL HUENTRO": "juan.rojelh@redsalud.gob.cl",
-        "NICOLAS ASENCIO MOREIRA": "nicolas.asencio@redsalud.gob.cl",
         "VERÓNICA ARACELY MÁRQUEZ AGUILAR": "veronica.marquez.a@redsalud.gob.cl",
         "BASTIAN MIRANDA CORONADO": "bastian.miranda@redsalud.gob.cl"
+        #"NICOLAS ASENCIO MOREIRA": "nicolas.asencio@redsalud.gob.cl",
     }
 
     JEFATURAS = {
