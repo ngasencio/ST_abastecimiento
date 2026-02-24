@@ -960,6 +960,7 @@ with tab1:
 
     JEFATURAS = {
         #"Cristina Flores": "cristina.flores@redsalud.gob.cl",
+        #"JUAN FELIPE ROJEL HUENTRO": "juan.rojelh@redsalud.gob.cl",
         #"Sandra Espinoza": "sandrap.espinoza@redsalud.gob.cl",
         "NICOLAS ASENCIO MOREIRA": "nicolas.asencio@redsalud.gob.cl"
     }
@@ -1309,9 +1310,7 @@ with tab1:
                                     </tr>
                                 </table>
                             </td>
-                            <td width="20%" style="font-size: 11px; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 6px;" title="{tipo}">
-                                {tipo}
-                            </td>
+                            
                         </tr>
                     </table>
                 """.format(
