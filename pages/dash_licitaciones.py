@@ -1012,10 +1012,10 @@ with tab1:
         <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
             <thead>
                 <tr style="background-color: #138AEC; color: white;">
-                    <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">📍 Etapa Actual</th>
-                    <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">📅 Fecha Hito</th>
                     <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">ID Licitación</th>
                     <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Nombre del Proceso</th>
+                    <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">📍 Etapa Actual</th>
+                    <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">📅 Fecha Hito</th>
                     <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Monto Est. (CLP)</th>
                     <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Tipo</th>
                 </tr>
@@ -1024,10 +1024,10 @@ with tab1:
         """
         
         for _, row in df_sorted.head(20).iterrows():  # Limitar a 20 para el correo
-            estado_flujo = str(row.get('EstadoFlujo', 'Sin estado'))
-            fecha_clave = row.get('FechaClave', '')
             codigo = str(row.get('CodigoLicitacion', ''))
             nombre = str(row.get('Nombre', ''))[:80] + ('...' if len(str(row.get('Nombre', ''))) > 80 else '')
+            estado_flujo = str(row.get('EstadoFlujo', 'Sin estado'))
+            fecha_clave = row.get('FechaClave', '')
             monto = row.get('MontoEstimado', '')
             tipo = str(row.get('Tipo', ''))
             
@@ -1196,9 +1196,9 @@ with tab1:
                 return pasos
         
         return [
-            "Revisar estado actual de la licitación",
-            "Coordinar con unidades involucradas",
-            "Actualizar información en el sistema"
+            "Revisar el estado actual de la licitación.",
+            "Coordinar con las unidades involucradas y realizar las citaciones a la comisión evaluadora.",
+            "Realizar la creación de las resoluciones correspondientes a cada etapa del proceso, respetando las fechas establecidas en el cronograma de la licitación."
         ]
 
     def crear_plantilla_html_comprador(nombre_comprador, email_comprador, tablero_html, pasos_html):
@@ -1318,7 +1318,7 @@ with tab1:
                 </div>
 
                 <div style="color: #0f355c;">
-                    <h1 style="margin: 0; font-size: 26px;">📋 Reporte de Licitaciones - Tablero Gemba</h1>
+                    <h1 style="margin: 0; font-size: 26px;">📋 Reporte de Licitaciones - Tablero Mercado Público</h1>
                     <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">
                         Servicio de Salud Osorno - Departamento de Abastecimiento y Operaciones
                     </p>
@@ -1332,7 +1332,7 @@ with tab1:
                 </div>
                 
                 <div class="section">
-                    <h2>📊 Tablero Gemba Personalizado</h2>
+                    <h2>📊 Tablero Mercado Público Personalizado</h2>
                     {tablero_html}
                 </div>
                 
@@ -1347,17 +1347,21 @@ with tab1:
                     <h2>📝 Notas Generales</h2>
                     <div class="pasos">
                         <ul>
-                            <li>Revise regularmente el estado de sus licitaciones asignadas</li>
-                            <li>Mantenga actualizada la información en el sistema</li>
-                            <li>Comunique cualquier retraso o inconveniente a su jefatura</li>
-                            <li>Priorice las licitaciones con fechas de cierre próximas</li>
+                           <li>Revise regularmente el estado de sus licitaciones asignadas.</li>
+                           <li>Priorice las licitaciones con fechas de cierre próximas.</li>
+                           <li>Revise periódicamente consultas y respuestas para evitar omisiones.</li>
+                           <li>Verifique el cumplimiento de los plazos establecidos en el cronograma oficial.</li>
+                           <li>Confirme que toda la documentación requerida esté completa y correctamente publicada.</li>
+                           <li>Mantenga respaldo digital de resoluciones, actas y antecedentes relevantes.</li>
+                           <li>Coordine oportunamente con la comisión evaluadora y las unidades técnicas.</li>    
+                           <li>Comunique cualquier retraso o inconveniente a su jefatura.</li>
                         </ul>
                     </div>
                 </div>
                 
                 <div class="footer">
                     <p>Este es un correo automatizado del Sistema de Gestión de Abastecimiento</p>
-                    <p>Servicio de Salud Osorno - Departamento de Recursos</p>
+                    <p>Servicio de Salud Osorno - Departamento de Abastecimiento y Operaciones</p>
                     <p>Para consultas, contacte a su jefatura directa</p>
                 </div>
             </div>
@@ -1603,7 +1607,7 @@ with tab1:
                 cuerpo_html = crear_plantilla_html_comprador(nombre_comprador, email_comprador, tablero_html, pasos_html)
                 
                 # Enviar correo
-                asunto = f"Reporte de Licitaciones - Tablero Gemba - {nombre_comprador}"
+                asunto = f"Reporte de Licitaciones - Tablero Mercado Público - {nombre_comprador}"
                 exito, error = enviar_correo(email_comprador, asunto, cuerpo_html, email=email_usar, password=password_usar)
                 
                 if exito:
