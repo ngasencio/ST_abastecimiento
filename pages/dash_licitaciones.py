@@ -959,9 +959,8 @@ with tab1:
     }
 
     JEFATURAS = {
-        #"Cristina Flores": "cristina.flores@redsalud.gob.cl",
-        #"JUAN FELIPE ROJEL HUENTRO": "juan.rojelh@redsalud.gob.cl",
-        #"Sandra Espinoza": "sandrap.espinoza@redsalud.gob.cl",
+        "Cristina Flores": "cristina.flores@redsalud.gob.cl",
+        "Sandra Espinoza": "sandrap.espinoza@redsalud.gob.cl",
         "NICOLAS ASENCIO MOREIRA": "nicolas.asencio@redsalud.gob.cl"
     }
 
