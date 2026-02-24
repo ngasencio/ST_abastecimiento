@@ -773,9 +773,20 @@ with tab1:
 
     with acc3:
         st.markdown("### 🔵 Concentración por comprador (Top)")
-        top_usr = df_res_filtrado.groupby("C_Usuario", as_index=False).size().rename(columns={"size": "Licitaciones"}).sort_values("Licitaciones", ascending=False).head(10)
-        st.dataframe(top_usr, use_container_width=True, hide_index=True)
+        
+        top_usr = (
+            df_res_filtrado
+            .groupby("C_Usuario", as_index=False)
+            .agg(
+                Licitaciones=("C_Usuario", "count"),
+                MontoEstimado=("MontoEstimado", "sum")
+            )
+            .sort_values("MontoEstimado", ascending=False)
+            .head(10)
+        )
+        top_usr["MontoEstimado"] = top_usr["MontoEstimado"].map("${:,.0f}".format)
 
+        st.dataframe(top_usr, use_container_width=True, hide_index=True)
 
     st.markdown("---")
     st.markdown("## ✅ Procesos Finalizados")
