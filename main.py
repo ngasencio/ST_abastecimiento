@@ -28,9 +28,6 @@ pagina_ejecucionpac2 = st.Page("pages/dash_ejecucionpac2.py", title="Ejecución 
 pagina_ordenes = st.Page("pages/dash_ordencompra.py", title="Ordenes de Compra", icon="🧾")
 pagina_compraagil = st.Page("pages/dash_compraagil.py", title="Compra Ágil", icon="⚡")
 pagina_licitaciones = st.Page("pages/dash_licitaciones.py", title="Licitaciones", icon="📄")
-pagina_licitaciones2 = st.Page("pages/dash_licitaciones2.py", title="Licitaciones2", icon="📄")
-
-
 
 #Grupo: Documentos
 pagina_documentos = st.Page("pages/dash_documentos.py", title="Documentos", icon="📋")
@@ -39,11 +36,11 @@ pagina_documentos = st.Page("pages/dash_documentos.py", title="Documentos", icon
 pagina_api_sso = st.Page("pages/dash_extractor_sso_oc.py", title="API OC SSO", icon="🔗")
 pagina_api_licitaciones = st.Page("pages/dash_extractor_sso_licitaciones.py", title="API LI SSO", icon="🔗")
 pagina_buscadorOC = st.Page("pages/tools_buscadorOC.py", title="Buscador OC", icon="🔍")
-pagina_okr = st.Page("pages/page_okr.py", title="OKR", icon="🎯")
-pagina_okr2 = st.Page("pages/page_okr2.py", title="OKR2", icon="🎯")
-pagina_okr3 = st.Page("pages/page_okr3.py", title="OKR3", icon="🎯")
-pagina_correos = st.Page("pages/page_correos.py", title="Correos", icon="📧")
-pagina_data_panel = st.Page("pages/page_data_panel.py", title="Data Panel", icon="📊")
+#pagina_okr = st.Page("pages/page_okr.py", title="OKR", icon="🎯")
+#pagina_okr2 = st.Page("pages/page_okr2.py", title="OKR2", icon="🎯")
+#pagina_okr3 = st.Page("pages/page_okr3.py", title="OKR3", icon="🎯")
+#pagina_correos = st.Page("pages/page_correos.py", title="Correos", icon="📧")
+#pagina_data_panel = st.Page("pages/page_data_panel.py", title="Data Panel", icon="📊")
 
 # ==========================================
 # 3. CONFIGURACIÓN DE NAVEGACIÓN
@@ -62,18 +59,17 @@ pg = st.navigation(
             pagina_ejecucionpac2,
             pagina_ordenes,
             pagina_licitaciones,    
-            pagina_licitaciones2,
             pagina_compraagil
         ],
         "🛠 Herramientas SSO": [
             pagina_api_sso,
             pagina_api_licitaciones,
             pagina_buscadorOC,
-            pagina_okr,
-            pagina_okr2,
-            pagina_okr3,
-            pagina_correos,
-            pagina_data_panel
+            #pagina_okr,
+            #pagina_okr2,
+            #pagina_okr3,
+            #pagina_correos,
+            #pagina_data_panel
         ],
         "📚 Biblioteca Normativa": [
             pagina_documentos

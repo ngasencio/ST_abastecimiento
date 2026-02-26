@@ -954,7 +954,7 @@ with tab1:
         "RUBÉN URIBE": "ruben.uribe@redsalud.gob.cl",
         "JUAN FELIPE ROJEL HUENTRO": "juan.rojelh@redsalud.gob.cl",
         "VERÓNICA ARACELY MÁRQUEZ AGUILAR": "veronica.marquez.a@redsalud.gob.cl",
-        "BASTIAN MIRANDA CORONADO": "bastian.miranda@redsalud.gob.cl"
+        "BASTIAN MIRANDA CORONADO": "bastian.miranda@redsalud.gob.cl",
         "NICOLAS ASENCIO MOREIRA": "nicolas.asencio@redsalud.gob.cl",
     }
 
