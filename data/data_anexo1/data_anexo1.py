@@ -26,7 +26,7 @@ import warnings
 import pandas as pd
 
 # ─────────────────────────── configuración ───────────────────────────
-BASE_DIR = os.path.join("data", "data_anexo1")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 MESES = {
     "01": "enero", "02": "febrero", "03": "marzo", "04": "abril",
@@ -266,7 +266,7 @@ def main():
 
     subdirs = [
         d for d in glob.glob(os.path.join(BASE_DIR, "*"))
-        if os.path.isdir(d)
+        if os.path.isdir(d) and not os.path.basename(d).startswith((".", "__"))
     ]
 
     if not subdirs:

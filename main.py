@@ -42,6 +42,13 @@ pagina_buscadorOC = st.Page("pages/tools_buscadorOC.py", title="Buscador OC", ic
 #pagina_correos = st.Page("pages/page_correos.py", title="Correos", icon="📧")
 #pagina_data_panel = st.Page("pages/page_data_panel.py", title="Data Panel", icon="📊")
 
+
+#Grupo: Finanzas
+pagina_anexo1 = st.Page("pages/dash_anexo1.py", title="Anexo N°1", icon="🧮")
+
+
+
+
 # ==========================================
 # 3. CONFIGURACIÓN DE NAVEGACIÓN
 # ==========================================
@@ -73,6 +80,9 @@ pg = st.navigation(
         ],
         "📚 Biblioteca Normativa": [
             pagina_documentos
+        ]
+        "🧮 Finanzas": [
+            pagina_anexo1
         ]
     }
 )
