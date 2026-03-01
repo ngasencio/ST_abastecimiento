@@ -3,6 +3,13 @@
    Diseño: Clean Modern / Corporate Blue
    ============================================================================= */
 
+
+
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Source+Sans+3:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+
+
 /* --- VARIABLES CSS --- */
 :root {
     --primary-color: #138AEC;
@@ -23,7 +30,9 @@
     --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
     --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.08);
     --font-family: 'Segoe UI', Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+
 }
+
 
 /* =============================================================================
    1. GLOBAL & FONDO
