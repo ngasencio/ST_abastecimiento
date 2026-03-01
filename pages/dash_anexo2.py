@@ -252,7 +252,11 @@ def fmt(v):
 def delta_html(val, pct=None):
     sym = "▲" if val >= 0 else "▼"
     cls = "delta-pos" if val >= 0 else "delta-neg"
-    txt = f"{sym} {pct:+.1f}%" if pct is not None else f"{sym} {fmt(val)}"
+    try:
+        p_val = float(pct) if pct is not None else 0
+        txt = f"{sym} {p_val:+.1f}%" if pct is not None else f"{sym} {fmt(val)}"
+    except (ValueError, TypeError):
+        txt = f"{sym} {pct}%" if pct is not None else f"{sym} {fmt(val)}"
     return f'<span class="kpi-delta {cls}">{txt}</span>'
 
 
@@ -518,9 +522,18 @@ with tab1:
             textfont=dict(size=10, family=FONT),
         ))
         fig_hbar.add_vline(x=100, line_color=C["accent"], line_dash="dot", line_width=1.5)
-        lay_hbar = base_layout(240, False, "% Ejecución por Concepto")
-        lay_hbar["xaxis"].update(dict(range=[0, max(135, df_conc["pct"].max()+10)],
-                                      showgrid=True, ticksuffix="%"))
+        
+        lay_hbar = base_layout(height=240, showlegend=False, title="% Ejecución por Concepto")
+        # Asegurarse de que xaxis y yaxis existan antes de actualizar
+        if "xaxis" not in lay_hbar: lay_hbar["xaxis"] = {}
+        if "yaxis" not in lay_hbar: lay_hbar["yaxis"] = {}
+        
+        pct_max = float(df_conc["pct"].max()) if not df_conc["pct"].empty else 0
+        lay_hbar["xaxis"].update(dict(
+            range=[0, max(135, pct_max + 10)],
+            showgrid=True, 
+            ticksuffix="%"
+        ))
         lay_hbar["yaxis"].update(dict(tickfont=dict(size=9), showgrid=False))
         lay_hbar["bargap"] = 0.35
         fig_hbar.update_layout(**lay_hbar)
@@ -680,45 +693,57 @@ with tab3:
         y_up  = y_hat + 1.96 * std_r
         y_dn  = np.maximum(y_hat - 1.96 * std_r, 0)
 
-        fig_proj = go.Figure()
-        # Histórico
-        fig_proj.add_trace(go.Scatter(
-            x=serie_g["Fecha"], y=serie_g["Devengado"],
-            name="Histórico", mode="lines+markers",
-            line=dict(color=C["accent"], width=2.5),
-            marker=dict(size=5),
-        ))
-        # Tendencia sobre histórico
-        fig_proj.add_trace(go.Scatter(
-            x=serie_g["Fecha"], y=poli(serie_g["t"]),
-            name="Tendencia", mode="lines",
-            line=dict(color=C["amber"], width=1.5, dash="dot"),
-        ))
-        # IC
-        fig_proj.add_trace(go.Scatter(
-            x=list(fechas_f) + list(fechas_f[::-1]),
-            y=list(y_up) + list(y_dn[::-1]),
-            fill="toself", fillcolor="rgba(45,75,156,0.08)",
-            line=dict(color="rgba(0,0,0,0)"),
-            name="IC 95%",
-        ))
-        # Proyección
-        fig_proj.add_trace(go.Scatter(
-            x=fechas_f, y=y_hat,
-            name="Proyección 2026", mode="lines+markers",
-            line=dict(color=C["teal"], width=2, dash="dash"),
-            marker=dict(size=7, symbol="diamond", color=C["teal"]),
-        ))
-        # Línea divisoria histórico/proyección
-        if fecha_orden:
-            fig_proj.add_vline(
-                x=fecha_orden[-1], line_color=C["border"],
-                line_dash="dot", line_width=1.5,
-                annotation_text="Inicio proyección",
-                annotation_font=dict(size=9, color=C["muted"]),
-            )
-        fig_proj.update_layout(**base_layout(380, True, "Proyección del Devengado Total — 2026"))
-        st.plotly_chart(fig_proj, use_container_width=True)
+        # fig_proj = go.Figure()
+        # # Histórico
+        # fig_proj.add_trace(go.Scatter(
+        #     x=serie_g["Fecha"], y=serie_g["Devengado"],
+        #     name="Histórico", mode="lines+markers",
+        #     line=dict(color=C["accent"], width=2.5),
+        #     marker=dict(size=5),
+        # ))
+        # # Tendencia sobre histórico
+        # fig_proj.add_trace(go.Scatter(
+        #     x=serie_g["Fecha"], y=poli(serie_g["t"]),
+        #     name="Tendencia", mode="lines",
+        #     line=dict(color=C["amber"], width=1.5, dash="dot"),
+        # ))
+        # # IC
+        # fig_proj.add_trace(go.Scatter(
+        #     x=list(fechas_f) + list(fechas_f[::-1]),
+        #     y=list(y_up) + list(y_dn[::-1]),
+        #     fill="toself", fillcolor="rgba(45,75,156,0.08)",
+        #     line=dict(color="rgba(0,0,0,0)"),
+        #     name="IC 95%",
+        # ))
+        # # Proyección
+        # fig_proj.add_trace(go.Scatter(
+        #     x=fechas_f, y=y_hat,
+        #     name="Proyección 2026", mode="lines+markers",
+        #     line=dict(color=C["teal"], width=2, dash="dash"),
+        #     marker=dict(size=7, symbol="diamond", color=C["teal"]),
+        # ))
+        # # Línea divisoria histórico/proyección
+        # if fecha_orden and len(fecha_orden) > 0:
+        #     last_date = str(fecha_orden[-1])
+        #     fig_proj.add_shape(
+        #         type="line",
+        #         x0=last_date, x1=last_date,
+        #         y0=0, y1=1,
+        #         yref="paper",
+        #         line=dict(color=C["border"], width=1.5, dash="dot")
+        #     )
+        #     fig_proj.add_annotation(
+        #         x=last_date,
+        #         y=1,
+        #         yref="paper",
+        #         text="Inicio proyección",
+        #         showarrow=False,
+        #         font=dict(size=9, color=C["muted"]),
+        #         yshift=10
+        #     )
+        # fig_proj.update_layout(**base_layout(380, True, "Proyección del Devengado Total — 2026"))
+        # st.plotly_chart(fig_proj, use_container_width=True)
+        st.info("Gráfico de proyección temporalmente deshabilitado para depuración.")
 
         # ── Tabla de proyección ───────────────────────────────────
         col_t, col_c = st.columns([1.4, 1])
