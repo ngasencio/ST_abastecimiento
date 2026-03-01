@@ -44,7 +44,8 @@ pagina_buscadorOC = st.Page("pages/tools_buscadorOC.py", title="Buscador OC", ic
 
 
 #Grupo: Finanzas
-pagina_anexo1 = st.Page("pages/dash_anexo1_Prueba.py", title="Anexo N°1", icon="🧮")
+pagina_anexo1 = st.Page("pages/dash_anexo1.py", title="Anexo N°1", icon="🧮")
+pagina_anexo2 = st.Page("pages/dash_anexo2.py", title="Anexo N°2", icon="🧮")
 
 # ==========================================
 # 3. CONFIGURACIÓN DE NAVEGACIÓN
@@ -80,6 +81,7 @@ pg = st.navigation(
         ],
         "🧮 Finanzas": [
             pagina_anexo1,
+            pagina_anexo2,
         ]
     }
 )

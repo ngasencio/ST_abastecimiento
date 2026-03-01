@@ -7,6 +7,14 @@ def load_anexo1_data() -> pd.DataFrame:
     """
     Busca automáticamente todos los archivos 'maestro_*.csv' en el directorio
     donde se encuentra este script y los consolida en un único DataFrame.
+
+
+https://app.powerbi.com/view?r=eyJrIjoiMjAxNTRmYmEtMDlkNi00NmZlLWI5Y2YtOWE0ZDJmNGM3NWQyIiwidCI6Ijc0NDRkNTdjLTA0YzgtNDJkZS1hMDgxLWRkODk5YWYyOTIyZSIsImMiOjR9
+
+
+https://app.powerbi.com/view?r=eyJrIjoiMjAxNTRmYmEtMDlkNi00NmZlLWI5Y2YtOWE0ZDJmNGM3NWQyIiwidCI6Ijc0NDRkNTdjLTA0YzgtNDJkZS1hMDgxLWRkODk5YWYyOTIyZSIsImMiOjR9
+
+
     """
     # El base_dir es el directorio donde está este archivo (data/data_anexo1)
     base_dir = os.path.dirname(os.path.abspath(__file__))
