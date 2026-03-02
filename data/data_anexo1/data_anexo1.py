@@ -117,6 +117,32 @@ def construir_ruta_jerarquica(df: pd.DataFrame) -> pd.Series:
     return pd.Series(rutas, index=df.index)
 
 
+def limpieza_extra(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Realiza limpieza adicional:
+    a) Elimina filas donde 'Concepto Presupuestario' es 'Total'.
+    b) Elimina filas donde '_col_4' es 'Página 1 de'.
+    c) Elimina las columnas '_col_4' y '_col_6'.
+    d) Crea columna 'Nivel1' con los 2 primeros caracteres de 'Concepto Presupuestario'.
+    """
+    # a) Eliminar filas donde "Concepto Presupuestario" == "Total"
+    if "Concepto Presupuestario" in df.columns:
+        df = df[df["Concepto Presupuestario"].astype(str).str.strip() != "Total"].copy()
+
+    # b) Eliminar filas donde "_col_4" == "Página 1 de"
+    if "_col_4" in df.columns:
+        df = df[df["_col_4"].astype(str).str.strip() != "Página 1 de"].copy()
+
+    # d) Crear columna 'Nivel1' (2 primeros caracteres de 'Concepto Presupuestario')
+    if "Concepto Presupuestario" in df.columns:
+        df["Nivel1"] = df["Concepto Presupuestario"].astype(str).str.strip().str[:2]
+
+    # c) Eliminar columnas '_col_4' y '_col_6'
+    df.drop(columns=["_col_4", "_col_6"], errors="ignore", inplace=True)
+
+    return df
+
+
 # ─────────────────────────── lectura de un archivo ──────────────────
 def leer_archivo(filepath: str, establecimiento: str, fecha: str) -> pd.DataFrame | None:
     try:
@@ -159,6 +185,9 @@ def leer_archivo(filepath: str, establecimiento: str, fecha: str) -> pd.DataFram
             seen[c] = 0
         cols.append(c)
     df.columns = cols
+
+    # Aplicar limpieza extra solicitada
+    df = limpieza_extra(df)
 
     # Convertir valores entre paréntesis en columnas numéricas
     converted_errors = []

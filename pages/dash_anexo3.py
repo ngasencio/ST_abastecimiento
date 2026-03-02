@@ -607,20 +607,18 @@ with tab4:
             st.plotly_chart(fig5, use_container_width=True)
 
         with col_d:
-            # Waterfall de variación
+            # Barras de variación (Devengado − Presupuesto)
             agg_top = agg_niv.head(10).copy()
-            measure = ["relative"] * len(agg_top)
-            colors_wf = ["#C0392B" if v>0 else "#16A34A" for v in agg_top["var"]]
-            fig6 = go.Figure(go.Waterfall(
+            colors_var = ["#C0392B" if v > 0 else "#16A34A" for v in agg_top["var"]]
+            fig6 = go.Figure(go.Bar(
                 x=agg_top["Concepto_Corto"],
                 y=agg_top["var"],
-                measure=measure,
-                marker_color=colors_wf,
-                connector=dict(line=dict(color="#E2E8F0")),
+                marker=dict(color=colors_var),
                 text=[fmt(v) for v in agg_top["var"]],
                 textposition="outside",
+                textfont=dict(size=8),
             ))
-            fig6.add_hline(y=0, line_color="#001C41", line_dash="dot", line_width=1)
+            fig6.add_hline(y=0, line_color="#001C41", line_dash="dot", line_width=1.5)
             fig6 = apply_plot(fig6, 380, f"Variación Devengado−Presupuesto · Nivel {nivel_detalle}", False)
             fig6.update_layout(xaxis=dict(tickangle=-35, tickfont=dict(size=8)))
             st.plotly_chart(fig6, use_container_width=True)
