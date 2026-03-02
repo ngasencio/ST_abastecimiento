@@ -49,6 +49,11 @@ pagina_anexo2 = st.Page("pages/dash_anexo2.py", title="Anexo N°2 (DEBUG)", icon
 pagina_anexo3 = st.Page("pages/dash_anexo3.py", title="Anexo N°3", icon="🧮")
 pagina_anexo4 = st.Page("pages/dash_anexo4.py", title="Anexo N°4", icon="🧮")
 
+
+#Grupo Nuevo
+pagina_peulla = st.Page("pages/dash_Peulla.py", title="Peulla", icon="🧮")
+
+
 # ==========================================
 # 3. CONFIGURACIÓN DE NAVEGACIÓN
 # ==========================================
@@ -86,6 +91,9 @@ pg = st.navigation(
             pagina_anexo2,
             pagina_anexo3,
             pagina_anexo4,
+        ],
+        "🧮 Peulla": [
+            pagina_peulla,
         ]
     }
 )
