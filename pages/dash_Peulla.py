@@ -123,8 +123,13 @@ if df_raw is not None:
 
     # Tablas de Detalle
     st.divider()
-    t1, t2 = st.tabs(["🆕 Productos Nuevos Detectados", "⚖️ Comparativa Interanual"])
-    
+    t1, t2, t3, t4, t5 = st.tabs([
+    "🆕 Productos Nuevos", 
+    "⚖️ Comparativa Interanual", 
+    "🎯 Análisis de Pareto (80/20)",
+    "🔥 Mapa de Calor",
+    "📊 Estabilidad de Demanda"
+])
     with t1:
         st.write("Listado de productos que se incorporaron después del año base:")
         df_nuevos = df_filtrado[df_filtrado['Es Nuevo'] == "Sí"][['Año', 'Tipo', 'Listado Union', 'Cantidad Anual']].sort_values(by='Año')
@@ -133,6 +138,68 @@ if df_raw is not None:
     with t2:
         st.write(f"Diferencia de consumo entre {year_min} y {year_max}:")
         st.dataframe(pivot_crecimiento[[year_min, year_max, 'Crecimiento Absoluto']].style.background_gradient(subset=['Crecimiento Absoluto'], cmap='Greens'), use_container_width=True)
+
+    # 3. PESTAÑA: ANÁLISIS DE PARETO
+    with t3:
+        st.subheader("Concentración de Consumo por Producto")
+        # Calcular Pareto sobre el año más reciente
+        df_pareto = df_filtrado[df_filtrado['Año'] == year_max].groupby('Listado Union')['Cantidad Anual'].sum().sort_values(ascending=False).reset_index()
+        df_pareto['Porcentaje'] = (df_pareto['Cantidad Anual'] / df_pareto['Cantidad Anual'].sum()) * 100
+        df_pareto['Porcentaje Acumulado'] = df_pareto['Porcentaje'].cumsum()
+
+        fig_pareto = go.Figure()
+        fig_pareto.add_trace(go.Bar(x=df_pareto['Listado Union'], y=df_pareto['Cantidad Anual'], name="Cantidad"))
+        fig_pareto.add_trace(go.Scatter(x=df_pareto['Listado Union'], y=df_pareto['Porcentaje Acumulado'], name="% Acumulado", yaxis="y2", line=dict(color="#FF4B4B")))
+        
+        fig_pareto.update_layout(
+            title=f"Ley de Pareto para {year_max}",
+            yaxis=dict(title="Cantidad Anual"),
+            yaxis2=dict(title="% Acumulado", overlaying="y", side="right", range=[0, 105]),
+            template="plotly_white",
+            showlegend=False
+        )
+        st.plotly_chart(fig_pareto, use_container_width=True)
+        st.info("💡 Los productos a la izquierda representan el 80% de tu volumen de consumo. Son los críticos para la gestión.")
+
+    # 4. PESTAÑA: MAPA DE CALOR (HEATMAP)
+    with t4:
+        st.subheader("Intensidad de Consumo por Categoría y Año")
+        df_heat = df_filtrado.groupby(['Tipo', 'Año'])['Cantidad Anual'].sum().reset_index()
+        pivot_heat = df_heat.pivot(index="Tipo", columns="Año", values="Cantidad Anual").fillna(0)
+        
+        fig_heat = px.imshow(
+            pivot_heat, 
+            labels=dict(x="Año", y="Categoría", color="Cantidad"),
+            color_continuous_scale="Viridis",
+            aspect="auto"
+        )
+        st.plotly_chart(fig_heat, use_container_width=True)
+
+    # 5. PESTAÑA: ESTABILIDAD DE DEMANDA
+    with t5:
+        st.subheader("Análisis de Variabilidad")
+        st.write("Identifica productos con consumo errático vs. consumo estable.")
+        
+        # Calcular coeficiente de variación (CV = Desviación / Media)
+        estabilidad = df_filtrado.groupby('Listado Union')['Cantidad Anual'].agg(['mean', 'std']).fillna(0)
+        # Evitar división por cero
+        estabilidad['CV'] = estabilidad.apply(lambda x: (x['std'] / x['mean']) if x['mean'] > 0 else 0, axis=1)
+        
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.write("**Productos más estables (Predecibles)**")
+            st.dataframe(estabilidad.sort_values(by='CV').head(10)[['mean', 'CV']], use_container_width=True)
+        with col_b:
+            st.write("**Productos más volátiles (Riesgo de stock)**")
+            st.dataframe(estabilidad.sort_values(by='CV', ascending=False).head(10)[['mean', 'CV']], use_container_width=True)
+        
+        st.latex(r"CV = \frac{\sigma}{\mu}")
+        st.caption("Donde $\sigma$ es la desviación estándar y $\mu$ es el promedio. Un CV cercano a 0 indica alta estabilidad.")
+
+
+
+
+
 
 else:
     st.info("Cargue el archivo Excel en la ruta especificada para comenzar el análisis.")
