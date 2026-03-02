@@ -1302,7 +1302,7 @@ with tab1:
                             <td width="45%" valign="middle">
                                 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #eee; border-radius: 4px; height: 16px;">
                                     <tr>
-                                        <td width="{width}%" style="background-color: #138AEC; border-radius: 4px; height: 16px; text-align: right; vertical-align: middle;">
+                                        <td width="{width_pct}%" style="background-color: #138AEC; border-radius: 4px; height: 16px; text-align: right; vertical-align: middle;">
                                             <span style="font-size: 11px; color: white; margin-right: 6px; font-weight: bold;">{cant}</span>
                                         </td>
                                         <td width="{rem_width}%" style="border-radius: 4px; height: 16px;"></td>
@@ -1314,7 +1314,7 @@ with tab1:
                     </table>
                 """.format(
                     comprador=comprador,
-                    width=width_pct,
+                    width_pct=width_pct,
                     rem_width=100 - width_pct,
                     cant=cant,
                     tipo=tipo_principal or "",
