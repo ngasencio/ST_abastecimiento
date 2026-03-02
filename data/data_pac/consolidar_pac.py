@@ -2,6 +2,9 @@ import pandas as pd
 import glob
 import os
 
+#https://www.mercadopublico.cl/PlanDeComprasII/Proyecto/Index?agno=2022
+
+
 def consolidar_excels_a_maestro():
     # 1. Identificar la carpeta del script
     folder_path = os.path.dirname(os.path.abspath(__file__))
