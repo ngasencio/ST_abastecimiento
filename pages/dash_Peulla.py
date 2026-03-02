@@ -4,6 +4,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 from pathlib import Path
 
+
+from style.ui import cargar_css
+cargar_css()
+
+
 # Configuración de la página
 st.set_page_config(page_title="Análisis de Consumo - Peulla", layout="wide")
 
@@ -18,7 +23,7 @@ def load_data():
     try:
         df = pd.read_excel(file_path)
         # Validar columnas requeridas
-        required_cols = ['Cantidad Anual', 'Listado Union', 'Tipo', 'año']
+        required_cols = ['Cantidad Anual', 'Listado Union', 'Tipo', 'Año']
         if not all(col in df.columns for col in required_cols):
             st.error(f"El Excel debe contener las columnas: {required_cols}")
             return None
@@ -50,20 +55,20 @@ if df_raw is not None:
         df_filtrado = df_filtrado[df_filtrado['Listado Union'].isin(productos_selected)]
 
     # --- PROCESAMIENTO PARA MÉTRICAS ---
-    years = sorted(df_raw['año'].unique())
+    years = sorted(df_raw['Año'].unique())
     year_min, year_max = years[0], years[-1]
 
     # Identificar Productos Nuevos (No existían en el año mínimo)
-    productos_anio_min = set(df_raw[df_raw['año'] == year_min]['Listado Union'])
+    productos_anio_min = set(df_raw[df_raw['Año'] == year_min]['Listado Union'])
     df_filtrado['Es Nuevo'] = df_filtrado.apply(
-        lambda x: "Sí" if x['año'] > year_min and x['Listado Union'] not in productos_anio_min else "No", axis=1
+        lambda x: "Sí" if x['Año'] > year_min and x['Listado Union'] not in productos_anio_min else "No", axis=1
     )
     
     nuevos_count = df_filtrado[df_filtrado['Es Nuevo'] == "Sí"]['Listado Union'].nunique()
 
     # Cálculo de Crecimiento (Comparativa año actual vs anterior)
     pivot_crecimiento = df_filtrado.pivot_table(
-        index=['Listado Union', 'Tipo'], columns='año', values='Cantidad Anual', aggfunc='sum'
+        index=['Listado Union', 'Tipo'], columns='Año', values='Cantidad Anual', aggfunc='sum'
     ).fillna(0)
     
     if len(years) > 1:
@@ -86,8 +91,8 @@ if df_raw is not None:
         st.metric("Consumo Total Acumulado", f"{total_cons:,.0f}")
     with m3:
         if len(years) > 1:
-            inc_percent = ((df_filtrado[df_filtrado['año']==year_max]['Cantidad Anual'].sum() / 
-                           df_filtrado[df_filtrado['año']==year_min]['Cantidad Anual'].sum()) - 1) * 100
+            inc_percent = ((df_filtrado[df_filtrado['Año']==year_max]['Cantidad Anual'].sum() / 
+                           df_filtrado[df_filtrado['Año']==year_min]['Cantidad Anual'].sum()) - 1) * 100
             st.metric("Variación Periodo Extremo", f"{inc_percent:.1f}%", delta=f"{inc_percent:.1f}%")
 
     st.divider()
@@ -98,8 +103,8 @@ if df_raw is not None:
     with col_left:
         st.subheader("📈 Tendencia de Consumo por Tipo")
         fig_line = px.line(
-            df_filtrado.groupby(['año', 'Tipo'])['Cantidad Anual'].sum().reset_index(),
-            x='año', y='Cantidad Anual', color='Tipo',
+            df_filtrado.groupby(['Año', 'Tipo'])['Cantidad Anual'].sum().reset_index(),
+            x='Año', y='Cantidad Anual', color='Tipo',
             markers=True, template="plotly_white",
             color_discrete_sequence=px.colors.qualitative.Safe
         )
@@ -122,7 +127,7 @@ if df_raw is not None:
     
     with t1:
         st.write("Listado de productos que se incorporaron después del año base:")
-        df_nuevos = df_filtrado[df_filtrado['Es Nuevo'] == "Sí"][['año', 'Tipo', 'Listado Union', 'Cantidad Anual']].sort_values(by='año')
+        df_nuevos = df_filtrado[df_filtrado['Es Nuevo'] == "Sí"][['Año', 'Tipo', 'Listado Union', 'Cantidad Anual']].sort_values(by='Año')
         st.dataframe(df_nuevos, use_container_width=True, hide_index=True)
 
     with t2:
