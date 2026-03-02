@@ -1772,10 +1772,10 @@ with tab1:
             <div class="container">
             <div class="header" style="text-align: center; font-family: Arial, sans-serif; padding: 20px; background-color: #f8f9fa; border-radius: 8px; margin-bottom: 20px;">
         
-                <div class="header-logos" style="display: flex; justify-content: center; align-items: center; gap: 40px; margin-bottom: 20px;">
+                <!--<div class="header-logos" style="display: flex; justify-content: center; align-items: center; gap: 40px; margin-bottom: 20px;">
                     {logo_aba_img}
                     {logo_sso_img}
-                </div>
+                </div>-->
 
                 <div style="color: #0f355c;">
                     <h1 style="margin: 0; font-size: 26px;">📋 Reporte de Licitaciones - Tablero Mercado Público</h1>
@@ -1926,10 +1926,10 @@ with tab1:
         <body>
             <div class="container">
                 <div class="header">
-                    <div style="margin-bottom: 15px;">
+                   <!-- <div style="margin-bottom: 15px;">
                         {logo_aba_img}
                         {logo_sso_img}
-                    </div>
+                    </div>-->
                     <h1 style="color:#001C41;">
                         📊 Reporte Consolidado Mensual - Tablero Mercado Público
                     </h1>
