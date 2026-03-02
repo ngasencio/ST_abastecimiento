@@ -187,7 +187,7 @@ def _demo():
     ]
     bases = {c: rng.integers(500_000_000, 5_000_000_000)//12 for c,_,_ in EST}
     rows = []
-    for est in ["DSSO","HBO","HCUCH"]:
+    for est in ["DSSO","HBO"]:
         fac = rng.uniform(0.8, 1.2)
         for yr in [2024, 2025]:
             for mes, mn in MESES_ORDEN.items():
