@@ -663,7 +663,7 @@ with tab1:
             st.info("Selecciona una fila en la tabla GEMBA para habilitar el detalle.")
 
     with col_det_2:
-        abrir = st.button("📄 Ver", use_container_width=True, disabled=not bool(codigo_sel))
+        abrir = st.button("📄 Ver", width="stretch", disabled=not bool(codigo_sel))
 
     if abrir and codigo_sel:
         dlg = getattr(st, "dialog", None)
@@ -1747,6 +1747,7 @@ with tab1:
                     width: 100%;
                     border-collapse: collapse;
                     margin-top: 15px;
+                    color: #0f355c;
                 }}
                 th {{
                     background-color: #138AEC;
@@ -1761,21 +1762,18 @@ with tab1:
                 tr:hover {{
                     background-color: #f5f5f5;
                 }}
-                .header-logos img {
+                .header-logos img {{
                     height: 80px; /* Puedes subir o bajar este valor según necesites */
                     width: auto;
                     object-fit: contain; /* Asegura que los logos no se deformen ni se estiren */
-                }
+                }}
             </style>
         </head>
         <body>
             <div class="container">
             <div class="header" style="text-align: center; font-family: Arial, sans-serif; padding: 20px; background-color: #f8f9fa; border-radius: 8px; margin-bottom: 20px;">
         
-                <!--<div class="header-logos" style="display: flex; justify-content: center; align-items: center; gap: 40px; margin-bottom: 20px;">
-                    {logo_aba_img}
-                    {logo_sso_img}
-                </div>-->
+            
 
                 <div style="color: #0f355c;">
                     <h1 style="margin: 0; font-size: 26px;">📋 Reporte de Licitaciones - Tablero Mercado Público</h1>
@@ -1784,26 +1782,26 @@ with tab1:
                     </p>
                 </div>
                 
-                <div class="section">
-                    <h2>👤 Información del Comprador</h2>
+                <div class="section" style="color: #0f355c;">
+                    <h2 style="color: #0f355c;">👤 Información del Comprador</h2>
                     <p><strong>Nombre:</strong> {nombre_comprador}</p>
                     <p><strong>Correo:</strong> {email_comprador}</p>
                     <p><strong>Fecha del Reporte:</strong> {datetime.now().strftime("%d/%m/%Y %H:%M")}</p>
                 </div>
                 
-                <div class="section">
+                <div class="section" style="color: #0f355c;">
                     <h2>📊 Tablero Mercado Público Personalizado</h2>
                     {tablero_html}
                 </div>
                 
-                <div class="section">
+                <div class="section" style="color: #0f355c;">
                     <h2>✅ Pasos a Realizar</h2>
                     <div class="pasos">
                         {pasos_html}
                     </div>
                 </div>
                 
-                <div class="section">
+                <div class="section" style="color: #0f355c;">
                     <h2>📝 Notas Generales</h2>
                     <div class="pasos">
                         <ul>
@@ -1819,7 +1817,7 @@ with tab1:
                     </div>
                 </div>
                 
-                <div class="footer">
+                <div class="footer" style="color: #0f355c;">
                     <p>Este es un correo automatizado del Sistema de Gestión de Abastecimiento</p>
                     <p>Servicio de Salud Osorno - Departamento de Abastecimiento y Operaciones</p>
                     <p>Para consultas, contacte a su jefatura directa</p>
@@ -2226,7 +2224,7 @@ with tab1:
     col_btn1, col_btn2 = st.columns(2)
 
     with col_btn1:
-        if st.button("📨 Enviar a Compradores", use_container_width=True, type="primary"):
+        if st.button("📨 Enviar a Compradores", width="stretch", type="primary"):
             # Obtener credenciales de la sesión si están configuradas
             email_usar = st.session_state.get('email_config', OUTLOOK_EMAIL)
             password_usar = st.session_state.get('password_config', OUTLOOK_PASSWORD)
@@ -2265,7 +2263,7 @@ with tab1:
                             """)
 
     with col_btn2:
-        if st.button("📊 Enviar a Jefaturas", use_container_width=True, type="primary"):
+        if st.button("📊 Enviar a Jefaturas", width="stretch", type="primary"):
             # Obtener credenciales de la sesión si están configuradas
             email_usar = st.session_state.get('email_config', OUTLOOK_EMAIL)
             password_usar = st.session_state.get('password_config', OUTLOOK_PASSWORD)

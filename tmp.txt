@@ -1,0 +1,21 @@
+363:         use_container_width=True,
+464:                 use_container_width=True,
+588:                     use_container_width=True,
+635:                 use_container_width=True,
+666:         abrir = st.button("📄 Ver", use_container_width=True, disabled=not bool(codigo_sel))
+742:                     use_container_width=True,
+767:                     use_container_width=True,
+789:         st.dataframe(top_usr, use_container_width=True, hide_index=True)
+855:                 use_container_width=True,
+884:                         use_container_width=True,
+918:                 use_container_width=True,
+2226:         if st.button("📨 Enviar a Compradores", use_container_width=True, type="primary"):
+2243:                     st.dataframe(df_resultados, use_container_width=True, hide_index=True)
+2265:         if st.button("📊 Enviar a Jefaturas", use_container_width=True, type="primary"):
+2282:                     st.dataframe(df_resultados, use_container_width=True, hide_index=True)
+2478:         st.plotly_chart(fig_torta, use_container_width=True)
+2516:             st.plotly_chart(fig_barras, use_container_width=True)
+2554:             use_container_width=True,
+2615:         st.plotly_chart(fig_carga, use_container_width=True)
+2631:             use_container_width=True,
+2669:             use_container_width=True,
