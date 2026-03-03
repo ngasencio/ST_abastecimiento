@@ -28,6 +28,7 @@ pagina_ejecucionpac2 = st.Page("pages/dash_ejecucionpac2.py", title="Ejecución 
 pagina_ordenes = st.Page("pages/dash_ordencompra.py", title="Ordenes de Compra", icon="🧾")
 pagina_compraagil = st.Page("pages/dash_compraagil.py", title="Compra Ágil", icon="⚡")
 pagina_licitaciones = st.Page("pages/dash_licitaciones.py", title="Licitaciones", icon="📄")
+pagina_activofijo = st.Page("pages/dash_activofijo.py", title="Activos Fijos", icon="🏢")
 
 #Grupo: Documentos
 pagina_documentos = st.Page("pages/dash_documentos.py", title="Documentos", icon="📋")
@@ -71,7 +72,8 @@ pg = st.navigation(
             pagina_ejecucionpac2,
             pagina_ordenes,
             pagina_licitaciones,    
-            pagina_compraagil
+            pagina_compraagil,
+            pagina_activofijo
         ],
         "🛠 Herramientas SSO": [
             pagina_api_sso,
