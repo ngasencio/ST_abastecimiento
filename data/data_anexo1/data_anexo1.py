@@ -26,7 +26,9 @@ import warnings
 import pandas as pd
 
 # ─────────────────────────── configuración ───────────────────────────
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 MESES = {
     "01": "enero", "02": "febrero", "03": "marzo", "04": "abril",
@@ -117,34 +119,35 @@ def construir_ruta_jerarquica(df: pd.DataFrame) -> pd.Series:
     return pd.Series(rutas, index=df.index)
 
 
-def limpieza_extra(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Realiza limpieza adicional:
-    a) Elimina filas donde 'Concepto Presupuestario' es 'Total'.
-    b) Elimina filas donde '_col_4' es 'Página 1 de'.
-    c) Elimina las columnas '_col_4' y '_col_6'.
-    d) Crea columna 'Nivel1' con los 2 primeros caracteres de 'Concepto Presupuestario'.
-    """
-    # a) Eliminar filas donde "Concepto Presupuestario" == "Total"
-    if "Concepto Presupuestario" in df.columns:
-        df = df[df["Concepto Presupuestario"].astype(str).str.strip() != "Total"].copy()
-
-    # b) Eliminar filas donde "_col_4" == "Página 1 de"
-    if "_col_4" in df.columns:
-        df = df[df["_col_4"].astype(str).str.strip() != "Página 1 de"].copy()
-
-    # d) Crear columna 'Nivel1' (2 primeros caracteres de 'Concepto Presupuestario')
-    if "Concepto Presupuestario" in df.columns:
-        df["Nivel1"] = df["Concepto Presupuestario"].astype(str).str.strip().str[:2]
-
-    # c) Eliminar columnas '_col_4' y '_col_6'
-    df.drop(columns=["_col_4", "_col_6"], errors="ignore", inplace=True)
-
-    return df
-
-
 # ─────────────────────────── lectura de un archivo ──────────────────
+def extraer_establecimiento(filepath: str, fallback: str) -> str:
+    """
+    Lee fila 1 del Excel para obtener el nombre real del establecimiento.
+
+    Estructura conocida del archivo:
+        Fila 0: 'Estado de Ejecución Presupuestaria'
+        Fila 1: '1638001 Direccion del Servicio'   ← nombre real
+        Fila 2: '01 enero 2025 al 31 enero 2025'
+        ...
+        Fila 6: encabezados de columnas
+
+    Si no se puede leer, retorna el fallback (nombre de carpeta).
+    """
+    try:
+        meta = pd.read_excel(filepath, header=None, dtype=str, nrows=4)
+        val = str(meta.iloc[1, 0]).strip()
+        if val and val.lower() not in ("nan", "none", ""):
+            return val
+    except Exception:
+        pass
+    return fallback
+
+
 def leer_archivo(filepath: str, establecimiento: str, fecha: str) -> pd.DataFrame | None:
+    # Extraer nombre real del establecimiento desde las filas de cabecera del Excel
+    # (fila 1 contiene el código y nombre del establecimiento)
+    establecimiento = extraer_establecimiento(filepath, fallback=establecimiento)
+
     try:
         # Fila 6 (índice 6) es el encabezado; se saltan las primeras 6 filas
         df = pd.read_excel(filepath, header=6, dtype=str)
@@ -185,9 +188,6 @@ def leer_archivo(filepath: str, establecimiento: str, fecha: str) -> pd.DataFram
             seen[c] = 0
         cols.append(c)
     df.columns = cols
-
-    # Aplicar limpieza extra solicitada
-    df = limpieza_extra(df)
 
     # Convertir valores entre paréntesis en columnas numéricas
     converted_errors = []
@@ -295,7 +295,7 @@ def main():
 
     subdirs = [
         d for d in glob.glob(os.path.join(BASE_DIR, "*"))
-        if os.path.isdir(d) and not os.path.basename(d).startswith((".", "__"))
+        if os.path.isdir(d)
     ]
 
     if not subdirs:

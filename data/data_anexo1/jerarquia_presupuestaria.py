@@ -1,37 +1,26 @@
 """
-jerarquia_presupuestaria.py
+jerarquia_presupuestaria.py  v2.0
 ═══════════════════════════════════════════════════════════════════════════════
-Módulo de enriquecimiento jerárquico para datos presupuestarios.
+CAMBIOS v2.0 — 4 bugs corregidos
 
-Transforma el DataFrame plano producido por data_anexo1.py / anexo1_loader.py
-en una estructura analítica completa con:
+BUG 1  filtrar_arbol(): acepta df_referencia para resolver codigo_raiz
+       cuando el concepto padre no existe en el df ya filtrado por fecha.
 
-  · Códigos y etiquetas de cada ancestro (N1 … N5)
-  · Claves de navegación (Codigo_N1, Padre_Codigo, Es_Hoja)
-  · Métricas de rendimiento presupuestario (ejecución, variación, absorción)
-  · Función de filtrado jerárquico que devuelve un concepto + todos sus hijos
+BUG 2  metricas_arbol() + variacion_mom(): Es_Hoja se recalcula DENTRO
+       del subconjunto filtrado, no hereda el valor global.
 
-USO RÁPIDO
-----------
-    from jerarquia_presupuestaria import enriquecer, filtrar_arbol, metricas_arbol
+BUG 3  metricas_arbol() → por_periodo: dict de agg construido
+       correctamente, sin evaluación condicional inline en el dict.
 
-    df_rico = enriquecer(df_plano)          # agrega todas las columnas auxiliares
-    sub     = filtrar_arbol(df_rico, "21 GASTOS EN PERSONAL")   # concepto + hijos
-    kpis    = metricas_arbol(sub)           # dict con métricas de control
+BUG 4  recalcular_metricas(): nueva función que recomputa Pct_Ejecucion,
+       Estado_Semaforo y variaciones sobre el df ya filtrado.
 """
 
 from __future__ import annotations
-
-import re
-import warnings
+import re, warnings
 import numpy as np
 import pandas as pd
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# CONSTANTES
-# ══════════════════════════════════════════════════════════════════════════════
-# Mapeo: longitud del código numérico → nivel jerárquico
 LONGITUD_A_NIVEL: dict[int, int] = {2: 1, 4: 2, 7: 3, 10: 4, 12: 5}
 
 COLS_MONETARIAS = [
@@ -46,195 +35,147 @@ MESES_ORDEN = {
     "septiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12,
 }
 
-
 # ══════════════════════════════════════════════════════════════════════════════
-# HELPERS INTERNOS
+# HELPERS
 # ══════════════════════════════════════════════════════════════════════════════
 def _extraer_codigo(concepto: str) -> str | None:
-    """Extrae el código numérico inicial de un concepto presupuestario."""
     if not isinstance(concepto, str):
         return None
     m = re.match(r"^(\d+)", concepto.strip())
     return m.group(1) if m else None
 
-
 def _nivel_desde_codigo(codigo: str | None) -> int | None:
-    """Infiere nivel desde longitud del código."""
     if codigo is None:
         return None
     return LONGITUD_A_NIVEL.get(len(codigo))
 
-
 def _codigo_padre(codigo: str | None) -> str | None:
-    """
-    Devuelve el código del padre inmediato según la estructura numérica.
-    Ej: "2101001" (N3, 7 dígitos) → "2101" (N2, 4 dígitos)
-    """
     if codigo is None:
         return None
     nivel = _nivel_desde_codigo(codigo)
     if nivel is None or nivel <= 1:
         return None
-    # Longitud del padre
     niveles_long = sorted(LONGITUD_A_NIVEL.keys())
     idx = niveles_long.index(len(codigo))
     if idx == 0:
         return None
-    long_padre = niveles_long[idx - 1]
-    return codigo[:long_padre]
-
+    return codigo[:niveles_long[idx - 1]]
 
 def _parse_fecha(fecha_str: str) -> tuple[int, int]:
-    """'enero 2025' → (2025, 1)"""
     try:
         partes = str(fecha_str).strip().lower().split()
-        mes = MESES_ORDEN.get(partes[0], 0)
+        mes  = MESES_ORDEN.get(partes[0], 0)
         anio = int(partes[1]) if len(partes) > 1 else 0
         return anio, mes
     except Exception:
         return 0, 0
 
+def _semaforo(pct) -> str:
+    if pd.isna(pct):   return "Sin Presupuesto"
+    if pct <= 0:       return "Sin Ejecutar"
+    if pct <= 80:      return "Verde"
+    if pct <= 100:     return "Amarillo"
+    if pct <= 110:     return "Rojo"
+    return "Excedido"
+
+def _es_hoja_local(df: pd.DataFrame) -> pd.Series:
+    """Calcula Es_Hoja dentro del subconjunto df (no globalmente)."""
+    codigos_padre = set(df["Padre_Codigo"].dropna().unique()) \
+                    if "Padre_Codigo" in df.columns else set()
+    return ~df["Codigo"].isin(codigos_padre)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
-# FUNCIÓN PRINCIPAL: enriquecer()
+# enriquecer()
 # ══════════════════════════════════════════════════════════════════════════════
 def enriquecer(df: pd.DataFrame) -> pd.DataFrame:
     """
     Agrega columnas de navegación y análisis jerárquico al DataFrame plano.
 
-    Columnas añadidas
-    -----------------
-    Codigo              : código numérico extraído del concepto
-    Nivel               : nivel jerárquico (1-5), corregido/inferido
-    Padre_Codigo        : código del concepto padre inmediato
-    Es_Hoja             : True si no tiene hijos en el mismo período/establecimiento
-    Nivel_Max_Arbol     : nivel máximo presente en el árbol del mismo período/est.
-
-    # Ancla de cada nivel (para filtrado rápido)
-    Codigo_N1 … Codigo_N5       : código del ancestro en ese nivel
-    Etiqueta_N1 … Etiqueta_N5   : concepto completo del ancestro en ese nivel
-
-    # Métricas de rendimiento (cuando existen las columnas base)
-    Pct_Ejecucion       : Devengado / Ley_de_Presupuestos × 100
-    Pct_Compromiso      : Compromiso / Ley_de_Presupuestos × 100
-    Variacion_Devengado : Devengado − Ley_de_Presupuestos
-    Pct_Variacion       : Variacion_Devengado / Ley_de_Presupuestos × 100
-    Estado_Semaforo     : 'Verde' / 'Amarillo' / 'Rojo' / 'Excedido'
-    Anio, Mes_Num       : para ordenamiento cronológico
+    Columnas añadidas: Codigo, Nivel, Padre_Codigo, Es_Hoja, Nivel_Max_Arbol,
+    Codigo_N1..N5, Etiqueta_N1..N5, Pct_Ejecucion, Variacion_Devengado,
+    Pct_Variacion, Pct_Compromiso, Estado_Semaforo, Anio, Mes_Num.
     """
     df = df.copy()
 
-    # ── 1. Normalizar columnas monetarias ────────────────────────────
+    # 1. Normalizar monetarias
     for col in COLS_MONETARIAS:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
-    # ── 2. Código y nivel ────────────────────────────────────────────
+    # 2. Codigo y Nivel
     if "Concepto Presupuestario" in df.columns:
         df["Codigo"] = df["Concepto Presupuestario"].apply(_extraer_codigo)
     else:
         df["Codigo"] = None
         warnings.warn("Columna 'Concepto Presupuestario' no encontrada.")
 
-    # Nivel: respetar el existente, inferir donde falte
     if "Nivel" not in df.columns:
         df["Nivel"] = df["Codigo"].apply(_nivel_desde_codigo)
     else:
-        df["Nivel"] = pd.to_numeric(df["Nivel"], errors="coerce")
-        mask_sin_nivel = df["Nivel"].isna()
-        df.loc[mask_sin_nivel, "Nivel"] = df.loc[mask_sin_nivel, "Codigo"].apply(
-            _nivel_desde_codigo
-        )
-    df["Nivel"] = df["Nivel"].astype("Int64")
+        # Convertir a nullable Int64 PRIMERO para evitar crash en pandas 2.x
+        # cuando la columna ya existe como int64 y se intenta asignar None/NaN
+        df["Nivel"] = pd.to_numeric(df["Nivel"], errors="coerce").astype("Int64")
+        mask_sin = df["Nivel"].isna()
+        if mask_sin.any():
+            inferidos = df.loc[mask_sin, "Codigo"].apply(_nivel_desde_codigo)
+            df["Nivel"] = df["Nivel"].astype(object)
+            df.loc[mask_sin, "Nivel"] = inferidos
+    df["Nivel"] = pd.array(df["Nivel"].tolist(), dtype="Int64")
 
-    # ── 3. Padre ─────────────────────────────────────────────────────
+    # 3. Padre
     df["Padre_Codigo"] = df["Codigo"].apply(_codigo_padre)
 
-    # ── 4. Anclas por nivel (Codigo_N1…N5, Etiqueta_N1…N5) ──────────
-    # Construimos un mapa codigo → concepto para lookup rápido
-    mapa_concepto: dict[str, str] = {}
+    # 4. Anclas por nivel
+    mapa: dict[str, str] = {}
     if "Concepto Presupuestario" in df.columns and "Codigo" in df.columns:
-        mapa_concepto = (
-            df.dropna(subset=["Codigo"])
-            .drop_duplicates("Codigo")
-            .set_index("Codigo")["Concepto Presupuestario"]
-            .to_dict()
-        )
+        mapa = (df.dropna(subset=["Codigo"])
+                  .drop_duplicates("Codigo")
+                  .set_index("Codigo")["Concepto Presupuestario"]
+                  .to_dict())
 
-    def _anclas(codigo: str | None) -> dict:
-        """Devuelve dict con Codigo_N1…N5 y Etiqueta_N1…N5 para un código dado."""
-        resultado: dict[str, str | None] = {}
-        for nivel in range(1, 6):
-            resultado[f"Codigo_N{nivel}"] = None
-            resultado[f"Etiqueta_N{nivel}"] = None
-
+    def _anclas(codigo):
+        res = {f"Codigo_N{n}": None for n in range(1, 6)}
+        res.update({f"Etiqueta_N{n}": None for n in range(1, 6)})
         if codigo is None:
-            return resultado
-
-        # Reconstruir ancestros desde el código
-        niveles_long = sorted(LONGITUD_A_NIVEL.keys())  # [2, 4, 7, 10, 12]
-        long_actual = len(codigo)
-        if long_actual not in niveles_long:
-            return resultado
-
-        idx_actual = niveles_long.index(long_actual)
-        for i, long in enumerate(niveles_long[: idx_actual + 1]):
+            return res
+        niveles_long = sorted(LONGITUD_A_NIVEL.keys())
+        if len(codigo) not in niveles_long:
+            return res
+        idx = niveles_long.index(len(codigo))
+        for long in niveles_long[:idx + 1]:
             cod_anc = codigo[:long]
-            nivel_anc = LONGITUD_A_NIVEL[long]
-            resultado[f"Codigo_N{nivel_anc}"] = cod_anc
-            resultado[f"Etiqueta_N{nivel_anc}"] = mapa_concepto.get(cod_anc)
-
-        return resultado
+            nv      = LONGITUD_A_NIVEL[long]
+            res[f"Codigo_N{nv}"]   = cod_anc
+            res[f"Etiqueta_N{nv}"] = mapa.get(cod_anc)
+        return res
 
     anclas_df = pd.DataFrame(df["Codigo"].apply(_anclas).tolist(), index=df.index)
     df = pd.concat([df, anclas_df], axis=1)
 
-    # ── 5. Es_Hoja y Nivel_Max_Arbol ─────────────────────────────────
-    # Un nodo es hoja si ningún otro nodo tiene como padre_codigo su código
-    codigos_padre = set(df["Padre_Codigo"].dropna().unique())
-    df["Es_Hoja"] = ~df["Codigo"].isin(codigos_padre)
+    # 5. Es_Hoja y Nivel_Max_Arbol (global — solo referencia)
+    df["Es_Hoja"] = _es_hoja_local(df)
 
-    # Nivel máximo del árbol (por período y establecimiento)
     group_cols = [c for c in ["Establecimiento", "Fecha"] if c in df.columns]
     if group_cols:
         df["Nivel_Max_Arbol"] = df.groupby(group_cols)["Nivel"].transform("max")
     else:
         df["Nivel_Max_Arbol"] = df["Nivel"].max()
 
-    # ── 6. Métricas de rendimiento ───────────────────────────────────
-    pres_col = "Ley de Presupuestos"
-    dev_col  = "Devengado"
-    com_col  = "Compromiso"
-
+    # 6. Métricas (sobre dataset completo — usar recalcular_metricas() tras filtrar)
+    pres_col, dev_col, com_col = "Ley de Presupuestos", "Devengado", "Compromiso"
     if pres_col in df.columns and dev_col in df.columns:
-        safe_pres = df[pres_col].replace(0, np.nan)
-
-        df["Pct_Ejecucion"]   = (df[dev_col] / safe_pres * 100).round(2)
+        safe_p = df[pres_col].replace(0, np.nan)
+        df["Pct_Ejecucion"]       = (df[dev_col] / safe_p * 100).round(2)
         df["Variacion_Devengado"] = df[dev_col] - df[pres_col]
-        df["Pct_Variacion"]   = (df["Variacion_Devengado"] / safe_pres * 100).round(2)
-
+        df["Pct_Variacion"]       = (df["Variacion_Devengado"] / safe_p * 100).round(2)
         if com_col in df.columns:
-            df["Pct_Compromiso"] = (df[com_col] / safe_pres * 100).round(2)
-
-        # Semáforo
-        def _semaforo(pct):
-            if pd.isna(pct):
-                return "Sin Presupuesto"
-            if pct < 0:
-                return "Sin Ejecutar"
-            if pct <= 80:
-                return "Verde"
-            if pct <= 100:
-                return "Amarillo"
-            if pct <= 110:
-                return "Rojo"
-            return "Excedido"
-
+            df["Pct_Compromiso"]  = (df[com_col] / safe_p * 100).round(2)
         df["Estado_Semaforo"] = df["Pct_Ejecucion"].apply(_semaforo)
 
-    # ── 7. Columnas de tiempo ────────────────────────────────────────
+    # 7. Tiempo
     if "Fecha" in df.columns:
-        tiempo = df["Fecha"].apply(_parse_fecha)
+        tiempo    = df["Fecha"].apply(_parse_fecha)
         df["Anio"]    = tiempo.apply(lambda x: x[0]).astype("Int64")
         df["Mes_Num"] = tiempo.apply(lambda x: x[1]).astype("Int64")
 
@@ -242,46 +183,73 @@ def enriquecer(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# FILTRADO JERÁRQUICO
+# recalcular_metricas()  — NUEVA  (FIX BUG 4 + BUG 2)
+# ══════════════════════════════════════════════════════════════════════════════
+def recalcular_metricas(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Recalcula Pct_Ejecucion, Estado_Semaforo, variaciones y Es_Hoja
+    sobre el subconjunto ya filtrado (fecha, establecimiento, nivel, etc.).
+
+    Llamar después de cada filtro antes de mostrar datos o calcular KPIs.
+    """
+    df = df.copy()
+
+    # Recalcular Es_Hoja local (FIX BUG 2)
+    df["Es_Hoja"] = _es_hoja_local(df)
+
+    pres_col, dev_col, com_col = "Ley de Presupuestos", "Devengado", "Compromiso"
+    if pres_col not in df.columns or dev_col not in df.columns:
+        return df
+
+    safe_p = df[pres_col].replace(0, np.nan)
+    df["Pct_Ejecucion"]       = (df[dev_col] / safe_p * 100).round(2)
+    df["Variacion_Devengado"] = df[dev_col] - df[pres_col]
+    df["Pct_Variacion"]       = (df["Variacion_Devengado"] / safe_p * 100).round(2)
+    if com_col in df.columns:
+        df["Pct_Compromiso"]  = (df[com_col] / safe_p * 100).round(2)
+    df["Estado_Semaforo"] = df["Pct_Ejecucion"].apply(_semaforo)
+
+    return df
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# filtrar_arbol()  — FIX BUG 1
 # ══════════════════════════════════════════════════════════════════════════════
 def filtrar_arbol(
     df: pd.DataFrame,
     concepto: str,
     incluir_padre: bool = True,
     max_nivel: int | None = None,
+    df_referencia: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """
-    Filtra el DataFrame para obtener un concepto y TODOS sus descendientes.
+    Retorna el subárbol completo de un concepto y todos sus descendientes.
 
-    Parámetros
-    ----------
-    df            : DataFrame enriquecido (salida de enriquecer())
-    concepto      : concepto raíz (puede ser código o texto completo)
-    incluir_padre : si True incluye la fila del propio concepto raíz
-    max_nivel     : limita profundidad (ej: max_nivel=3 → solo N1, N2, N3)
-
-    Retorna
-    -------
-    DataFrame filtrado con el subárbol completo.
+    df_referencia: dataset global sin filtrar (necesario para resolver el
+    codigo_raiz cuando el concepto padre no tiene filas en el período
+    filtrado pero sus hijos sí). Se pasa como df_full desde el dashboard.
     """
     if "Codigo" not in df.columns:
-        raise ValueError("DataFrame no enriquecido. Ejecutar enriquecer() primero.")
+        raise ValueError("DataFrame no enriquecido.")
 
-    # Resolver el código raíz (acepta código o texto completo)
+    # Resolver código raíz: buscar primero en df, luego en df_referencia
     codigo_raiz = None
-    if "Concepto Presupuestario" in df.columns:
-        mask_texto = df["Concepto Presupuestario"].astype(str).str.strip() == str(concepto).strip()
-        if mask_texto.any():
-            codigo_raiz = df.loc[mask_texto.idxmax(), "Codigo"]
-
-    if codigo_raiz is None:
-        # Intentar como código directo
-        mask_cod = df["Codigo"].astype(str).str.strip() == str(concepto).strip()
+    for fuente in ([df, df_referencia] if df_referencia is not None else [df]):
+        if fuente is None or fuente.empty:
+            continue
+        if "Concepto Presupuestario" in fuente.columns:
+            mask = fuente["Concepto Presupuestario"].astype(str).str.strip() \
+                   == str(concepto).strip()
+            if mask.any():
+                codigo_raiz = fuente.loc[mask.idxmax(), "Codigo"]
+                break
+        mask_cod = fuente["Codigo"].astype(str).str.strip() == str(concepto).strip()
         if mask_cod.any():
             codigo_raiz = str(concepto).strip()
+            break
 
     if codigo_raiz is None:
-        warnings.warn(f"Concepto '{concepto}' no encontrado en el DataFrame.")
+        warnings.warn(f"Concepto '{concepto}' no encontrado.")
         return pd.DataFrame(columns=df.columns)
 
     nivel_raiz = _nivel_desde_codigo(codigo_raiz)
@@ -291,15 +259,12 @@ def filtrar_arbol(
 
     col_ancla = f"Codigo_N{nivel_raiz}"
     if col_ancla not in df.columns:
-        warnings.warn(f"Columna '{col_ancla}' no encontrada. ¿DataFrame enriquecido?")
+        warnings.warn(f"Columna '{col_ancla}' no encontrada.")
         return df[df["Codigo"] == codigo_raiz].copy()
 
-    # Todos los nodos que tengan este código en su ancestro del nivel raíz
     mask = df[col_ancla] == codigo_raiz
-
     if not incluir_padre:
         mask = mask & (df["Codigo"] != codigo_raiz)
-
     if max_nivel is not None:
         mask = mask & (df["Nivel"] <= max_nivel)
 
@@ -311,133 +276,104 @@ def filtrar_nivel(
     nivel: int,
     concepto_n1: str | None = None,
 ) -> pd.DataFrame:
-    """
-    Filtra el DataFrame para obtener solo filas de un nivel específico,
-    opcionalmente dentro de un subárbol N1.
-
-    Parámetros
-    ----------
-    df           : DataFrame enriquecido
-    nivel        : nivel jerárquico a filtrar (1-5)
-    concepto_n1  : si se indica, filtra también por árbol N1
-    """
+    """Retorna solo las filas del nivel indicado."""
     mask = df["Nivel"] == nivel
     if concepto_n1 and "Codigo_N1" in df.columns:
-        # Obtener código N1
-        mask_n1 = df["Concepto Presupuestario"].astype(str).str.strip() == str(concepto_n1).strip()
+        mask_n1 = df["Concepto Presupuestario"].astype(str).str.strip() \
+                  == str(concepto_n1).strip()
         if mask_n1.any():
             cod_n1 = df.loc[mask_n1.idxmax(), "Codigo_N1"]
-            mask = mask & (df["Codigo_N1"] == cod_n1)
+            mask   = mask & (df["Codigo_N1"] == cod_n1)
     return df[mask].copy()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# MÉTRICAS DE ÁRBOL
+# metricas_arbol()  — FIX BUG 2 + BUG 3
 # ══════════════════════════════════════════════════════════════════════════════
-def metricas_arbol(
-    df: pd.DataFrame,
-    solo_hojas: bool = True,
-) -> dict:
+def metricas_arbol(df: pd.DataFrame, solo_hojas: bool = True) -> dict:
     """
-    Calcula métricas de control presupuestario para un subárbol.
-
-    Parámetros
-    ----------
-    df         : DataFrame (idealmente salida de filtrar_arbol())
-    solo_hojas : si True, suma solo nodos hoja para evitar doble conteo
-
-    Retorna
-    -------
-    dict con:
-        presupuesto_total, devengado_total, compromiso_total,
-        disponible, pct_ejecucion, pct_variacion,
-        n_conceptos, n_periodos, estado_global,
-        por_periodo (DataFrame con evolución temporal),
-        por_nivel   (DataFrame con resumen por nivel),
-        semaforos   (dict con conteo por estado)
+    Calcula KPIs de control presupuestario para el subárbol/subconjunto.
+    Llamar DESPUÉS de recalcular_metricas() para valores correctos.
     """
-    sub = df[df["Es_Hoja"]].copy() if solo_hojas and "Es_Hoja" in df.columns else df.copy()
+    # FIX BUG 2: recalcular Es_Hoja dentro del subconjunto
+    if solo_hojas:
+        hoja_mask = _es_hoja_local(df)
+        sub = df[hoja_mask].copy()
+    else:
+        sub = df.copy()
 
-    def _sum(col):
-        return sub[col].sum() if col in sub.columns else 0.0
+    def _s(col):
+        return float(sub[col].sum()) if col in sub.columns else 0.0
 
-    pres    = _sum("Ley de Presupuestos")
-    dev     = _sum("Devengado")
-    comp    = _sum("Compromiso")
-    disp    = pres - dev
+    pres = _s("Ley de Presupuestos")
+    dev  = _s("Devengado")
+    comp = _s("Compromiso")
+    disp = pres - dev
     pct_ej  = round(dev / pres * 100, 2) if pres else None
     pct_var = round((dev - pres) / pres * 100, 2) if pres else None
 
-    # Evolución por período
+    # FIX BUG 3: dict de agg construido antes del groupby, no inline
     por_periodo = pd.DataFrame()
-    if "Fecha" in sub.columns and "Mes_Num" in sub.columns and "Anio" in sub.columns:
-        por_periodo = (
-            sub.groupby(["Fecha", "Anio", "Mes_Num"])
-            .agg(
-                Presupuesto=("Ley de Presupuestos", "sum") if "Ley de Presupuestos" in sub.columns else ("Devengado", "count"),
-                Devengado=("Devengado", "sum"),
-                Compromiso=("Compromiso", "sum") if "Compromiso" in sub.columns else ("Devengado", "count"),
-            )
-            .reset_index()
-            .sort_values(["Anio", "Mes_Num"])
-        )
-        if "Presupuesto" in por_periodo.columns and "Devengado" in por_periodo.columns:
-            por_periodo["Pct_Ejecucion"] = (
-                por_periodo["Devengado"] / por_periodo["Presupuesto"].replace(0, np.nan) * 100
-            ).round(2)
-            por_periodo["Variacion"] = por_periodo["Devengado"] - por_periodo["Presupuesto"]
+    if "Fecha" in sub.columns and "Anio" in sub.columns and "Mes_Num" in sub.columns:
+        agg_p: dict[str, tuple] = {"Devengado": ("Devengado", "sum")}
+        if "Ley de Presupuestos" in sub.columns:
+            agg_p["Presupuesto"] = ("Ley de Presupuestos", "sum")
+        if "Compromiso" in sub.columns:
+            agg_p["Compromiso"]  = ("Compromiso", "sum")
 
-    # Resumen por nivel
+        por_periodo = (sub.groupby(["Fecha", "Anio", "Mes_Num"])
+                         .agg(**agg_p).reset_index()
+                         .sort_values(["Anio", "Mes_Num"]))
+        if "Presupuesto" in por_periodo.columns:
+            sp = por_periodo["Presupuesto"].replace(0, np.nan)
+            por_periodo["Pct_Ejecucion"] = (por_periodo["Devengado"] / sp * 100).round(2)
+            por_periodo["Variacion"]     = por_periodo["Devengado"] - por_periodo["Presupuesto"]
+
     por_nivel = pd.DataFrame()
     if "Nivel" in sub.columns:
-        agg_cols = {"Devengado": "sum"}
+        agg_n: dict[str, tuple] = {"Devengado": ("Devengado", "sum")}
         if "Ley de Presupuestos" in sub.columns:
-            agg_cols["Ley de Presupuestos"] = "sum"
+            agg_n["Ley de Presupuestos"] = ("Ley de Presupuestos", "sum")
         if "Compromiso" in sub.columns:
-            agg_cols["Compromiso"] = "sum"
-        por_nivel = (
-            sub.groupby("Nivel")
-            .agg(**{k: (k, v) for k, v in agg_cols.items()})
-            .reset_index()
-        )
+            agg_n["Compromiso"] = ("Compromiso", "sum")
+        por_nivel = sub.groupby("Nivel").agg(**agg_n).reset_index()
         if "Ley de Presupuestos" in por_nivel.columns:
             por_nivel["Pct_Ejecucion"] = (
                 por_nivel["Devengado"]
-                / por_nivel["Ley de Presupuestos"].replace(0, np.nan)
-                * 100
+                / por_nivel["Ley de Presupuestos"].replace(0, np.nan) * 100
             ).round(2)
 
-    # Semáforos
-    semaforos = {}
+    semaforos: dict = {}
     if "Estado_Semaforo" in sub.columns:
         semaforos = sub["Estado_Semaforo"].value_counts().to_dict()
 
-    # Estado global
-    def _estado(pct):
-        if pct is None:  return "Sin datos"
-        if pct <= 80:    return "Verde"
-        if pct <= 100:   return "Amarillo"
-        if pct <= 110:   return "Rojo"
+    def _eg(pct) -> str:
+        if pct is None: return "Sin datos"
+        if pct <= 0:    return "Sin Ejecutar"
+        if pct <= 80:   return "Verde"
+        if pct <= 100:  return "Amarillo"
+        if pct <= 110:  return "Rojo"
         return "Excedido"
 
     return {
-        "presupuesto_total":  pres,
-        "devengado_total":    dev,
-        "compromiso_total":   comp,
-        "disponible":         disp,
-        "pct_ejecucion":      pct_ej,
-        "pct_variacion":      pct_var,
-        "n_conceptos":        sub["Concepto Presupuestario"].nunique() if "Concepto Presupuestario" in sub.columns else 0,
-        "n_periodos":         sub["Fecha"].nunique() if "Fecha" in sub.columns else 0,
-        "estado_global":      _estado(pct_ej),
-        "por_periodo":        por_periodo,
-        "por_nivel":          por_nivel,
-        "semaforos":          semaforos,
+        "presupuesto_total": pres,
+        "devengado_total":   dev,
+        "compromiso_total":  comp,
+        "disponible":        disp,
+        "pct_ejecucion":     pct_ej,
+        "pct_variacion":     pct_var,
+        "n_conceptos":       sub["Concepto Presupuestario"].nunique()
+                             if "Concepto Presupuestario" in sub.columns else 0,
+        "n_periodos":        sub["Fecha"].nunique() if "Fecha" in sub.columns else 0,
+        "estado_global":     _eg(pct_ej),
+        "por_periodo":       por_periodo,
+        "por_nivel":         por_nivel,
+        "semaforos":         semaforos,
     }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# REPORTE TABULAR CONSOLIDADO
+# reporte_control()
 # ══════════════════════════════════════════════════════════════════════════════
 def reporte_control(
     df: pd.DataFrame,
@@ -446,164 +382,98 @@ def reporte_control(
     exportar_csv: str | None = None,
 ) -> pd.DataFrame:
     """
-    Genera un reporte de control presupuestario agrupado por nivel y/o
-    columnas adicionales (Establecimiento, Fecha, etc.).
-
-    Parámetros
-    ----------
-    df             : DataFrame enriquecido
-    nivel_reporte  : nivel a reportar (ej: 2 → subtítulos principales)
-    agrupar_por    : columnas extra para agrupar (ej: ['Establecimiento','Fecha'])
-    exportar_csv   : ruta para exportar el reporte (None = no exportar)
-
-    Retorna
-    -------
-    DataFrame con el reporte consolidado + columnas de control.
+    Reporte de control agrupado por nivel.
+    df debe haber pasado por recalcular_metricas() para semáforos correctos.
     """
-    # Filtrar el nivel solicitado (para no sumar padre + hijo)
     sub = df[df["Nivel"] == nivel_reporte].copy()
-
     if sub.empty:
-        warnings.warn(f"No hay datos para Nivel {nivel_reporte}.")
+        warnings.warn(f"Sin datos para Nivel {nivel_reporte}.")
         return pd.DataFrame()
 
-    # Columnas identificadoras
     id_cols = ["Concepto Presupuestario", "Codigo"]
     if nivel_reporte > 1:
         id_cols += [f"Etiqueta_N{n}" for n in range(1, nivel_reporte)
                     if f"Etiqueta_N{n}" in sub.columns]
 
-    # Columnas de agrupación
     group_cols = id_cols.copy()
     if agrupar_por:
         group_cols += [c for c in agrupar_por if c in sub.columns]
 
-    # Columnas a agregar
-    agg_dict: dict[str, tuple] = {}
+    agg_d: dict[str, tuple] = {}
     for col in COLS_MONETARIAS:
         if col in sub.columns:
-            agg_dict[col] = (col, "sum")
-
-    if not agg_dict:
-        warnings.warn("No se encontraron columnas monetarias para agregar.")
+            agg_d[col] = (col, "sum")
+    if not agg_d:
         return sub
 
-    reporte = (
-        sub.groupby(group_cols, dropna=False)
-        .agg(**agg_dict)
-        .reset_index()
-    )
+    rep = sub.groupby(group_cols, dropna=False).agg(**agg_d).reset_index()
 
-    # Recalcular métricas en el reporte agregado
-    pres = reporte.get("Ley de Presupuestos", pd.Series(dtype=float))
-    dev  = reporte.get("Devengado",           pd.Series(dtype=float))
+    pres_r = rep.get("Ley de Presupuestos", pd.Series(dtype=float))
+    dev_r  = rep.get("Devengado",           pd.Series(dtype=float))
+    if len(pres_r) and len(dev_r):
+        sp = pres_r.replace(0, np.nan)
+        rep["Pct_Ejecucion"]       = (dev_r / sp * 100).round(2)
+        rep["Variacion_Devengado"] = dev_r - pres_r
+        rep["Pct_Variacion"]       = ((dev_r - pres_r) / sp * 100).round(2)
+        rep["Disponible"]          = pres_r - dev_r
+        rep["Estado"] = rep["Pct_Ejecucion"].apply(
+            lambda p: "🟢 Verde"    if not pd.isna(p) and p <= 80  else
+                      "🟡 Amarillo" if not pd.isna(p) and p <= 100 else
+                      "🔴 Rojo"     if not pd.isna(p) and p <= 110 else
+                      "⛔ Excedido" if not pd.isna(p) else "—"
+        )
 
-    if len(pres) and len(dev):
-        safe_pres = pres.replace(0, np.nan)
-        reporte["Pct_Ejecucion"]       = (dev / safe_pres * 100).round(2)
-        reporte["Variacion_Devengado"] = dev - pres
-        reporte["Pct_Variacion"]       = ((dev - pres) / safe_pres * 100).round(2)
-        reporte["Disponible"]          = pres - dev
-
-        def _sem(pct):
-            if pd.isna(pct):     return "—"
-            if pct <= 80:        return "🟢 Verde"
-            if pct <= 100:       return "🟡 Amarillo"
-            if pct <= 110:       return "🔴 Rojo"
-            return "⛔ Excedido"
-
-        reporte["Estado"] = reporte["Pct_Ejecucion"].apply(_sem)
-
-    # Ordenar
-    sort_cols = []
-    if "Codigo_N1" in reporte.columns:
-        sort_cols.append("Codigo_N1")
-    sort_cols.append("Codigo")
-    if "Fecha" in reporte.columns and "Mes_Num" not in reporte.columns:
-        sort_cols.append("Fecha")
-    if "Anio" in reporte.columns:
-        sort_cols += ["Anio", "Mes_Num"] if "Mes_Num" in reporte.columns else ["Anio"]
-
-    reporte = reporte.sort_values([c for c in sort_cols if c in reporte.columns])
+    sort_cols = [c for c in ["Codigo_N1","Codigo","Anio","Mes_Num","Fecha"]
+                 if c in rep.columns]
+    rep = rep.sort_values(sort_cols)
 
     if exportar_csv:
-        reporte.to_csv(exportar_csv, index=False, encoding="utf-8-sig")
-        print(f"✅ Reporte exportado: {exportar_csv}")
+        rep.to_csv(exportar_csv, index=False, encoding="utf-8-sig")
+        print(f"Reporte exportado: {exportar_csv}")
 
-    return reporte
+    return rep
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# ÁRBOL DE NAVEGACIÓN (para selectores en Streamlit)
+# arbol_navegacion()
 # ══════════════════════════════════════════════════════════════════════════════
 def arbol_navegacion(df: pd.DataFrame) -> dict[str, list[str]]:
     """
-    Construye un mapa jerárquico para poblar selectores anidados en Streamlit.
-
-    Retorna
-    -------
-    dict donde la clave es el concepto padre y el valor es la lista de hijos
-    directos. La clave especial '__raices__' contiene los conceptos de Nivel 1.
-
-    Ejemplo de uso en Streamlit:
-        arbol = arbol_navegacion(df_rico)
-        n1_sel = st.selectbox("Capítulo", arbol['__raices__'])
-        n2_sel = st.selectbox("Subcapítulo", arbol.get(n1_sel, []))
+    Mapa jerárquico para selectores Streamlit.
+    Llamar siempre sobre el dataset GLOBAL sin filtrar.
     """
     if "Concepto Presupuestario" not in df.columns or "Nivel" not in df.columns:
         return {}
 
-    arbol: dict[str, list[str]] = {"__raices__": []}
-
-    # Raíces = Nivel 1
-    raices = (
-        df[df["Nivel"] == 1]["Concepto Presupuestario"]
-        .drop_duplicates()
-        .sort_values()
-        .tolist()
-    )
-    arbol["__raices__"] = raices
-
-    # Para cada nodo, encontrar sus hijos directos
-    for _, row in df.dropna(subset=["Codigo"]).iterrows():
-        codigo  = row["Codigo"]
-        concepto = str(row["Concepto Presupuestario"]).strip()
-
-        # Hijos directos: nodos cuyo padre_codigo == este código
-        hijos = (
-            df[df["Padre_Codigo"] == codigo]["Concepto Presupuestario"]
-            .drop_duplicates()
-            .sort_values()
-            .tolist()
-        )
+    arbol: dict[str, list[str]] = {
+        "__raices__": (df[df["Nivel"] == 1]["Concepto Presupuestario"]
+                       .drop_duplicates().sort_values().tolist())
+    }
+    # drop_duplicates por Codigo para no iterar la misma estructura N veces
+    # (un concepto aparece una vez por cada establecimiento × período)
+    df_uniq = df.dropna(subset=["Codigo"]).drop_duplicates("Codigo")
+    for _, row in df_uniq.iterrows():
+        cod  = row["Codigo"]
+        conc = str(row["Concepto Presupuestario"]).strip()
+        hijos = (df[df["Padre_Codigo"] == cod]["Concepto Presupuestario"]
+                 .drop_duplicates().sort_values().tolist())
         if hijos:
-            arbol[concepto] = hijos
-
+            arbol[conc] = hijos
     return arbol
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# VARIACIÓN PERÍODO A PERÍODO
+# variacion_mom()  — FIX BUG 2
 # ══════════════════════════════════════════════════════════════════════════════
 def variacion_mom(
     df: pd.DataFrame,
     concepto: str | None = None,
     establecimiento: str | None = None,
 ) -> pd.DataFrame:
-    """
-    Calcula la variación del Devengado mes a mes (Month-over-Month).
-
-    Parámetros
-    ----------
-    df              : DataFrame enriquecido (solo hojas recomendado)
-    concepto        : filtrar por concepto N1 (None = todos)
-    establecimiento : filtrar por establecimiento (None = todos)
-
-    Retorna
-    -------
-    DataFrame con columnas: Fecha, Devengado, Dev_Anterior, Variacion_Abs, Variacion_Pct
-    """
-    sub = df[df.get("Es_Hoja", pd.Series(True, index=df.index))].copy() if "Es_Hoja" in df.columns else df.copy()
+    """Variación Devengado mes a mes. Usa hojas recalculadas en el subconjunto."""
+    # FIX BUG 2: Es_Hoja recalculado localmente
+    hoja_mask = _es_hoja_local(df)
+    sub = df[hoja_mask].copy()
 
     if concepto and "Etiqueta_N1" in sub.columns:
         sub = sub[sub["Etiqueta_N1"].astype(str).str.strip() == str(concepto).strip()]
@@ -613,16 +483,14 @@ def variacion_mom(
     if sub.empty:
         return pd.DataFrame()
 
-    group = ["Fecha", "Anio", "Mes_Num"] if "Anio" in sub.columns else ["Fecha"]
-    serie = (
-        sub.groupby(group)["Devengado"]
-        .sum()
-        .reset_index()
-        .sort_values(["Anio", "Mes_Num"] if "Anio" in sub.columns else ["Fecha"])
-    )
+    group = ["Fecha","Anio","Mes_Num"] if "Anio" in sub.columns else ["Fecha"]
+    serie = (sub.groupby(group)["Devengado"].sum().reset_index()
+              .sort_values(["Anio","Mes_Num"] if "Anio" in sub.columns else ["Fecha"]))
 
-    serie["Dev_Anterior"]   = serie["Devengado"].shift(1)
-    serie["Variacion_Abs"]  = serie["Devengado"] - serie["Dev_Anterior"]
-    serie["Variacion_Pct"]  = (serie["Variacion_Abs"] / serie["Dev_Anterior"].replace(0, np.nan) * 100).round(2)
+    serie["Dev_Anterior"]  = serie["Devengado"].shift(1)
+    serie["Variacion_Abs"] = serie["Devengado"] - serie["Dev_Anterior"]
+    serie["Variacion_Pct"] = (
+        serie["Variacion_Abs"] / serie["Dev_Anterior"].replace(0, np.nan) * 100
+    ).round(2)
 
     return serie
