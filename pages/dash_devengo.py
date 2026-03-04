@@ -13,6 +13,10 @@ import numpy as np
 import os
 import io
 
+from style.ui import cargar_css
+cargar_css()
+
+
 # ── Configuración de página ────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Gestión Presupuestaria | Salud Osorno",
@@ -90,13 +94,27 @@ def cargar_datos():
 df_raw = cargar_datos()
 
 # ── Header ─────────────────────────────────────────────────────────────────────
-st.markdown(f"""
-<div class="header-box">
-  <h2 style="margin:0;color:white;">🏥 Dashboard de Gestión Presupuestaria</h2>
-  <p style="margin:4px 0 0;opacity:.85;font-size:14px;">{ENTIDAD} — Disponibilidad de Devengos 2026</p>
-</div>
-""", unsafe_allow_html=True)
-
+st.markdown(
+    """
+    <div style="
+        padding: 1.2rem 1.5rem;
+        margin-bottom: 1.5rem;
+        background: linear-gradient(90deg, #138AEC, #3E9FEF);
+        color: white;
+        border-radius: 14px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    ">
+        <div style="font-size: 28px; font-weight: 800;">
+           🏥 Dashboard de Gestión Presupuestaria
+        </div>
+        <div style="font-size: 15px; opacity: 0.9; margin-top: 4px;">
+            Visión ejecutiva del desempeño de los compradores en eficiencia,
+            cumplimiento y volumen de adquisiciones.
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 # ── Sidebar — Filtros ─────────────────────────────────────────────────────────
 st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Escudo_de_Chile.svg/200px-Escudo_de_Chile.svg.png", width=60)
 st.sidebar.markdown("## ⚙️ Filtros")
