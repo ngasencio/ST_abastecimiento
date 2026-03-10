@@ -96,6 +96,13 @@ def limpiar(texto):
     if texto is None: return ""
     return str(texto).replace("\n", " ").replace(";", ",").replace("\r", " ").strip()
 
+def generar_link_mp(codigo_oc):
+    """Genera el link directo a la orden de compra en Mercado Público"""
+    if not codigo_oc or str(codigo_oc).strip() == "" or str(codigo_oc).lower() == "nan":
+        return ""
+    base_url = "http://www.mercadopublico.cl/PurchaseOrder/Modules/PO/DetailsPurchaseOrder.aspx?codigoOC="
+    return f"{base_url}{codigo_oc}"
+
 def _write_csv_dicts(path: pathlib.Path, rows: List[Dict[str, Any]], delimiter: str = ";") -> None:
     """Escritura CSV consistente y relativamente rápida para lista de dicts."""
     if not rows:
@@ -113,6 +120,7 @@ def _extraer_resumen_y_detalles(codigo: str, oc: Dict[str, Any]) -> Tuple[Dict[s
 
     resumen = {
         "CodigoOC": codigo,
+        "LinkMP": generar_link_mp(codigo),
         "NombreOC": limpiar(oc.get("Nombre")),
         "CodigoEstado": oc.get("CodigoEstado"),
         "EstadoOC": oc.get("Estado"),
@@ -295,6 +303,8 @@ def unificar_base_datos():
         )
 
         df_res.drop_duplicates(subset=["CodigoOC"], keep="last", inplace=True)
+        
+        df_res["LinkMP"] = df_res["CodigoOC"].apply(generar_link_mp)
 
         ruta_m_res = CARPETA_MAESTROS / "OC_Maestro_Resumen.csv"
         df_res.to_csv(ruta_m_res, sep=";", index=False, encoding="utf-8-sig")
@@ -388,6 +398,8 @@ def refresh_base_datos(
         df_final_res = pd.concat([df_master_res, df_nuevos_res])
         df_final_res.drop_duplicates(subset=["CodigoOC"], keep="last", inplace=True)
         
+        df_final_res["LinkMP"] = df_final_res["CodigoOC"].apply(generar_link_mp)
+        
         df_final_res.to_csv(ruta_m_res, sep=";", index=False, encoding="utf-8-sig")
         print(f"   ✅ Maestro Resumen actualizado. Total registros: {len(df_final_res)}")
 
@@ -421,6 +433,72 @@ def refresh_base_datos(
 
     print("\n✨ PROCESO DE REFRESH COMPLETADO EXITOSAMENTE.")
 
+def enlazar_con_pac():
+    """
+    7) Lee OC_Maestro_Resumen.csv y OCPAC_Maestro.csv.
+    Añade columnas EnlacePAC e ID Proyecto guiándose por OC Asociada PAC.
+    """
+    print("\n🔗 INICIANDO ENLACE CON PLAN ANUAL DE COMPRAS (PAC)...")
+    ruta_m_res = CARPETA_MAESTROS / "OC_Maestro_Resumen.csv"
+    ruta_pac = RUTA_API.parent / "data" / "data_pac" / "OCPAC_Maestro.csv"
+
+    if not ruta_m_res.exists():
+        print("   ⚠️ No se encontró OC_Maestro_Resumen.csv en MAESTROS.")
+        return
+    
+    if not ruta_pac.exists():
+        print("   ⚠️ No se encontró OCPAC_Maestro.csv en data/data_pac.")
+        return
+
+    print("   -> Cargando OC_Maestro_Resumen.csv...")
+    df_res = pd.read_csv(ruta_m_res, sep=";", encoding="utf-8-sig", dtype=str)
+    
+    print("   -> Cargando OCPAC_Maestro.csv...")
+    try:
+        # Se asume delimitador coma, típico de CSV, con fallback por defecto en pandas en caso de errores en la forma
+        df_pac = pd.read_csv(ruta_pac, sep=",", encoding="utf-8-sig", dtype=str)
+    except Exception as e:
+        print(f"   ⚠️ Error al leer OCPAC_Maestro.csv: {e}")
+        return
+
+    # Verificar si el archivo pudiera estar separado por punto y coma si no encuentra las columnas
+    if "OC Asociada PAC" not in df_pac.columns or "ID Proyecto" not in df_pac.columns:
+        df_pac = pd.read_csv(ruta_pac, sep=";", encoding="utf-8-sig", dtype=str)
+        if "OC Asociada PAC" not in df_pac.columns or "ID Proyecto" not in df_pac.columns:
+            print(f"   ⚠️ OCPAC_Maestro.csv no tiene las columnas 'ID Proyecto' o 'OC Asociada PAC'.")
+            return
+
+    # Limpiar columnas previas si existían en el Maestro para que no haya duplicación (Ej: ID Proyecto_x, _y)
+    if "EnlacePAC" in df_res.columns:
+        df_res.drop(columns=["EnlacePAC"], inplace=True)
+    if "ID Proyecto" in df_res.columns:
+        df_res.drop(columns=["ID Proyecto"], inplace=True)
+
+    # Dejamos solo valores únicos de OC en PAC para evitar multiplicar filas en Resumen
+    df_pac_reducido = df_pac[["OC Asociada PAC", "ID Proyecto"]].drop_duplicates(subset=["OC Asociada PAC"], keep="first")
+    
+    print("   -> Cruzando datos...")
+    df_merged = df_res.merge(
+        df_pac_reducido,
+        left_on="CodigoOC",
+        right_on="OC Asociada PAC",
+        how="left"
+    )
+
+    # Si hay coincidencias, el campo 'OC Asociada PAC' tendrá valor
+    df_merged["EnlacePAC"] = df_merged["OC Asociada PAC"].apply(lambda x: "Enlazada" if pd.notnull(x) and str(x).strip() != "" else "No Enlazada")
+    
+    # Eliminamos la columna transitoria del join
+    df_merged.drop(columns=["OC Asociada PAC"], inplace=True)
+
+    df_merged["LinkMP"] = df_merged["CodigoOC"].apply(generar_link_mp)
+
+    print("   -> Guardando OC_Maestro_Resumen.csv...")
+    df_merged.to_csv(ruta_m_res, sep=";", index=False, encoding="utf-8-sig")
+    print(f"   ✅ Archivo actualizado exitosamente con {len(df_merged)} registros.")
+    print(f"   📊 Resumen Enlace PAC:\n{df_merged['EnlacePAC'].value_counts().to_string()}")
+
+
 # =========================
 # MENÚ PRINCIPAL
 # =========================
@@ -436,6 +514,7 @@ if __name__ == "__main__":
         print("-" * 40)
         print("5) UNIFICAR BASE DATOS (Crea Maestros desde DIARIO)")
         print("6) REFRESH BASE DATOS (Descarga Rango + Actualiza Maestros)")
+        print("7) ENLACE PAC (Añade ID Proyecto a OC_Maestro_Resumen)")
         print("0) Salir")
         
         op = input("\nSeleccione opción: ")
@@ -469,6 +548,9 @@ if __name__ == "__main__":
                 d_ini = dt.datetime.strptime(ini, "%d-%m-%Y").date()
                 d_fin = dt.datetime.strptime(fin, "%d-%m-%Y").date()
                 refresh_base_datos(d_ini, d_fin)
+
+            elif op == "7":
+                enlazar_con_pac()
 
         except Exception as e: 
             print(f"\n❌ Error: {e}")
